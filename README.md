@@ -71,8 +71,17 @@ A summarized changelog is also available in [`CHANGELOG.md`](CHANGELOG.md).
 
 #### Security
 
-The codebase has no real security hardening — it's 2004 code that was never designed for a hostile internet.
+Some hardening has been done, but significant work remains — this is 2004 code that was never designed for a hostile internet.
 
+**Done:**
+- `.htaccess` blocks direct browser access to all `.inc.php` and `.cron.php` files (Apache returns 403; PHP `include()` still works)
+- `userdata/` directory blocked from browser access via RewriteRule
+- `admin/tools.php` unauthenticated GET endpoints removed; file now requires `ADMIN_TOOLS_ACCESS` constant (only defined by authenticated admin context)
+- Admin panel redirects non-admin users to home instead of serving content
+- Login flow preserves the originally-requested URL and redirects back after authentication (with open-redirect sanitization)
+- Null dereference hardening — ~50 functions across 5 core include files now check `mysqli_fetch_object()` results before property access
+
+**Still needed:**
 - **SQL injection everywhere** — every query uses string interpolation instead of prepared statements
 - **XSS** — user-supplied values (messages, fleet names, ship names) are echoed without escaping
 - **Unauthenticated dev tools** — `giveplanetships.php` and `simulatebattle.php` have no login check and are publicly accessible
@@ -84,7 +93,7 @@ The codebase has no real security hardening — it's 2004 code that was never de
 
 #### Known Bugs
 
-- `DestroyShip()` references the wrong variable (`$res` instead of `$rescount`) — always fails
+- ~~`DestroyShip()` references the wrong variable (`$res` instead of `$rescount`) — always fails~~ *(fixed)*
 - Fleet AP display calls the HP function instead — shows HP for both stats
 - Building ownership check uses a bare word `(edit)` instead of the variable `($edit)` — always passes
 - Building demolish/cancel queries are missing `AND PlanetID` in the WHERE clause
