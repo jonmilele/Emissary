@@ -1,0 +1,18 @@
+# Secrets
+.env
+html/secrets.inc.php
+
+# Installer lock
+html/.installed
+
+# Runtime data
+html/turntime.txt
+html/turninterval.txt
+html/config.inc.php
+
+# MySQL data volume
+mysql_data/
+
+# macOS
+.DS_Store
+**/.DS_Store
