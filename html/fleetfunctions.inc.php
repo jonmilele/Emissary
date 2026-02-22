@@ -994,15 +994,10 @@ function AttackPlanet($FleetID,$PlanetID,$Invade = false){
 		$winner = $defender;
 	}
 	
-	$sql = "INSERT INTO battles(PlanetID,Defender,Attacker,Winner,Date) VALUES('$PlanetID','".$defender."','".$attacker."','$winner',NOW())";
+	$logEscaped = mysqli_real_escape_string($GLOBALS["conn"], $echo);
+	$sql = "INSERT INTO battles(PlanetID,Defender,Attacker,Winner,Date,Log) VALUES('$PlanetID','".$defender."','".$attacker."','$winner',NOW(),'".$logEscaped."')";
 	$res=mysqli_query($GLOBALS["conn"], $sql);
 	$id = mysqli_insert_id($GLOBALS["conn"]);
-	$fp = fopen(__DIR__ . "/userdata/battles/".$id.".txt","w") or die("Error writing file");
-	fwrite($fp,$echo,strlen($echo));
-	fclose($fp);
-	
-	$sql = "UPDATE battles SET LogFile = '".$id.".txt' WHERE(BattleID = '".$id."')";
-	$res=mysqli_query($GLOBALS["conn"], $sql);
 	
 	Report($attacker,4,$id);
 	Report($defender,4,$id);

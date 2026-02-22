@@ -192,7 +192,7 @@ CREATE TABLE `battles` (
   `Attacker` INT DEFAULT 0,
   `Winner` INT DEFAULT 0,
   `Date` DATETIME DEFAULT NULL,
-  `LogFile` VARCHAR(50) DEFAULT NULL
+  `Log` TEXT DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 -- ----------------------------
@@ -220,6 +220,23 @@ CREATE TABLE `auctions` (
   `StartBid` INT DEFAULT 0,
   `CurrentBid` INT DEFAULT 0,
   `HighBidder` INT DEFAULT 0
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
+-- ----------------------------
+-- Game settings (key-value store, replaces flat files)
+-- ----------------------------
+CREATE TABLE `game_settings` (
+  `setting_key` VARCHAR(64) PRIMARY KEY,
+  `setting_value` TEXT DEFAULT NULL
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
+-- ----------------------------
+-- Known systems (per-player explored systems)
+-- ----------------------------
+CREATE TABLE `known_systems` (
+  `PlayerID` INT NOT NULL,
+  `SystemID` INT NOT NULL,
+  PRIMARY KEY (`PlayerID`, `SystemID`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 -- ============================================

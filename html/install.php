@@ -155,18 +155,14 @@ if($step === 'run'){
 		// --- 7. Load game functions ---
 		stepMsg("Loading game engine...");
 		include_once(__DIR__ . "/userfunctions.inc.php");
+		if(!defined('ADMIN_TOOLS_ACCESS')) define('ADMIN_TOOLS_ACCESS', true);
 		include_once(__DIR__ . "/admin/tools.php");
 		include_once(__DIR__ . "/turnfunctions.inc.php");
 		progress("Game functions loaded");
 
-		// --- 8. Reset names counter ---
-		$namesFile = __DIR__ . "/userdata/names.txt";
-		if(file_exists($namesFile)){
-			$lines = file($namesFile);
-			$lines[0] = "1\n";
-			file_put_contents($namesFile, implode('', $lines));
-			progress("System names index reset");
-		}
+		// --- 8. Reset names counter in DB ---
+		SetGameSetting('names_counter', '1');
+		progress("System names counter initialized");
 
 		// --- 9. Populate galaxy ---
 		stepMsg("Populating galaxy (100 sectors)...");
@@ -192,7 +188,7 @@ if($step === 'run'){
 		stepMsg("Initializing turn timer...");
 		// Save income turn interval (seconds) so the game knows the cycle length
 		$turnInterval = $cron_income * 60;
-		file_put_contents(__DIR__ . "/turninterval.txt", $turnInterval);
+		SetGameSetting('turn_interval', $turnInterval);
 		ResetTurnTimer();
 		progress("Turn timer set (income cycle: every $cron_income min, mini-turn: every $cron_mini min)");
 

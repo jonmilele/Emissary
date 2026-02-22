@@ -28,10 +28,11 @@ $Battle = GetBattle($BattleID);
 </div>
 <div class="planet">
   <h2>Battle Log</h2>
-  <p><?php 
-	$fp = fopen(__DIR__ . "/userdata/battles/".$BattleID.".txt","r");
-	echo fread($fp,filesize(__DIR__ . "/userdata/battles/".$BattleID.".txt"));
-	fclose($fp);
+  <p><?php
+	$logSql = "SELECT Log FROM battles WHERE BattleID = '" . mysqli_real_escape_string($conn, $BattleID) . "'";
+	$logRes = mysqli_query($conn, $logSql);
+	$logRow = $logRes ? mysqli_fetch_object($logRes) : null;
+	echo $logRow ? $logRow->Log : 'Battle log not available.';
 	?></p>
 </div>
 </body>

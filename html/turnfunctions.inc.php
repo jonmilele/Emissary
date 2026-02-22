@@ -1,20 +1,30 @@
 <?php
-function GetTurnInterval(){
-	$file = __DIR__ . "/turninterval.txt";
-	if(file_exists($file)){
-		$val = (int)trim(file_get_contents($file));
-		if($val > 0) return $val;
+function GetGameSetting($key, $default = null){
+	$key = mysqli_real_escape_string($GLOBALS["conn"], $key);
+	$sql = "SELECT setting_value FROM game_settings WHERE setting_key = '$key'";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	if($res){
+		$row = mysqli_fetch_object($res);
+		if($row) return $row->setting_value;
 	}
-	return 1800; // default 30 min
+	return $default;
+}
+
+function SetGameSetting($key, $value){
+	$key = mysqli_real_escape_string($GLOBALS["conn"], $key);
+	$value = mysqli_real_escape_string($GLOBALS["conn"], $value);
+	$sql = "REPLACE INTO game_settings(setting_key, setting_value) VALUES('$key', '$value')";
+	mysqli_query($GLOBALS["conn"], $sql);
+}
+
+function GetTurnInterval(){
+	$val = (int)GetGameSetting('turn_interval', 1800);
+	return $val > 0 ? $val : 1800;
 }
 
 function MinutesToNextTurn(){
 	$turn = GetTurnInterval();
-	$file = __DIR__ . "/turntime.txt";
-	if(!file_exists($file)){
-		ResetTurnTimer();
-	}
-	$ts = (int)file_get_contents($file);
+	$ts = (int)GetGameSetting('turn_time', 0);
 	if($ts == 0){
 		ResetTurnTimer();
 		$ts = time();
@@ -27,7 +37,6 @@ function MinutesToNextTurn(){
 }
 
 function ResetTurnTimer(){
-	$file = __DIR__ . "/turntime.txt";
-	file_put_contents($file, time());
+	SetGameSetting('turn_time', time());
 }
 ?>

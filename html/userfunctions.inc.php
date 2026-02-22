@@ -319,12 +319,22 @@ function GetSystemNameFromID($SystemID){
 }
 function GetKnownSystems($username){
 	$Systems = array();
-	$sys = @file(__DIR__ . "/userdata/knownsystems/".GetPlayerIDFromName($username).".txt");
-	foreach($sys as $key=>$syst){
-		$System = GetSystem($syst);
-		$Systems[$System->SystemID] = $System;
+	$pid = GetPlayerIDFromName($username);
+	$sql = "SELECT SystemID FROM known_systems WHERE PlayerID = '" . mysqli_real_escape_string($GLOBALS["conn"], $pid) . "'";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	if($res){
+		while($row = mysqli_fetch_object($res)){
+			$System = GetSystem($row->SystemID);
+			if($System) $Systems[$System->SystemID] = $System;
+		}
 	}
 	return $Systems;
+}
+function AddKnownSystem($PlayerID, $SystemID){
+	$pid = mysqli_real_escape_string($GLOBALS["conn"], $PlayerID);
+	$sid = mysqli_real_escape_string($GLOBALS["conn"], $SystemID);
+	$sql = "INSERT IGNORE INTO known_systems(PlayerID, SystemID) VALUES('$pid', '$sid')";
+	mysqli_query($GLOBALS["conn"], $sql);
 }
 function GetSectorPictureFromID($SectorID){
 	return "sectorimage.img.php?id=".$SectorID;

@@ -1,11 +1,16 @@
 #!/usr/bin/env php
 <?php
+// Prevent concurrent runs — exit immediately if another instance is running
+$lockFp = fopen(__DIR__ . '/.turn.cron.lock', 'c');
+if(!$lockFp || !flock($lockFp, LOCK_EX | LOCK_NB)){
+	exit(0);
+}
+
 include(__DIR__ . "/connect.inc.php");
 include(__DIR__ . "/userfunctions.inc.php");
 
-$fp = fopen(__DIR__ . "/turntime.txt","w");
-fwrite($fp,time());
-fclose($fp);
+include(__DIR__ . "/turnfunctions.inc.php");
+ResetTurnTimer();
 
 function ProcessIncome(){
 	$sql = "SELECT PlayerID FROM players";

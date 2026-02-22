@@ -55,6 +55,7 @@ function CreateCoords($SectorID){
 		return $x."/".$y;
 }
 function PopulateSector($SectorID){
+	include_once(GAME_ROOT . "/turnfunctions.inc.php");
 	$count = 1;
 	if(!IsSector($SectorID)){
 		$query = "INSERT INTO sectors(SectorID) VALUES('$SectorID')";
@@ -67,9 +68,9 @@ function PopulateSector($SectorID){
 		echo "Error: Cannot read names.txt<br/>";
 		return $Systems;
 	}
-	$start = (int)trim($sys[0]);
+	$start = (int)GetGameSetting('names_counter', 1);
 	$count = $start;
-	echo "sys[1] = ".$sys[1]."<br/>";
+	echo "sys[1] = ".$sys[$start]."<br/>";
 	echo "Start: ".$start."<br/>";
 	for($i = $start;$i<$start+10;$i++){
 		if(!isset($sys[$i]) || $sys[$i] == ""){
@@ -94,8 +95,7 @@ function PopulateSector($SectorID){
 	}
 
 	echo "Count: ".$count;
-	$sys[0] = $count."\n";
-	file_put_contents($namesFile, implode('', $sys));
+	SetGameSetting('names_counter', $count);
 	return $Systems;
 }
 function ClearSector($SectorID){

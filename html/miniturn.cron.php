@@ -1,5 +1,11 @@
 #!/usr/bin/env php
 <?php
+// Prevent concurrent runs — exit immediately if another instance is running
+$lockFp = fopen(__DIR__ . '/.miniturn.cron.lock', 'c');
+if(!$lockFp || !flock($lockFp, LOCK_EX | LOCK_NB)){
+	exit(0);
+}
+
 include(__DIR__ . "/connect.inc.php");
 include(__DIR__ . "/userfunctions.inc.php");
 

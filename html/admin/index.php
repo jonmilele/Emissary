@@ -97,14 +97,10 @@ if($action != ""){
 			// Reset player resources but keep accounts
 			mysqli_query($GLOBALS["conn"], "UPDATE players SET Metal=0, Mineral=0, Astrium=0, Credits=0, TeamID=0, SetupStage=0");
 			echo "Reset all player resources and teams (" . mysqli_affected_rows($GLOBALS["conn"]) . " players)\n";
-			// Reset names counter
-			$namesFile = __DIR__ . "/../userdata/names.txt";
-			if(file_exists($namesFile)){
-				$lines = file($namesFile);
-				$lines[0] = "1\n";
-				file_put_contents($namesFile, implode("", $lines));
-				echo "System names counter reset\n";
-			}
+		// Reset names counter
+		include_once(__DIR__ . "/../turnfunctions.inc.php");
+		SetGameSetting('names_counter', '1');
+		echo "System names counter reset\n";
 			// Repopulate all 100 sectors
 			$populated = 0;
 			for($s = 1; $s <= 100; $s++){

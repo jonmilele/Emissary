@@ -152,8 +152,8 @@ All building and ship stat values are estimates — the originals were not recov
 #### Infrastructure & Testing
 
 - No query caching — every page load hits the database dozens of times
-- Cron jobs have no locking mechanism — concurrent runs are possible
-- Some game data (known systems, battle logs) stored as flat files instead of in the database
+- ~~Cron jobs have no locking mechanism — concurrent runs are possible~~ *(fixed — `flock()` guards added to both cron scripts)*
+- ~~Some game data (known systems, battle logs) stored as flat files instead of in the database~~ *(fixed — all migrated to DB: `battles.Log` TEXT column, `known_systems` table, `game_settings` key-value table)*
 - Zero automated tests — debug scripts (`simulatebattle.php`, `fleettest.php`) used instead
 - No CI/CD pipeline
 - Some image generators still use relative paths (`planetimage.img.php`, `shieldcount.img.php`)
@@ -219,7 +219,7 @@ Emissary/
     ├── schema.sql          # Database schema (17 tables + reference data)
     ├── admin/              # Admin panel
     ├── images/             # Game artwork and static assets
-    └── userdata/           # Runtime data (system names, battle logs)
+    └── userdata/           # Static seed data (system name pool)
 ```
 
 ## Admin Panel
