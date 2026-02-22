@@ -1,4 +1,6 @@
-# Emissary
+<p align="center">
+  <img src="html/images/title.jpg" alt="Emissary" />
+</p>
 
 A browser-based space strategy game originally developed in 2004, now restored and modernized to run on a Docker LAMP stack with PHP 8.2 and MySQL 8.
 
