@@ -407,11 +407,12 @@ function GetNumberOfPlanetsInTeam($TeamID){
 }
 
 function PlayerTeam($PlayerID){
+	if($PlayerID==0) return 0;
 	$query = "SELECT TeamID FROM players WHERE(PlayerID='$PlayerID')";
 
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
-	return $row->TeamID;
+	return $row ? $row->TeamID : 0;
 }
 
 function TeamNameFromID($TeamID){
@@ -458,11 +459,12 @@ function CalcMajOwner($SectorID){
 	return $player;
 }
 function GetTeamColour($TeamID){
+	if(!$TeamID) return "128,128,128";
 	$query = "SELECT Colour FROM teams WHERE(TeamID='$TeamID')";
 
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
-	return $row->Colour;
+	return $row ? $row->Colour : "128,128,128";
 }
 function GetSectorMajOwnerTeam($SectorID){
 	$teams = array();
