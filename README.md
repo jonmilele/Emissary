@@ -116,25 +116,25 @@ Some hardening has been done, but significant work remains — this is 2004 code
 
 **Still needed:**
 - **SQL injection everywhere** — every query uses string interpolation instead of prepared statements
-- ~~**XSS** — user-supplied values (messages, fleet names, ship names) are echoed without escaping~~ *(fixed — added `h()` helper wrapping `htmlspecialchars()` across all page files, include files, and HTML-building functions)*
 - **Unauthenticated dev tools** — `giveplanetships.php` and `simulatebattle.php` have no login check and are publicly accessible
-- ~~**Missing ownership checks** — fleet actions don't verify the logged-in player owns the fleet; any player can move, rename, or delete any fleet~~ *(fixed — fleet ownership checks added)*
 - **Dangerous DELETE queries** — building demolish/cancel queries are missing a planet ID filter and can affect buildings on other planets
 - **Weak password handling** — passwords are lowercased before hashing, reducing entropy
-- ~~**No CSRF protection** — no form tokens, no secure cookie flags, no session regeneration on login~~ *(fixed — POST+CSRF migration, session fingerprinting, secure cookie flags, session timeout)*
 - **No HTTPS** configured
+- ~~**XSS** — user-supplied values (messages, fleet names, ship names) are echoed without escaping~~ *(fixed — added `h()` helper wrapping `htmlspecialchars()` across all page files, include files, and HTML-building functions)*
+- ~~**Missing ownership checks** — fleet actions don't verify the logged-in player owns the fleet; any player can move, rename, or delete any fleet~~ *(fixed — fleet ownership checks added)*
+- ~~**No CSRF protection** — no form tokens, no secure cookie flags, no session regeneration on login~~ *(fixed — POST+CSRF migration, session fingerprinting, secure cookie flags, session timeout)*
 
 #### Known Bugs
 
-- ~~`DestroyShip()` references the wrong variable (`$res` instead of `$rescount`) — always fails~~ *(fixed)*
 - Fleet AP display calls the HP function instead — shows HP for both stats
-- ~~Building ownership check uses a bare word `(edit)` instead of the variable `($edit)` — always passes~~ *(fixed)*
 - Building demolish/cancel queries are missing `AND PlanetID` in the WHERE clause
 - The cron colonise branch references undefined `$PlanetID` and `$PlayerID` variables
-- ~~`HasShipyard()` uses `$username` without a `global` declaration~~ *(fixed)*
-- ~~Trade page has a missing `$` on `Mineral` — evaluates as a string constant instead of a variable~~ *(fixed)*
 - `FleetBattle()` tries to iterate a `ShipBundle` object as a flat array
 - `chooserace.php` calls `StageTwo()` without the required `$username` argument
+- ~~`DestroyShip()` references the wrong variable (`$res` instead of `$rescount`) — always fails~~ *(fixed)*
+- ~~Building ownership check uses a bare word `(edit)` instead of the variable `($edit)` — always passes~~ *(fixed)*
+- ~~`HasShipyard()` uses `$username` without a `global` declaration~~ *(fixed)*
+- ~~Trade page has a missing `$` on `Mineral` — evaluates as a string constant instead of a variable~~ *(fixed)*
 - ~~`shieldcount.img.php` still uses the deprecated `imagejpeg($image,'',80)` form~~ *(fixed — also fixed float-to-int deprecation)*
 
 #### Incomplete Features
@@ -143,7 +143,6 @@ Several features have UI or stubs but were never finished in the original code:
 
 - **Race/species creation** — signup step 2 has a form but the backend is empty
 - **Alerts** — the header links to an alerts page that doesn't exist
-- ~~**Team management** — you can view your team but can't create, join, leave, or disband one~~ *(fixed — full team system: create, join/leave, leader elections, team editing, colour picker with 16 unique preset colours)*
 - **Auctions** — the trade page shows "Create an Auction" as placeholder text with no form behind it
 - **Fleet-vs-fleet combat** — the function exists but is commented out; only fleet-vs-planet battles work
 - **Exploration and scouting** — described in the game pitch but no mechanics were ever built
@@ -151,16 +150,17 @@ Several features have UI or stubs but were never finished in the original code:
 - **Orbital structures** — "Orbital Spaces" is hardcoded to 0; the orbital grid is half-implemented
 - **Player messaging** — no way for players to communicate in-game
 - Several functions are empty stubs: ~~`CanInvade()`~~, `ClearHomePage()`, `GetLowestRankVesselTypeInFleet()`
+- ~~**Team management** — you can view your team but can't create, join, leave, or disband one~~ *(fixed — full team system: create, join/leave, leader elections, team editing, colour picker with 16 unique preset colours)*
 
 #### Code Quality
 
 - Heavy use of global state (`global $username`, `$GLOBALS["conn"]`) instead of passing dependencies
 - PHP 4–era class syntax (`var` declarations, named constructors)
 - Monolithic files — `fleetfunctions.inc.php` is 1,200+ lines mixing fleet, ship, and battle logic
-- ~~N+1 query problem — a single page load can fire 50+ database queries~~ *(improved — galaxy map tooltips use bulk JOINed queries instead of per-sector loops)*
 - No transactions — multi-step operations (battles, trades) can leave the database inconsistent
 - Non-atomic resource updates (SELECT then UPDATE) are vulnerable to race conditions
 - Error handling is `or die()` everywhere
+- ~~N+1 query problem — a single page load can fire 50+ database queries~~ *(improved — galaxy map tooltips use bulk JOINed queries instead of per-sector loops)*
 
 #### UI/UX
 
@@ -179,16 +179,16 @@ All building and ship stat values are estimates — the originals were not recov
 - Repair is completely free — restores full HP at zero cost
 - No upkeep or maintenance costs for ships or buildings
 - Harvester income bonus (5% per harvester) stacks without any cap
-- ~~Planet weapon hit chance is hardcoded at 1-in-3 with no modifiers~~ *(now configurable via admin panel)*
 - No ship-type advantages or counters — combat is purely stat-based
+- ~~Planet weapon hit chance is hardcoded at 1-in-3 with no modifiers~~ *(now configurable via admin panel)*
 
 #### Infrastructure & Testing
 
 - No query caching — every page load hits the database dozens of times
-- ~~Cron jobs have no locking mechanism — concurrent runs are possible~~ *(fixed — `flock()` guards added to both cron scripts)*
-- ~~Some game data (known systems, battle logs) stored as flat files instead of in the database~~ *(fixed — all migrated to DB: `battles.Log` TEXT column, `known_systems` table, `game_settings` key-value table)*
 - Zero automated tests — debug scripts (`simulatebattle.php`, `fleettest.php`) used instead
 - No CI/CD pipeline
+- ~~Cron jobs have no locking mechanism — concurrent runs are possible~~ *(fixed — `flock()` guards added to both cron scripts)*
+- ~~Some game data (known systems, battle logs) stored as flat files instead of in the database~~ *(fixed — all migrated to DB: `battles.Log` TEXT column, `known_systems` table, `game_settings` key-value table)*
 - ~~Some image generators still use relative paths (`planetimage.img.php`, `shieldcount.img.php`)~~ *(fixed — all six `.img.php` generators now use `__DIR__` for includes and image file paths)*
 
 ## Quick Start
