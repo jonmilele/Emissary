@@ -2,6 +2,24 @@
 
 A browser-based space strategy game originally developed in 2004, now restored and modernized to run on a Docker LAMP stack with PHP 8.2 and MySQL 8.
 
+## Table of Contents
+
+- [About the Game](#about-the-game)
+  - [Core Gameplay](#core-gameplay)
+  - [Technology](#technology)
+- [Repository Contents](#repository-contents)
+- [⚠️ Pre-Beta Status](#️-pre-beta-status)
+  - [What has been done](#what-has-been-done)
+  - [What still needs work](#what-still-needs-work)
+- [Quick Start](#quick-start)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+  - [Access Points](#access-points)
+  - [Clean Wipe](#clean-wipe-reset-for-fresh-install)
+- [Project Structure](#project-structure)
+- [Admin Panel](#admin-panel)
+- [License](#license)
+
 ## About the Game
 
 Emissary is a multiplayer browser-based space strategy game where players compete for control of a galaxy divided into 100 sectors. Players colonize planets, build structures, construct fleets, form teams, and wage war across star systems.
