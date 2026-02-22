@@ -155,6 +155,7 @@ if($step === 'run'){
 		// --- 7. Load game functions ---
 		stepMsg("Loading game engine...");
 		include_once(__DIR__ . "/userfunctions.inc.php");
+		include_once(__DIR__ . "/planetfunctions.inc.php");
 		if(!defined('ADMIN_TOOLS_ACCESS')) define('ADMIN_TOOLS_ACCESS', true);
 		include_once(__DIR__ . "/admin/tools.php");
 		include_once(__DIR__ . "/turnfunctions.inc.php");
@@ -184,7 +185,20 @@ if($step === 'run'){
 		}
 		progress("Galaxy complete: $populated sectors, $totalSystems systems, $totalPlanets planets");
 
-		// --- 10. Reset turn timer ---
+		// --- 10. Assign starting planet to admin ---
+		stepMsg("Assigning admin starting planet...");
+		$adminCheck = mysqli_query($conn, "SELECT PlayerID FROM players WHERE UserName='$adminName'");
+		if($adminRow = mysqli_fetch_object($adminCheck)){
+			$adminPlanet = AssignStartingPlanet($adminRow->PlayerID);
+			if($adminPlanet > 0){
+				$planetName = GetPlanetNameFromID($adminPlanet);
+				progress("Admin assigned to $planetName (PlanetID $adminPlanet)");
+			} else {
+				progress("Warning: Could not assign starting planet to admin", 'warn');
+			}
+		}
+
+		// --- 11. Reset turn timer ---
 		stepMsg("Initializing turn timer...");
 		// Save income turn interval (seconds) so the game knows the cycle length
 		$turnInterval = $cron_income * 60;

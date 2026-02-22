@@ -1,4 +1,32 @@
 <?php
+function AssignStartingPlanet($PlayerID){
+	// Find an unclaimed planet for a new player
+	// Priority 1: Find a planet in a system with no other players
+	$sql = "SELECT p.PlanetID FROM planets p 
+	        INNER JOIN Systems s ON p.System = s.SystemID
+	        WHERE p.PlayerID = 0
+	        AND s.SystemID NOT IN (SELECT DISTINCT System FROM planets WHERE PlayerID > 0)
+	        ORDER BY RAND() LIMIT 1";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	$row = mysqli_fetch_object($res);
+	
+	// Priority 2: If all systems have players, just find any unclaimed planet
+	if(!$row){
+		$sql = "SELECT PlanetID FROM planets WHERE PlayerID = 0 ORDER BY RAND() LIMIT 1";
+		$res = mysqli_query($GLOBALS["conn"], $sql);
+		$row = mysqli_fetch_object($res);
+	}
+	
+	if($row){
+		$planetID = $row->PlanetID;
+		$sql = "UPDATE planets SET PlayerID = '$PlayerID' WHERE PlanetID = '$planetID'";
+		mysqli_query($GLOBALS["conn"], $sql);
+		return $planetID;
+	}
+	
+	return 0;
+}
+
 function Build($PlanetID,$BuildingType,$Grid){
 	global $username;
 	$costmetal = 0;

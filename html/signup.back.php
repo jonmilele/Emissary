@@ -1,5 +1,7 @@
 <?php
 include("connect.inc.php");
+include("userfunctions.inc.php");
+include("planetfunctions.inc.php");
 
 if(isset($_POST['signup_name']) && isset($_POST['signup_email']) && isset($_POST['signup_pass1']))
 {
@@ -23,7 +25,14 @@ if(isset($_POST['signup_name']) && isset($_POST['signup_email']) && isset($_POST
 
 			$sqlpos = "INSERT INTO players(UserName,Password,Email,Location,DateJoined,Country,SetupStage) VALUES('$username','$crypttext','$email','$location',NOW(),'$country','1')";
 			$respos = mysqli_query($conn, $sqlpos) or die(mysqli_error($conn));
-			echo "Signup complete! Proceed to step 2.";
+			$newPlayerID = mysqli_insert_id($conn);
+			$planetID = AssignStartingPlanet($newPlayerID);
+			if($planetID > 0){
+				$planetName = GetPlanetNameFromID($planetID);
+				echo "Signup complete! You have been assigned to planet $planetName. <a href='index.php'>Log in</a>";
+			} else {
+				echo "Signup complete! <a href='index.php'>Log in</a>";
+			}
 		}
 		else
 		{
