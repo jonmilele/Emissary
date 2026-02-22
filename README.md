@@ -69,12 +69,85 @@ A summarized changelog is also available in [`CHANGELOG.md`](CHANGELOG.md).
 
 ### What still needs work
 
+#### Security
+
+The codebase has no real security hardening — it's 2004 code that was never designed for a hostile internet.
+
+- **SQL injection everywhere** — every query uses string interpolation instead of prepared statements
+- **XSS** — user-supplied values (messages, fleet names, ship names) are echoed without escaping
+- **Unauthenticated dev tools** — `giveplanetships.php` and `simulatebattle.php` have no login check and are publicly accessible
+- **Missing ownership checks** — fleet actions don't verify the logged-in player owns the fleet; any player can move, rename, or delete any fleet
+- **Dangerous DELETE queries** — building demolish/cancel queries are missing a planet ID filter and can affect buildings on other planets
+- **Weak password handling** — passwords are lowercased before hashing, reducing entropy
+- **No CSRF protection** — no form tokens, no secure cookie flags, no session regeneration on login
+- **No HTTPS** configured
+
+#### Known Bugs
+
+- `DestroyShip()` references the wrong variable (`$res` instead of `$rescount`) — always fails
+- Fleet AP display calls the HP function instead — shows HP for both stats
+- Building ownership check uses a bare word `(edit)` instead of the variable `($edit)` — always passes
+- Building demolish/cancel queries are missing `AND PlanetID` in the WHERE clause
+- The cron colonise branch references undefined `$PlanetID` and `$PlayerID` variables
+- `HasShipyard()` uses `$username` without a `global` declaration
+- Trade page has a missing `$` on `Mineral` — evaluates as a string constant instead of a variable
+- `FleetBattle()` tries to iterate a `ShipBundle` object as a flat array
+- `chooserace.php` calls `StageTwo()` without the required `$username` argument
+- `shieldcount.img.php` still uses the deprecated `imagejpeg($image,'',80)` form
+
+#### Incomplete Features
+
+Several features have UI or stubs but were never finished in the original code:
+
+- **Race/species creation** — signup step 2 has a form but the backend is empty
+- **Alerts** — the header links to an alerts page that doesn't exist
+- **Team management** — you can view your team but can't create, join, leave, or disband one
+- **Auctions** — the trade page shows "Create an Auction" as placeholder text with no form behind it
+- **Fleet-vs-fleet combat** — the function exists but is commented out; only fleet-vs-planet battles work
+- **Exploration and scouting** — described in the game pitch but no mechanics were ever built
+- **Tech tree / research** — laboratories can be built on planets but have no effect
+- **Orbital structures** — "Orbital Spaces" is hardcoded to 0; the orbital grid is half-implemented
+- **Player messaging** — no way for players to communicate in-game
+- Several functions are empty stubs: `CanInvade()`, `ClearHomePage()`, `GetLowestRankVesselTypeInFleet()`
+
+#### Code Quality
+
+- Heavy use of global state (`global $username`, `$GLOBALS["conn"]`) instead of passing dependencies
+- PHP 4–era class syntax (`var` declarations, named constructors)
+- Monolithic files — `fleetfunctions.inc.php` is 1,200+ lines mixing fleet, ship, and battle logic
+- N+1 query problem — a single page load can fire 50+ database queries
+- No transactions — multi-step operations (battles, trades) can leave the database inconsistent
+- Non-atomic resource updates (SELECT then UPDATE) are vulnerable to race conditions
+- Error handling is `or die()` everywhere
+
+#### UI/UX
+
+- 2004-era HTML 4.01 markup with `<font>` tags, inline styles, and hardcoded pixel widths
+- ISO-8859-1 encoding instead of UTF-8
+- No responsive design — doesn't work on mobile
+- Planet management is a JPEG image map with no hover states or interactivity
+- No confirmation dialogs before destructive actions (demolish, delete fleet)
+- Error messages passed through URL query strings
+- "galazy" typo on the front page
+
+#### Game Balance
+
+All building and ship stat values are estimates — the originals were not recoverable. Beyond that:
+
+- Repair is completely free — restores full HP at zero cost
+- No upkeep or maintenance costs for ships or buildings
+- Harvester income bonus (5% per harvester) stacks without any cap
+- Planet weapon hit chance is hardcoded at 1-in-3 with no modifiers
+- No ship-type advantages or counters — combat is purely stat-based
+
+#### Infrastructure & Testing
+
+- No query caching — every page load hits the database dozens of times
+- Cron jobs have no locking mechanism — concurrent runs are possible
+- Some game data (known systems, battle logs) stored as flat files instead of in the database
+- Zero automated tests — debug scripts (`simulatebattle.php`, `fleettest.php`) used instead
+- No CI/CD pipeline
 - Some image generators still use relative paths (`planetimage.img.php`, `shieldcount.img.php`)
-- Game balance values (building/ship stats) are estimates — originals were not recoverable
-- Battle system and fleet mechanics have not been fully play-tested
-- No input sanitization beyond basic escaping (SQL injection surface exists)
-- No HTTPS or modern security hardening
-- UI is original 2004 HTML — no responsive design or modernization
 
 ## Quick Start
 
