@@ -15,14 +15,14 @@ function GetFleetOwner($FleetID){
 	$sql= "SELECT PlayerID FROM fleets WHERE(FleetID = '$FleetID')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($rescount);
-	return $row->PlayerID;
+	return $row ? $row->PlayerID : 0;
 }
 
 function GetFleetName($FleetID){
 	$sql= "SELECT Name FROM fleets WHERE(FleetID = '$FleetID')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($rescount);
-	if($row->Name==""){
+	if(!$row || $row->Name==""){
 		return "Fleet ".$FleetID;
 	}else{
 		return $row->Name;
@@ -54,6 +54,7 @@ function GetFleetLocationString($FleetID){
 	$sql= "SELECT Location,Destination,TTF,Strategy FROM fleets WHERE(FleetID = '$FleetID')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($rescount);
+	if(!$row) return "";
 	$return = "";
 	$TTF = $row->TTF;
 	$eta = "";
@@ -156,15 +157,15 @@ function GetYourOrbitingFleet($PlanetID){
 	$sql= "SELECT * FROM fleets WHERE(Location = 'P:$PlanetID' AND PlayerID = '".GetPlayerIDFromName($username)."')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($rescount);
-	
+	if(!$row) return null;
 	return GetFleet($row->FleetID);
-	
 }
 
 function DeleteFleet($FleetID){
 	$sql= "SELECT * FROM fleets WHERE(FleetID = '$FleetID')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($rescount);
+	if(!$row) return false;
 	if(substr($row->Location,0,2)=="P:"){
 		$PlanetID = substr($row->Location,2,strlen($row->Location)-2);
 		if(OwnsPlanet(GetPlayerNameFromID(GetFleetOwner($FleetID)),$PlanetID)){
@@ -257,7 +258,7 @@ function GetShip($ShipID){
 	$sql= "SELECT * FROM ships WHERE(ShipID = '$ShipID')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($rescount);
-	
+	if(!$row) return null;
 	$ship = new Ship();
 	$ship->ShipID = $row->ShipID;
 	$ship->FleetID = $row->FleetID;
@@ -454,7 +455,7 @@ function GetFleet($FleetID){
 	$sql= "SELECT * FROM fleets WHERE(FleetID = '$FleetID')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($rescount);
-	
+	if(!$row) return null;
 	$Fleet->FleetID = $row->FleetID;
 	$Fleet->PlayerID = $row->PlayerID;
 	$Fleet->Location = $row->Location;
@@ -486,6 +487,7 @@ function MoveFleet($FleetID,$Target,$Strategy = 0){
 	$sql = "SELECT * FROM fleets WHERE(FleetID = '$FleetID')";
 	$res = mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($res);
+	if(!$row) return;
 	$TTF = 0;
 	if($row->Destination!=""){
 		$GalLoc = GetGalacticLocation($FleetID);
@@ -513,11 +515,13 @@ function SameSystem($Planet1,$Planet2){
 	$sql = "SELECT `System` FROM planets WHERE(PlanetID = '$Planet1')";
 	$res = mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($res);
+	if(!$row) return false;
 	$one = $row->System;
 	
 	$sql = "SELECT `System` FROM planets WHERE(PlanetID = '$Planet2')";
 	$res = mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($res);
+	if(!$row) return false;
 	$two = $row->System;
 	
 	if($one==$two){
@@ -530,7 +534,7 @@ function GetSystemCoords($SystemID){
 	$sql = "SELECT Coords,SectorID FROM Systems WHERE(SystemID = '".$SystemID."')";
 	$res = mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($res);
-	
+	if(!$row) return array("x" => 0, "y" => 0);
 	$location_sector_coords = GetSectorCoords($row->SectorID);
 	$location_system_coords = explode("/",$row->Coords);
 	$location_system_coords[0] *= 50; // Get x value into units
@@ -563,10 +567,11 @@ function CalcTTF($Location,$Destination){
 		$sql = "SELECT `System` FROM planets WHERE(PlanetID = '$Location')";
 		$res = mysqli_query($GLOBALS["conn"], $sql);
 		$row = mysqli_fetch_object($res);
+		if(!$row) return 0;
 		$sql = "SELECT Coords,SectorID FROM Systems WHERE(SystemID = '".$row->System."')";
 		$res = mysqli_query($GLOBALS["conn"], $sql);
 		$row = mysqli_fetch_object($res);
-		
+		if(!$row) return 0;
 		$location_sector_coords = GetSectorCoords($row->SectorID);
 		$location_system_coords = explode("/",$row->Coords);
 		$location_system_coords[0] *= 50; // Get x value into units
@@ -582,6 +587,7 @@ function CalcTTF($Location,$Destination){
 	$sql = "SELECT `System` FROM planets WHERE(PlanetID = '$Destination')";
 	$res = mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($res);
+	if(!$row) return 0;
 	$dest_coords = GetSystemCoords($row->System);
 		
 	$destination_x_absolute = $dest_coords["x"];
@@ -602,6 +608,7 @@ function GetSectorCoords($SectorID){
 	$sql = "SELECT GridCoords FROM sectors WHERE(SectorID = '".$SectorID."')";
 	$res = mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($res);
+	if(!$row) return array(0, 0);
 	$return = explode(".",$row->GridCoords);
 //	echo "Return: ".$return[0].":".$return[1]." - ".$row->GridCoords."<br/>";
 	return $return;
@@ -611,7 +618,7 @@ function GetGalacticLocation($FleetID){
 	$sql= "SELECT * FROM fleets WHERE(FleetID = '$FleetID')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($rescount);
-	
+	if(!$row) return "X:0/0";
 	$Orig_TTF = CalcTTF($row->MovingFrom,$row->Destination);
 	$cent = (($Orig_TTF-$row->TTF)/$Orig_TTF)*100;
 	
@@ -626,11 +633,13 @@ function GetGalacticLocation($FleetID){
 		$sql = "SELECT `System` FROM planets WHERE(PlanetID = '$Location')";
 		$res = mysqli_query($GLOBALS["conn"], $sql);
 		$row = mysqli_fetch_object($res);
+		if(!$row) return "X:0/0";
 		$loc_system_coords = GetSystemCoords($row->System);
 	}
 	$sql = "SELECT `System` FROM planets WHERE(PlanetID = '$Destination')";
 	$res = mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($res);
+	if(!$row) return "X:0/0";
 	$dest_system_coords = GetSystemCoords($row->System);
 	
 	$Ax = $loc_system_coords["x"];
@@ -664,6 +673,7 @@ function FleetIsInOrbit($FleetID,$PlanetID){
 	$sql= "SELECT Location FROM fleets WHERE(FleetID = '".$FleetID."')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($rescount);
+	if(!$row) return false;
 	if($row->Location=="P:".$PlanetID){
 		return true;
 	}
@@ -674,7 +684,7 @@ function ShipFleetIsInOrbit($ShipID,$PlanetID){
 	$sql= "SELECT FleetID FROM ships WHERE(ShipID = '$ShipID')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($rescount);
-	
+	if(!$row) return false;
 	return FleetIsInOrbit($row->FleetID,$PlanetID);
 }
 
@@ -682,7 +692,7 @@ function GetNextShipInQueue($PlanetID,$Grid){
 	$query = "SELECT * FROM qships WHERE(Yard = '$PlanetID:$Grid') ORDER BY QueuePosition ASC LIMIT 0,1";
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
-	return $row->ShipID;
+	return $row ? $row->ShipID : 0;
 }
 
 function ShiftQueue($PlanetID,$Grid){
@@ -694,7 +704,7 @@ function AddToQueue($PlanetID,$Grid,$Type,$Name){
 	$query = "SELECT QueuePosition FROM qships WHERE(Yard = '$PlanetID:$Grid') ORDER BY QueuePosition DESC LIMIT 0,1";
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
-	$newqueue = $row->QueuePosition+1;
+	$newqueue = $row ? $row->QueuePosition+1 : 1;
 	$query = "INSERT INTO qships(Type,Name,Yard,QueuePosition) VALUES('$Type','$Name','$PlanetID:$Grid','$newqueue')";
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 }
@@ -728,6 +738,7 @@ function CalculateShipBuildTime($PlanetID,$Type){
 	$query = "SELECT Turns FROM ship_types WHERE(Type = '$Type')";
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
+	if(!$row) return 0;
 	$turns = $row->Turns*30;
 	$ten_cent = $turns/10;
 	// Factories remove 5% of build time.
@@ -763,6 +774,7 @@ function CreateShip($Type,$PlanetID,$Grid,$Name,$PlayerID = 0){
 	$query = "SELECT * FROM ship_types WHERE(Type = '$Type')";
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
+	if(!$row) return 0;
 	$costmetal = $row->Metal;
 	$costmineral = $row->Mineral;
 	$costastrium = $row->Astrium;
@@ -789,6 +801,7 @@ function ShipUnderConstruction($PlanetID,$Grid){
 	$sql= "SELECT * FROM cships WHERE(Yard = '$yard')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($rescount);
+	if(!$row) return $ship;
 	$ship["ID"] = $row->ID;
 	$ship["Name"] = $row->Name;
 	$ship["Type"] = $row->Type;
@@ -819,11 +832,11 @@ function DestroyShip($ShipID,$Reason){
 // Reasons: 1=Combat, 2=Self-Destruct, 3=Used
 	$sql= "SELECT * FROM ships WHERE(ShipID = '$ShipID')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
-	$row = mysqli_fetch_object($res);
+	$row = mysqli_fetch_object($rescount);
 	
 	$sql= "DELETE FROM ships WHERE(ShipID = '$ShipID')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
-	if(!HasShipsLeft($row->FleetID)){
+	if($row && !HasShipsLeft($row->FleetID)){
 		$sql= "DELETE FROM fleets WHERE(FleetID = '".$row->FleetID."')";
 		$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	}
@@ -847,7 +860,7 @@ function GetRandomShipOfType($FleetID,$Type){
 		$sql= "SELECT ShipID FROM ships WHERE(FleetID = '$FleetID' AND Type = '$Type')";
 		$rescount=mysqli_query($GLOBALS["conn"], $sql);
 		$row = mysqli_fetch_object($rescount);
-		return $row->ShipID;
+		return $row ? $row->ShipID : 0;
 	}
 }
 
@@ -868,21 +881,21 @@ function GetRandomUnassignedShipOfType($PlanetID,$Type){
 		$sql= "SELECT ShipID FROM ships WHERE(PlanetID = '$PlanetID' AND Type = '$Type' AND PlayerID = '".GetPlayerIDFromName($username)."')";
 		$rescount=mysqli_query($GLOBALS["conn"], $sql);
 		$row = mysqli_fetch_object($rescount);
-		return $row->ShipID;
+		return $row ? $row->ShipID : 0;
 	}
 }
 function GetShipTypeString($Type){
 	$query = "SELECT Name FROM ship_types WHERE(Type = '$Type')";
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
-	return $row->Name;
+	return $row ? $row->Name : "Unknown";
 }
 
 function GetShipName($ShipID){
 $query = "SELECT Name FROM ships WHERE(ShipID = '$ShipID')";
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
-	return $row->Name;
+	return $row ? $row->Name : "Unknown";
 }
 
 class ShipBundleSingleType{
@@ -931,6 +944,7 @@ function GetBattle($BattleID){
 	$sql = "SELECT * FROM battles WHERE(BattleID = '".$BattleID."')";
 	$res = mysqli_query($GLOBALS["conn"], $sql) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($res);
+	if(!$row) return null;
 	$battle = new Battle();
 	$battle->Attacker = $row->Attacker;
 	$battle->BattleID = $row->BattleID;
@@ -1100,7 +1114,7 @@ function Collateral($PlanetID,$Damage,$Exclude){
 	$sql= "SELECT * FROM buildings WHERE(PlanetID = '$PlanetID')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($rescount);
-	if(($row->BuildingID != $Exclude) && ($t_damage>0)){
+	if($row && ($row->BuildingID != $Exclude) && ($t_damage>0)){
 		$typestring = GetGridContentString($row->Type);
 		if($t_damage>=$row->HP){
 			$sql= "DELETE FROM buildings WHERE(BuildingID = '".$row->BuildingID."')";
@@ -1192,14 +1206,14 @@ function GetShipTypeDefaultHP($Type){
 	$query = "SELECT HP FROM ship_types WHERE(Type = '$Type')";
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
-	return $row->HP;
+	return $row ? $row->HP : 0;
 }
 
 function GetShipTypeDefaultAP($Type){
 	$query = "SELECT AP FROM ship_types WHERE(Type = '$Type')";
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
-	return $row->AP;
+	return $row ? $row->AP : 0;
 }
 
 function EnemyFleetsInOrbit($PlayerID,$PlanetID){

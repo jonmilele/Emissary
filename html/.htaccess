@@ -1,0 +1,11 @@
+# Block direct browser access to include and cron files
+# PHP include() calls are unaffected — these are server-side file reads
+<FilesMatch "\.(inc\.php|cron\.php)$">
+    Require all denied
+</FilesMatch>
+
+# Block access to userdata directory (known-systems, battle logs, names)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^userdata/ - [F,L]
+</IfModule>

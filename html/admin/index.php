@@ -6,9 +6,12 @@ include("../userfunctions.inc.php");
 // --- Admin check: only PlayerID 1 can access ---
 $adminID = GetPlayerIDFromName($username);
 if($adminID != 1){
-	echo "Access denied.";
+	header("Location: /home.php?msg=" . urlencode("Access denied — admin only"));
 	exit;
 }
+
+// Allow tools.php to be included from this authenticated admin context
+define('ADMIN_TOOLS_ACCESS', true);
 
 // --- Handle actions ---
 $result_msg = "";

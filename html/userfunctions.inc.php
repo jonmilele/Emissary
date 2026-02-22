@@ -135,6 +135,7 @@ function OwnsPlanet($username,$PlanetID){
 
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
+	if(!$row) return false;
 	if($row->PlayerID==GetPlayerIDFromName($username)){
 		return true;
 	}else{
@@ -143,12 +144,12 @@ function OwnsPlanet($username,$PlanetID){
 }
 
 function GetPlanetNameFromID($PlanetID){
+	if(!$PlanetID) return "Unknown";
 	$query = "SELECT Name FROM planets WHERE(PlanetID='$PlanetID')";
 
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
-	
-	return $row->Name;
+	return $row ? $row->Name : "Unknown";
 }
 function GetPlanetPictureFromID($PlanetID){
 	global $username;
@@ -159,6 +160,7 @@ function GetPlanetPictureFromID($PlanetID){
 	
 		$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 		$row = mysqli_fetch_object($notresult);
+		if(!$row) return "images/planets/1.jpg";
 		return "images/planets/".$row->Size.".jpg";
 	}
 }
@@ -168,6 +170,7 @@ function GetPlanet($PlanetID){
 
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
+	if(!$row) return null;
 	$Planet = new Planet();
 	$Planet->PlanetID = $row->PlanetID;
 	$Planet->Name = $row->Name;
@@ -219,6 +222,7 @@ function GetSystem($SystemID){
 
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
+	if(!$row) return null;
 	$Planet = new System();
 	$Planet->SystemID = $row->SystemID;
 	$Planet->Name = $row->Name;
@@ -303,6 +307,7 @@ function GetSystemPictureFromID($SystemID){
 
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
+	if(!$row) return "images/systems/1.jpg";
 	return "images/systems/".$row->Orbits.".jpg";
 }
 function GetSystemNameFromID($SystemID){
@@ -310,8 +315,7 @@ function GetSystemNameFromID($SystemID){
 
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
-	
-	return $row->Name;
+	return $row ? $row->Name : "Unknown";
 }
 function GetKnownSystems($username){
 	$Systems = array();
@@ -416,11 +420,12 @@ function PlayerTeam($PlayerID){
 }
 
 function TeamNameFromID($TeamID){
+	if(!$TeamID) return "No Team";
 	$query = "SELECT Name FROM teams WHERE(TeamID='$TeamID')";
 
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
-	return $row->Name;
+	return $row ? $row->Name : "No Team";
 }
 
 function CalcMajOwner($SectorID){

@@ -1,4 +1,9 @@
 <?php
+// Prevent direct browser access — this file must only be included by admin/index.php
+if(!defined('ADMIN_TOOLS_ACCESS')){
+	http_response_code(403);
+	exit('Forbidden');
+}
 include_once(__DIR__ . "/../connect.inc.php");
 include_once(__DIR__ . "/../userfunctions.inc.php");
 
@@ -117,21 +122,4 @@ function CalcOwners(){
 	}
 }
 
-switch(($_GET['action'] ?? "")){
-	case "populate_sector":
-		PopulateSector(($_GET['id'] ?? ""));
-		break;
-	case "clear_sector":
-		ClearSector(($_GET['id'] ?? ""));
-		break;
-	case "clear_planets":
-		ClearPlanets();
-		break;
-	case "reset_password":
-		ResetPassword(($_GET['id'] ?? ""),($_GET['new'] ?? ""));
-		break;
-	case "owners":
-		CalcOwners();
-		break;
-}
 ?>

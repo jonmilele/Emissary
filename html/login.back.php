@@ -15,11 +15,19 @@ include("connect.inc.php");
 	{
 			//add the user to our session variables
 			$_SESSION['username'] = $user_name;
-			header("Location: home.php");
+
+			// Redirect back to the page they were trying to reach, or home
+			$redirect = $_SESSION['redirect_after_login'] ?? 'home.php';
+			unset($_SESSION['redirect_after_login']);
+			// Sanitize: only allow relative paths (prevent open redirect)
+			if(empty($redirect) || $redirect[0] !== '/' || strpos($redirect, '//') !== false){
+				$redirect = 'home.php';
+			}
+			header("Location: " . $redirect);
 	}
 	else
 	{
-		$message = "Invalid Username/password combination, ";
-		header("Location: index.php?msg=".$message);
+		$message = "Invalid Username/password combination";
+		header("Location: /index.php?msg=".urlencode($message));
 	}
 ?>

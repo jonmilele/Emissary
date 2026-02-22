@@ -24,19 +24,19 @@ function GetBldDefaultHP($Type){
 	$sql= "SELECT HP FROM building_types WHERE(Type = '$Type')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($rescount);
-	return $row->HP;
+	return $row ? $row->HP : 0;
 }
 function GetBldDefaultAP($Type){
 	$sql= "SELECT AP FROM building_types WHERE(Type = '$Type')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($rescount);
-	return $row->AP;
+	return $row ? $row->AP : 0;
 }
 function GetBldHP($PlanetID,$Grid){
 	$sql= "SELECT HP FROM buildings WHERE(PlanetID = '$PlanetID' AND GridSquare = '$Grid')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($rescount);
-	return $row->HP;
+	return $row ? $row->HP : 0;
 }
 
 function ConstructingBuilding($PlanetID,$Grid){
@@ -60,6 +60,7 @@ function BuildingUnderConstruction($PlanetID,$Grid){
 	$sql= "SELECT * FROM cbuildings WHERE(PlanetID = '$PlanetID' AND Grid = '$Grid')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($rescount);
+	if(!$row) return $ship;
 	$ship["ID"] = $row->ID;
 	$ship["Type"] = $row->Type;
 	$ship["Planet"] = $PlanetID;
@@ -73,14 +74,14 @@ function GetBldIDFromGrid($PlanetID,$Grid){
 	$sql= "SELECT BuildingID FROM buildings WHERE(PlanetID = '$PlanetID' AND GridSquare = '$Grid')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($rescount);
-	return $row->BuildingID;
+	return $row ? $row->BuildingID : 0;
 }
 
 function Repair($BuildingID){
 	$sql= "SELECT Type FROM buildings WHERE(BuildingID = '$BuildingID')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($rescount);
-	
+	if(!$row) return;
 	$sql= "UPDATE buildings SET HP = '".GetBldDefaultHP($row->Type)."' WHERE(BuildingID = '$BuildingID')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 }

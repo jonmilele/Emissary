@@ -31,8 +31,8 @@ foreach($Systems as $k=>$System){
 	$coords = $System->Coords;
 	$coordarray = explode("/",$coords);
 	
-	$xcoord = $coordarray[0]*50;
-	$ycoord = $coordarray[1]*50; //$xcoord+","+$ycoord
+	$xcoord = (int)($coordarray[0]*50);
+	$ycoord = (int)($coordarray[1]*50);
 
 	imagerectangle($image,$xcoord,$ycoord,$xcoord+1,$ycoord+1,$border);
 	imagearc($image,$xcoord,$ycoord,20,20,0,360,$yellow);

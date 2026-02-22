@@ -8,6 +8,7 @@ function Build($PlanetID,$BuildingType,$Grid){
 	$query = "SELECT Metal,Mineral,Astrium FROM building_types WHERE(Type = '$BuildingType')";
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
+	if(!$row) return 0;
 	$costmetal = $row->Metal;
 	$costmineral = $row->Mineral;
 	$costastrium = $row->Astrium;
@@ -29,6 +30,7 @@ function CalculateBuildTime($PlanetID,$Type){
 	$query = "SELECT Turns FROM building_types WHERE(Type = '$Type')";
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
+	if(!$row) return 0;
 	$turns = $row->Turns*30;
 	$ten_cent = $turns/10;
 	// Factories remove 5% of build time.
@@ -72,14 +74,14 @@ function GetGridSquares($Size){
 	$sql= "SELECT Grids FROM planet_types WHERE(Type = '$Size')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($rescount);
-	return $row->Grids;
+	return $row ? $row->Grids : 0;
 }
 
 function GridSquares($PlanetID){
 	$sql= "SELECT Size FROM planets WHERE(PlanetID = '$PlanetID')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($rescount);
-	
+	if(!$row) return "0/0";
 	$squares = GetGridSquares($row->Size);
 	
 	$total_count = 0;
@@ -117,6 +119,7 @@ function EnemyOwned($PlanetID){
 	$query = "SELECT PlayerID FROM planets WHERE(PlanetID = '$PlanetID')";
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
+	if(!$row) return false;
 	if($row->PlayerID==0){
 		return false;
 	}
@@ -132,14 +135,14 @@ function GetGridContents($PlanetID,$Grid){
 
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
-	$type = $row->Type;
+	if($row) $type = $row->Type;
 	return $type;
 }
 function GetGridContentString($Type){
 	$query = "SELECT Name FROM building_types WHERE(Type = '$Type')";
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
-	if($row->Name!=""){
+	if($row && $row->Name!=""){
 		return $row->Name;
 	}
 	return "Nothing";
@@ -149,7 +152,7 @@ function GetBldColour($Type){
 	$query = "SELECT Colour FROM building_types WHERE(Type = '$Type')";
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
-	return $row->Colour;
+	return $row ? $row->Colour : "128,128,128";
 }
 
 function GetOrbitalGridCoords($Size){
@@ -208,11 +211,11 @@ function GetPlanetIncome($PlanetID){
 	$query = "SELECT Size FROM planets WHERE(PlanetID = '$PlanetID')";
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
-	
+	if(!$row) return $income;
 	$query = "SELECT income FROM planet_types WHERE(Type = '".$row->Size."')";
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
-	
+	if(!$row) return $income;
 	$base = explode(":",$row->income);
 	$income->Add($base[0],1);
 	$income->Add($base[1],2);

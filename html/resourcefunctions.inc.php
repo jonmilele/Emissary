@@ -50,10 +50,11 @@ class ResourceBundle{
 }
 function DeductResources($PlayerID,$Type,$Amount){
 	switch($Type){
-		case "1":// Metal
+	case "1":// Metal
 			$sql = "SELECT Metal FROM players WHERE(PlayerID = '$PlayerID')";
 			$res = mysqli_query($GLOBALS["conn"], $sql);
 			$row = mysqli_fetch_object($res);
+			if(!$row) break;
 			if($row->Metal >= $Amount){
 				$new = $row->Metal - $Amount;
 				$sql = "UPDATE players SET Metal = '$new' WHERE(PlayerID = '$PlayerID')";
@@ -65,6 +66,7 @@ function DeductResources($PlayerID,$Type,$Amount){
 			$sql = "SELECT Mineral FROM players WHERE(PlayerID = '$PlayerID')";
 			$res = mysqli_query($GLOBALS["conn"], $sql);
 			$row = mysqli_fetch_object($res);
+			if(!$row) break;
 			if($row->Mineral >= $Amount){
 				$new = $row->Mineral - $Amount;
 				$sql = "UPDATE players SET Mineral = '$new' WHERE(PlayerID = '$PlayerID')";
@@ -76,6 +78,7 @@ function DeductResources($PlayerID,$Type,$Amount){
 			$sql = "SELECT Astrium FROM players WHERE(PlayerID = '$PlayerID')";
 			$res = mysqli_query($GLOBALS["conn"], $sql);
 			$row = mysqli_fetch_object($res);
+			if(!$row) break;
 			if($row->Astrium >= $Amount){
 				$new = $row->Astrium - $Amount;
 				$sql = "UPDATE players SET Astrium = '$new' WHERE(PlayerID = '$PlayerID')";
@@ -88,11 +91,11 @@ function DeductResources($PlayerID,$Type,$Amount){
 }
 function AddResources($PlayerID,$Type,$Amount){
 	switch($Type){
-		case "1":// Metal
+	case "1":// Metal
 			$sql = "SELECT Metal FROM players WHERE(PlayerID = '$PlayerID')";
 			$res = mysqli_query($GLOBALS["conn"], $sql);
 			$row = mysqli_fetch_object($res);
-
+			if(!$row) break;
 			$new = $row->Metal + $Amount;
 			$sql = "UPDATE players SET Metal = '$new' WHERE(PlayerID = '$PlayerID')";
 			$res = mysqli_query($GLOBALS["conn"], $sql);
@@ -101,7 +104,7 @@ function AddResources($PlayerID,$Type,$Amount){
 			$sql = "SELECT Mineral FROM players WHERE(PlayerID = '$PlayerID')";
 			$res = mysqli_query($GLOBALS["conn"], $sql);
 			$row = mysqli_fetch_object($res);
-			
+			if(!$row) break;
 			$new = $row->Mineral + $Amount;
 			$sql = "UPDATE players SET Mineral = '$new' WHERE(PlayerID = '$PlayerID')";
 			$res = mysqli_query($GLOBALS["conn"], $sql);
@@ -110,7 +113,7 @@ function AddResources($PlayerID,$Type,$Amount){
 			$sql = "SELECT Astrium FROM players WHERE(PlayerID = '$PlayerID')";
 			$res = mysqli_query($GLOBALS["conn"], $sql);
 			$row = mysqli_fetch_object($res);
-
+			if(!$row) break;
 			$new = $row->Astrium + $Amount;
 			$sql = "UPDATE players SET Astrium = '$new' WHERE(PlayerID = '$PlayerID')";
 			$res = mysqli_query($GLOBALS["conn"], $sql);
@@ -120,11 +123,11 @@ function AddResources($PlayerID,$Type,$Amount){
 }
 function HasSufficientResources($PlayerID,$Type,$Amount){
 	switch($Type){
-		case "1":// Metal
+	case "1":// Metal
 			$sql = "SELECT Metal FROM players WHERE(PlayerID = '$PlayerID')";
 			$res = mysqli_query($GLOBALS["conn"], $sql);
 			$row = mysqli_fetch_object($res);
-			if($row->Metal >= $Amount){
+			if($row && $row->Metal >= $Amount){
 				return true;
 			}
 			break;
@@ -132,7 +135,7 @@ function HasSufficientResources($PlayerID,$Type,$Amount){
 			$sql = "SELECT Mineral FROM players WHERE(PlayerID = '$PlayerID')";
 			$res = mysqli_query($GLOBALS["conn"], $sql);
 			$row = mysqli_fetch_object($res);
-			if($row->Mineral >= $Amount){
+			if($row && $row->Mineral >= $Amount){
 				return true;
 			}
 			break;
@@ -140,7 +143,7 @@ function HasSufficientResources($PlayerID,$Type,$Amount){
 			$sql = "SELECT Astrium FROM players WHERE(PlayerID = '$PlayerID')";
 			$res = mysqli_query($GLOBALS["conn"], $sql);
 			$row = mysqli_fetch_object($res);
-			if($row->Astrium >= $Amount){
+			if($row && $row->Astrium >= $Amount){
 				return true;
 			}
 			break;
@@ -152,6 +155,7 @@ function GetPlayerResources($PlayerID){
 	$res = mysqli_query($GLOBALS["conn"], $sql) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($res);
 	$stuff = array();
+	if(!$row) return $stuff;
 	$stuff["Metal"] = $row->Metal;
 	$stuff["Mineral"] = $row->Mineral;
 	$stuff["Astrium"] = $row->Astrium;
@@ -166,12 +170,13 @@ function GetUserCredits($PlayerID){
 	$sql = "SELECT Credits FROM players WHERE(PlayerID = '$PlayerID')";
 	$res = mysqli_query($GLOBALS["conn"], $sql) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($res);
-	return $row->Credits;
+	return $row ? $row->Credits : 0;
 }
 function AddUserCredits($PlayerID,$Amount){
 	$sql = "SELECT Credits FROM players WHERE(PlayerID = '$PlayerID')";
 	$res = mysqli_query($GLOBALS["conn"], $sql) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($res);
+	if(!$row) return;
 	$new = $row->Credits + $Amount;
 	$sql = "UPDATE players SET Credits = '$new' WHERE(PlayerID = '$PlayerID')";
 	$res = mysqli_query($GLOBALS["conn"], $sql);
@@ -180,6 +185,7 @@ function DeductUserCredits($PlayerID,$Amount){
 	$sql = "SELECT Credits FROM players WHERE(PlayerID = '$PlayerID')";
 	$res = mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($res);
+	if(!$row) return false;
 	if($row->Credits >= $Amount){
 		$new = $row->Credits - $Amount;
 		$sql = "UPDATE players SET Credits = '$new' WHERE(PlayerID = '$PlayerID')";
