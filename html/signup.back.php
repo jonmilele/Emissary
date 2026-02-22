@@ -1,6 +1,6 @@
 <?php
 include("connect.inc.php");
-include("userfunctions.inc.php");
+include_once("userfunctions.inc.php");
 include("planetfunctions.inc.php");
 
 if(isset($_POST['signup_name']) && isset($_POST['signup_email']) && isset($_POST['signup_pass1']))

@@ -1,7 +1,7 @@
 <?php
 include("authenticate.inc.php");
 include("connect.inc.php");
-include("userfunctions.inc.php");
+include_once("userfunctions.inc.php");
 //$SectorID = ($_GET['id'] ?? "");
 //$Systems = GetSystemsInSector($SectorID);
 $PlanetID = ($_GET['id'] ?? "");
@@ -127,9 +127,15 @@ for($i = 0;$i<$numberinrow;$i++){
 			
 			//echo "Adding grid: ".$gridid;
 		}else if(ConstructingBuilding($PlanetID,$gridid)){
-			imagestring($image,5,$startcornerx+15+$j*40,$startcornery+15+$i*40,"C",$border);
 			$bldarray = BuildingUnderConstruction($PlanetID,$gridid);
-			imagestring($image,1,$startcornerx+3+$j*40,$startcornery+32+$i*40,"TTF: ".$bldarray["TTF"],$border);
+			$cc = GetBldColour($bldarray["Type"]);
+			$ccol = explode(",",$cc);
+			$cfill = imagecolorallocatealpha($image,$ccol[0],$ccol[1],$ccol[2],100);
+			$cborder = imagecolorallocatealpha($image,$ccol[0],$ccol[1],$ccol[2],60);
+			imagefilledrectangle($image,$startcornerx+$j*40,$startcornery+$i*40,$startcornerx+($j*40)+40,$startcornery+($i*40)+40,$cfill);
+			imagerectangle($image,$startcornerx+$j*40,$startcornery+$i*40,$startcornerx+($j*40)+40,$startcornery+($i*40)+40,$cborder);
+			imagestring($image,5,$startcornerx+15+$j*40,$startcornery+10+$i*40,"C",$border);
+			imagestring($image,1,$startcornerx+3+$j*40,$startcornery+28+$i*40,$bldarray["TTF"]."m",$border);
 		}
 		$gridid++;
 	}	

@@ -66,6 +66,17 @@ A summarized changelog is also available in [`CHANGELOG.md`](CHANGELOG.md).
 - Built an admin panel with world generation, turn processing, and galaxy reset ("The Burn")
 - Fixed GD image generation for galaxy and route maps
 - Dockerized the entire stack
+- **POST + CSRF migration** — all state-changing actions converted from GET to POST with CSRF token validation
+- **Session security hardening** — IP+UA fingerprinting, secure cookie flags, session timeout, regeneration on login
+- **Team management system** — create/join/leave teams, leader elections with 5-turn voting, team editing, join request approval, election history
+- **Team colour system** — 16 preset colours with uniqueness enforcement and visual colour picker
+- **Home world system** — starting planet as home world, 2× resource production, 1.5× building HP, forced re-selection on invasion, game-over flow with planet purchase option
+- **Galaxy map tooltips** — hover shows sector number, system/planet counts, controlling team, and player breakdown
+- **System page improvements** — planet sidebar shows fleet/shield/weapon icons and home world badges
+- **Planet list improvements** — home world badge, building/fleet/weapon status icons
+- **Player profile** — shows team affiliation with colour swatch, home planet link
+- **Fleet ownership checks** — fleet actions verify the logged-in player owns the fleet
+- **Various bug fixes** — trade.php `$Mineral`, shieldcount.img.php GD calls, sectorimage.img.php TypeError, undefined array key warnings, include guard for userfunctions.inc.php
 
 ### What still needs work
 
@@ -85,10 +96,10 @@ Some hardening has been done, but significant work remains — this is 2004 code
 - **SQL injection everywhere** — every query uses string interpolation instead of prepared statements
 - **XSS** — user-supplied values (messages, fleet names, ship names) are echoed without escaping
 - **Unauthenticated dev tools** — `giveplanetships.php` and `simulatebattle.php` have no login check and are publicly accessible
-- **Missing ownership checks** — fleet actions don't verify the logged-in player owns the fleet; any player can move, rename, or delete any fleet
+- ~~**Missing ownership checks** — fleet actions don't verify the logged-in player owns the fleet; any player can move, rename, or delete any fleet~~ *(fixed — fleet ownership checks added)*
 - **Dangerous DELETE queries** — building demolish/cancel queries are missing a planet ID filter and can affect buildings on other planets
 - **Weak password handling** — passwords are lowercased before hashing, reducing entropy
-- **No CSRF protection** — no form tokens, no secure cookie flags, no session regeneration on login
+- ~~**No CSRF protection** — no form tokens, no secure cookie flags, no session regeneration on login~~ *(fixed — POST+CSRF migration, session fingerprinting, secure cookie flags, session timeout)*
 - **No HTTPS** configured
 
 #### Known Bugs
@@ -99,10 +110,10 @@ Some hardening has been done, but significant work remains — this is 2004 code
 - Building demolish/cancel queries are missing `AND PlanetID` in the WHERE clause
 - The cron colonise branch references undefined `$PlanetID` and `$PlayerID` variables
 - `HasShipyard()` uses `$username` without a `global` declaration
-- Trade page has a missing `$` on `Mineral` — evaluates as a string constant instead of a variable
+- ~~Trade page has a missing `$` on `Mineral` — evaluates as a string constant instead of a variable~~ *(fixed)*
 - `FleetBattle()` tries to iterate a `ShipBundle` object as a flat array
 - `chooserace.php` calls `StageTwo()` without the required `$username` argument
-- `shieldcount.img.php` still uses the deprecated `imagejpeg($image,'',80)` form
+- ~~`shieldcount.img.php` still uses the deprecated `imagejpeg($image,'',80)` form~~ *(fixed — also fixed float-to-int deprecation)*
 
 #### Incomplete Features
 
@@ -110,21 +121,21 @@ Several features have UI or stubs but were never finished in the original code:
 
 - **Race/species creation** — signup step 2 has a form but the backend is empty
 - **Alerts** — the header links to an alerts page that doesn't exist
-- **Team management** — you can view your team but can't create, join, leave, or disband one
+- ~~**Team management** — you can view your team but can't create, join, leave, or disband one~~ *(fixed — full team system: create, join/leave, leader elections, team editing, colour picker with 16 unique preset colours)*
 - **Auctions** — the trade page shows "Create an Auction" as placeholder text with no form behind it
 - **Fleet-vs-fleet combat** — the function exists but is commented out; only fleet-vs-planet battles work
 - **Exploration and scouting** — described in the game pitch but no mechanics were ever built
 - **Tech tree / research** — laboratories can be built on planets but have no effect
 - **Orbital structures** — "Orbital Spaces" is hardcoded to 0; the orbital grid is half-implemented
 - **Player messaging** — no way for players to communicate in-game
-- Several functions are empty stubs: `CanInvade()`, `ClearHomePage()`, `GetLowestRankVesselTypeInFleet()`
+- Several functions are empty stubs: ~~`CanInvade()`~~, `ClearHomePage()`, `GetLowestRankVesselTypeInFleet()`
 
 #### Code Quality
 
 - Heavy use of global state (`global $username`, `$GLOBALS["conn"]`) instead of passing dependencies
 - PHP 4–era class syntax (`var` declarations, named constructors)
 - Monolithic files — `fleetfunctions.inc.php` is 1,200+ lines mixing fleet, ship, and battle logic
-- N+1 query problem — a single page load can fire 50+ database queries
+- ~~N+1 query problem — a single page load can fire 50+ database queries~~ *(improved — galaxy map tooltips use bulk JOINed queries instead of per-sector loops)*
 - No transactions — multi-step operations (battles, trades) can leave the database inconsistent
 - Non-atomic resource updates (SELECT then UPDATE) are vulnerable to race conditions
 - Error handling is `or die()` everywhere

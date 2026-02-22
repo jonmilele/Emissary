@@ -17,6 +17,9 @@ function GetFleetOwner($FleetID){
 	$row = mysqli_fetch_object($rescount);
 	return $row ? $row->PlayerID : 0;
 }
+function OwnsFleet($username, $FleetID){
+	return GetFleetOwner($FleetID) == GetPlayerIDFromName($username);
+}
 
 function GetFleetName($FleetID){
 	$sql= "SELECT Name FROM fleets WHERE(FleetID = '$FleetID')";
@@ -211,6 +214,15 @@ function Colonise($PlanetID){
 }
 
 function Invade($PlanetID,$PlayerID){
+	// Check if this was the defender's home world before changing ownership
+	$defPlanet = GetPlanet($PlanetID);
+	if($defPlanet && $defPlanet->PlayerID > 0){
+		$defenderID = $defPlanet->PlayerID;
+		if(IsHomePlanet($defenderID, $PlanetID)){
+			$sql = "UPDATE players SET HomePlanetID=0 WHERE PlayerID='$defenderID'";
+			mysqli_query($GLOBALS["conn"], $sql);
+		}
+	}
 	$sql= "UPDATE planets SET PlayerID = '".$PlayerID."' WHERE(PlanetID = '$PlanetID')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	ClaimUnfinishedShips($PlanetID,$PlayerID);
@@ -1050,13 +1062,14 @@ function FleetFires($FleetID,$PlanetID){
 				$rescount=mysqli_query($GLOBALS["conn"], $sql);
 				$row = mysqli_fetch_object($rescount);
 				$typestring = GetGridContentString($row->Type);
-				if($ship->AP>=$row->HP){
+				$effectiveHP = GetEffectiveBuildingHP($row->HP, $PlanetID);
+				if($ship->AP>=$effectiveHP){
 					$sql= "DELETE FROM buildings WHERE(BuildingID = '$shield')";
 					$rescount=mysqli_query($GLOBALS["conn"], $sql);
 					$echo .= $typestring." in grid ".$row->GridSquare." was Destroyed<br/>";
 				}else{
-					$new_hp = $row->HP - $ship->AP;
-					$diff  = $row->HP - $new_hp;
+					$new_hp = $effectiveHP - $ship->AP;
+					$diff  = $effectiveHP - $new_hp;
 					$nquery = "UPDATE buildings SET HP = '$new_hp' WHERE(BuildingID = '".$shield."')";
 					$nresult = mysqli_query($GLOBALS["conn"], $nquery) or die(mysqli_error($GLOBALS["conn"]));
 					$echo .= $typestring." in grid ".$row->GridSquare." was Damaged - HP: ".$new_hp."<br/>";
@@ -1077,12 +1090,13 @@ function FleetFires($FleetID,$PlanetID){
 				$rescount=mysqli_query($GLOBALS["conn"], $sql);
 				$row = mysqli_fetch_object($rescount);
 				$typestring = GetGridContentString($row->Type);
-				if($ship->AP>=$row->HP){
+				$effectiveHP = GetEffectiveBuildingHP($row->HP, $PlanetID);
+				if($ship->AP>=$effectiveHP){
 					$sql= "DELETE FROM buildings WHERE(BuildingID = '$shield')";
 					$rescount=mysqli_query($GLOBALS["conn"], $sql);
 					$echo .= $typestring." in grid ".$row->GridSquare." was Destroyed<br/>";
 				}else{
-					$new_hp = $row->HP - $ship->AP;
+					$new_hp = $effectiveHP - $ship->AP;
 					$nquery = "UPDATE buildings SET HP = '$new_hp' WHERE(BuildingID = '".$shield."')";
 					$nresult = mysqli_query($GLOBALS["conn"], $nquery) or die(mysqli_error($GLOBALS["conn"]));
 					$echo .= $typestring." in grid ".$row->GridSquare." was Damaged<br/>";

@@ -15,9 +15,9 @@ $iwidth = imagesx($image);
 $iheight = imagesy($image);
 $x = ($iwidth/2)-($width/2);
 $y = ($iheight/2)-($height/2);
-imagestring($image,2,$x,$y,$shields,$bg);
+imagestring($image,2,(int)$x,(int)$y,$shields,$bg);
 
-header("Content-type: image/jpg");
-imagejpeg($image,'',80);
+header("Content-type: image/jpeg");
+imagejpeg($image,null,80);
 imagedestroy($image);
 ?>

@@ -1,7 +1,7 @@
 <?php
 include("authenticate.inc.php");
 include("connect.inc.php");
-include("userfunctions.inc.php");
+include_once("userfunctions.inc.php");
 $SectorID = ($_GET['id'] ?? "");
 $Systems = GetSystemsInSector($SectorID);
 
@@ -38,7 +38,7 @@ foreach($Systems as $k=>$System){
 	imagearc($image,$xcoord,$ycoord,20,20,0,360,$yellow);
 	if(CheckSystemMajOwner($System->SystemID)>0){
 		$Player = CheckSystemMajOwner($System->SystemID);
-		if($Player["Player"]==GetPlayerIDFromName($username)){
+	if($Player==GetPlayerIDFromName($username)){
 			imagearc($image,$xcoord,$ycoord,22,22,0,360,$yellow);
 		}
 		imagearc($image,$xcoord,$ycoord,30,30,0,360,$team);

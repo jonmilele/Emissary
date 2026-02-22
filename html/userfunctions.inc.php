@@ -242,7 +242,7 @@ function CheckSystemMajOwner($SystemID){
 	while($row = mysqli_fetch_object($notresult)){
 		if($row->PlayerID!=0){
 		$Players[$row->PlayerID]["Player"] = $row->PlayerID;
-		$Players[$row->PlayerID]["Count"] += 1;
+		$Players[$row->PlayerID]["Count"] = ($Players[$row->PlayerID]["Count"] ?? 0) + 1;
 		}
 	}
 	$largestcount = 0;
@@ -446,7 +446,7 @@ function CalcMajOwner($SectorID){
 	while($row = mysqli_fetch_object($notresult)){
 		if($row->PlayerID!=0){
 			$Players[$row->PlayerID]["Player"] = $row->PlayerID;
-			$Players[$row->PlayerID]["Count"] += 1;
+			$Players[$row->PlayerID]["Count"] = ($Players[$row->PlayerID]["Count"] ?? 0) + 1;
 		}
 	}
 	$largestcount = 0;
@@ -488,7 +488,7 @@ function GetSectorMajOwnerTeam($SectorID){
 	while($row = mysqli_fetch_object($rescount)){
 		if($row->PlayerID!=0){
 				$Team = PlayerTeam($row->PlayerID);
-				if($teams[$Team]==""){
+				if(!isset($teams[$Team])){
 					//echo "[1] Team: ".$Team."<br/>";
 					$teams[$Team]["Team"] = $Team;
 					$teams[$Team]["Count"] = 1;
@@ -532,7 +532,7 @@ function GetSectorStakeHolders($SectorID){
 		while($row2 = mysqli_fetch_object($res)){
 			if($row2->PlayerID!=0){
 				$Player = GetPlayerNameFromID($row2->PlayerID);
-				if($players[$Player]==""){
+				if(!isset($players[$Player])){
 					$players[$Player] = $Player;
 				}
 			}
@@ -552,7 +552,7 @@ function ListSectorStakeHolders($SectorID){
 		while($row2 = mysqli_fetch_object($res)){
 			if($row2->PlayerID!=0){
 				$Player = GetPlayerNameFromID($row2->PlayerID);
-				if($players[$Player]["Name"]==""){
+				if(!isset($players[$Player])){
 					$players[$Player]["Name"] = $Player;
 					$players[$Player]["ID"] = $row2->PlayerID;
 					$players[$Player]["Count"] = 1;
@@ -585,4 +585,373 @@ function PrintMessage($msg){
 		echo "</div>";
 	}
 }
-?>
+
+// ============================================
+// Team Management Functions
+// ============================================
+
+function GetTeamLeader($TeamID){
+	if(!$TeamID) return 0;
+	$sql = "SELECT LeaderID FROM teams WHERE TeamID='" . mysqli_real_escape_string($GLOBALS["conn"], $TeamID) . "'";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	$row = mysqli_fetch_object($res);
+	return $row ? (int)$row->LeaderID : 0;
+}
+
+function IsTeamLeader($PlayerID){
+	$TeamID = PlayerTeam($PlayerID);
+	if(!$TeamID) return false;
+	return GetTeamLeader($TeamID) == $PlayerID;
+}
+
+function GetTeamInfo($TeamID){
+	if(!$TeamID) return null;
+	$sql = "SELECT * FROM teams WHERE TeamID='" . mysqli_real_escape_string($GLOBALS["conn"], $TeamID) . "'";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	return mysqli_fetch_object($res);
+}
+
+function ListAllTeams(){
+	$teams = array();
+	$sql = "SELECT * FROM teams ORDER BY Name ASC";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	while($row = mysqli_fetch_object($res)){
+		$teams[] = $row;
+	}
+	return $teams;
+}
+
+function GetTeamColourPresets(){
+	return [
+		'255,50,50',    // Red
+		'50,100,255',   // Blue
+		'50,200,50',    // Green
+		'255,255,50',   // Yellow
+		'255,150,0',    // Orange
+		'180,50,255',   // Purple
+		'0,220,220',    // Cyan
+		'255,100,200',  // Pink
+		'255,255,255',  // White
+		'160,160,160',  // Silver
+		'100,60,30',    // Brown
+		'0,150,0',      // Dark Green
+		'0,50,150',     // Navy
+		'150,0,0',      // Maroon
+		'200,200,50',   // Gold
+		'100,200,150',  // Teal
+	];
+}
+
+function IsTeamColourTaken($Colour, $ExcludeTeamID = 0){
+	$Colour = mysqli_real_escape_string($GLOBALS["conn"], $Colour);
+	$sql = "SELECT TeamID FROM teams WHERE Colour='$Colour'";
+	if($ExcludeTeamID > 0){
+		$sql .= " AND TeamID != '" . (int)$ExcludeTeamID . "'";
+	}
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	return mysqli_num_rows($res) > 0;
+}
+
+function CreateTeam($PlayerID, $Name, $Colour){
+	$Name = mysqli_real_escape_string($GLOBALS["conn"], $Name);
+	$Colour = mysqli_real_escape_string($GLOBALS["conn"], $Colour);
+	$pid = (int)$PlayerID;
+	$sql = "INSERT INTO teams(Name, Colour, LeaderID) VALUES('$Name', '$Colour', '$pid')";
+	mysqli_query($GLOBALS["conn"], $sql) or die(mysqli_error($GLOBALS["conn"]));
+	$TeamID = mysqli_insert_id($GLOBALS["conn"]);
+	$sql = "UPDATE players SET TeamID='$TeamID' WHERE PlayerID='$pid'";
+	mysqli_query($GLOBALS["conn"], $sql);
+	return $TeamID;
+}
+
+function LeaveTeam($PlayerID){
+	$pid = (int)$PlayerID;
+	$TeamID = PlayerTeam($pid);
+	if(!$TeamID) return;
+	// Remove player from team
+	$sql = "UPDATE players SET TeamID=0 WHERE PlayerID='$pid'";
+	mysqli_query($GLOBALS["conn"], $sql);
+	// Remove any active votes by this player
+	$sql = "DELETE FROM team_votes WHERE TeamID='$TeamID' AND VoterID='$pid'";
+	mysqli_query($GLOBALS["conn"], $sql);
+	// Check remaining members
+	$remaining = PlayersInTeam($TeamID);
+	if($remaining == 0){
+		// Last member — delete team and related data
+		mysqli_query($GLOBALS["conn"], "DELETE FROM teams WHERE TeamID='$TeamID'");
+		mysqli_query($GLOBALS["conn"], "DELETE FROM team_votes WHERE TeamID='$TeamID'");
+		mysqli_query($GLOBALS["conn"], "DELETE FROM team_join_requests WHERE TeamID='$TeamID'");
+		return;
+	}
+	// If leader left, reassign to oldest remaining member
+	if(GetTeamLeader($TeamID) == $pid){
+		$sql = "SELECT PlayerID FROM players WHERE TeamID='$TeamID' ORDER BY DateJoined ASC LIMIT 1";
+		$res = mysqli_query($GLOBALS["conn"], $sql);
+		$row = mysqli_fetch_object($res);
+		$newLeader = $row ? (int)$row->PlayerID : 0;
+		$sql = "UPDATE teams SET LeaderID='$newLeader' WHERE TeamID='$TeamID'";
+		mysqli_query($GLOBALS["conn"], $sql);
+	}
+}
+
+function RequestJoinTeam($PlayerID, $TeamID){
+	$pid = (int)$PlayerID;
+	$tid = (int)$TeamID;
+	// Check player not already in a team
+	if(PlayerTeam($pid) > 0) return false;
+	// Check no existing pending request
+	if(GetPlayerJoinRequest($pid)) return false;
+	$sql = "INSERT INTO team_join_requests(PlayerID, TeamID, RequestedAt) VALUES('$pid', '$tid', NOW())";
+	mysqli_query($GLOBALS["conn"], $sql);
+	return true;
+}
+
+function GetPlayerJoinRequest($PlayerID){
+	$pid = (int)$PlayerID;
+	$sql = "SELECT * FROM team_join_requests WHERE PlayerID='$pid' LIMIT 1";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	return mysqli_fetch_object($res);
+}
+
+function CancelJoinRequest($PlayerID){
+	$pid = (int)$PlayerID;
+	$sql = "DELETE FROM team_join_requests WHERE PlayerID='$pid'";
+	mysqli_query($GLOBALS["conn"], $sql);
+}
+
+function GetPendingJoinRequests($TeamID){
+	$requests = array();
+	$tid = (int)$TeamID;
+	$sql = "SELECT * FROM team_join_requests WHERE TeamID='$tid' ORDER BY RequestedAt ASC";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	while($row = mysqli_fetch_object($res)){
+		$requests[] = $row;
+	}
+	return $requests;
+}
+
+function ApproveJoinRequest($RequestID){
+	$rid = (int)$RequestID;
+	$sql = "SELECT * FROM team_join_requests WHERE RequestID='$rid'";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	$req = mysqli_fetch_object($res);
+	if(!$req) return false;
+	// Set player's team
+	$sql = "UPDATE players SET TeamID='" . (int)$req->TeamID . "' WHERE PlayerID='" . (int)$req->PlayerID . "'";
+	mysqli_query($GLOBALS["conn"], $sql);
+	// Delete the request
+	$sql = "DELETE FROM team_join_requests WHERE RequestID='$rid'";
+	mysqli_query($GLOBALS["conn"], $sql);
+	return true;
+}
+
+function DenyJoinRequest($RequestID){
+	$rid = (int)$RequestID;
+	$sql = "DELETE FROM team_join_requests WHERE RequestID='$rid'";
+	mysqli_query($GLOBALS["conn"], $sql);
+}
+
+function StartLeaderVote($TeamID){
+	$tid = (int)$TeamID;
+	// Clear any existing votes
+	$sql = "DELETE FROM team_votes WHERE TeamID='$tid'";
+	mysqli_query($GLOBALS["conn"], $sql);
+	// Set vote active with 5 turn countdown
+	$sql = "UPDATE teams SET VoteActive=1, VoteTurnsLeft=5 WHERE TeamID='$tid'";
+	mysqli_query($GLOBALS["conn"], $sql);
+}
+
+function CastLeaderVote($TeamID, $VoterID, $CandidateID){
+	$tid = (int)$TeamID;
+	$vid = (int)$VoterID;
+	$cid = (int)$CandidateID;
+	$sql = "INSERT INTO team_votes(TeamID, VoterID, CandidateID) VALUES('$tid','$vid','$cid')
+		ON DUPLICATE KEY UPDATE CandidateID='$cid'";
+	mysqli_query($GLOBALS["conn"], $sql);
+}
+
+function ResolveLeaderVote($TeamID){
+	$tid = (int)$TeamID;
+	// Tally votes
+	$sql = "SELECT CandidateID, COUNT(*) AS cnt FROM team_votes WHERE TeamID='$tid' GROUP BY CandidateID ORDER BY cnt DESC";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	$results = array();
+	while($row = mysqli_fetch_object($res)){
+		$results[] = $row;
+	}
+	$totalVoters = 0;
+	foreach($results as $r) $totalVoters += (int)$r->cnt;
+
+	if(count($results) == 0){
+		// No votes cast — keep current leader
+		$sql = "UPDATE teams SET VoteActive=0, VoteTurnsLeft=0 WHERE TeamID='$tid'";
+		mysqli_query($GLOBALS["conn"], $sql);
+		$sql = "DELETE FROM team_votes WHERE TeamID='$tid'";
+		mysqli_query($GLOBALS["conn"], $sql);
+		return;
+	}
+
+	// Find winner; break ties by oldest DateJoined
+	$topCount = (int)$results[0]->cnt;
+	$tied = array();
+	foreach($results as $r){
+		if((int)$r->cnt == $topCount) $tied[] = (int)$r->CandidateID;
+	}
+	if(count($tied) == 1){
+		$winnerID = $tied[0];
+	} else {
+		// Tie-break: oldest DateJoined
+		$ids = implode(',', $tied);
+		$sql = "SELECT PlayerID FROM players WHERE PlayerID IN ($ids) ORDER BY DateJoined ASC LIMIT 1";
+		$res2 = mysqli_query($GLOBALS["conn"], $sql);
+		$row2 = mysqli_fetch_object($res2);
+		$winnerID = $row2 ? (int)$row2->PlayerID : $tied[0];
+	}
+
+	// Runner-up
+	$runnerUpID = 0;
+	$runnerUpVotes = 0;
+	foreach($results as $r){
+		if((int)$r->CandidateID != $winnerID){
+			$runnerUpID = (int)$r->CandidateID;
+			$runnerUpVotes = (int)$r->cnt;
+			break;
+		}
+	}
+
+	// Update leader
+	$sql = "UPDATE teams SET LeaderID='$winnerID', VoteActive=0, VoteTurnsLeft=0 WHERE TeamID='$tid'";
+	mysqli_query($GLOBALS["conn"], $sql);
+
+	// Record in history
+	$winnerVotes = $topCount;
+	$sql = "INSERT INTO team_election_history(TeamID, WinnerID, Votes, RunnerUpID, RunnerUpVotes, TotalVoters, ResolvedAt)
+		VALUES('$tid','$winnerID','$winnerVotes','$runnerUpID','$runnerUpVotes','$totalVoters',NOW())";
+	mysqli_query($GLOBALS["conn"], $sql);
+
+	// Clear votes
+	$sql = "DELETE FROM team_votes WHERE TeamID='$tid'";
+	mysqli_query($GLOBALS["conn"], $sql);
+}
+
+function GetVoteStatus($TeamID){
+	$tid = (int)$TeamID;
+	$status = array("votes" => array(), "tally" => array());
+	// Who voted for whom
+	$sql = "SELECT VoterID, CandidateID FROM team_votes WHERE TeamID='$tid'";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	while($row = mysqli_fetch_object($res)){
+		$status["votes"][(int)$row->VoterID] = (int)$row->CandidateID;
+	}
+	// Tally
+	$sql = "SELECT CandidateID, COUNT(*) AS cnt FROM team_votes WHERE TeamID='$tid' GROUP BY CandidateID ORDER BY cnt DESC";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	while($row = mysqli_fetch_object($res)){
+		$status["tally"][(int)$row->CandidateID] = (int)$row->cnt;
+	}
+	return $status;
+}
+
+function GetElectionHistory($TeamID){
+	$history = array();
+	$tid = (int)$TeamID;
+	$sql = "SELECT * FROM team_election_history WHERE TeamID='$tid' ORDER BY ResolvedAt DESC";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	while($row = mysqli_fetch_object($res)){
+		$history[] = $row;
+	}
+	return $history;
+}
+
+// ============================================
+// Home World Functions
+// ============================================
+
+function GetHomePlanet($PlayerID){
+	$pid = (int)$PlayerID;
+	$sql = "SELECT HomePlanetID FROM players WHERE PlayerID='$pid'";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	$row = mysqli_fetch_object($res);
+	return $row ? (int)$row->HomePlanetID : 0;
+}
+
+function SetHomePlanet($PlayerID, $PlanetID){
+	$pid = (int)$PlayerID;
+	$plid = (int)$PlanetID;
+	// Verify ownership
+	if(!OwnsPlanet(GetPlayerNameFromID($pid), $plid)) return false;
+	$sql = "UPDATE players SET HomePlanetID='$plid' WHERE PlayerID='$pid'";
+	mysqli_query($GLOBALS["conn"], $sql);
+	return true;
+}
+
+function IsHomePlanet($PlayerID, $PlanetID){
+	return GetHomePlanet($PlayerID) == (int)$PlanetID;
+}
+
+function NeedsHomePlanet($PlayerID){
+	$pid = (int)$PlayerID;
+	$numPlanets = GetNumberOfPlanets($pid);
+	if($numPlanets == 0) return false; // No planets = game over, not needs-home
+	$home = GetHomePlanet($pid);
+	if($home == 0) return true;
+	// Check if home planet is still owned
+	if(!OwnsPlanet(GetPlayerNameFromID($pid), $home)) return true;
+	return false;
+}
+
+function BuyPlanet($PlayerID){
+	$pid = (int)$PlayerID;
+	// Cost: 2000 Metal, 1000 Mineral, 200 Astrium
+	if(!HasSufficientResources($pid, 1, 2000)) return 0;
+	if(!HasSufficientResources($pid, 2, 1000)) return 0;
+	if(!HasSufficientResources($pid, 3, 200)) return 0;
+	// Find unclaimed planet (same logic as AssignStartingPlanet)
+	$sql = "SELECT p.PlanetID FROM planets p
+	        INNER JOIN Systems s ON p.`System` = s.SystemID
+	        WHERE p.PlayerID = 0
+	        AND s.SystemID NOT IN (SELECT DISTINCT `System` FROM planets WHERE PlayerID > 0)
+	        ORDER BY RAND() LIMIT 1";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	$row = mysqli_fetch_object($res);
+	if(!$row){
+		$sql = "SELECT PlanetID FROM planets WHERE PlayerID = 0 ORDER BY RAND() LIMIT 1";
+		$res = mysqli_query($GLOBALS["conn"], $sql);
+		$row = mysqli_fetch_object($res);
+	}
+	if(!$row) return 0; // No unclaimed planets
+	$planetID = (int)$row->PlanetID;
+	DeductResources($pid, 1, 2000);
+	DeductResources($pid, 2, 1000);
+	DeductResources($pid, 3, 200);
+	$sql = "UPDATE planets SET PlayerID='$pid' WHERE PlanetID='$planetID'";
+	mysqli_query($GLOBALS["conn"], $sql);
+	// Set as home planet
+	$sql = "UPDATE players SET HomePlanetID='$planetID' WHERE PlayerID='$pid'";
+	mysqli_query($GLOBALS["conn"], $sql);
+	// Recalculate ownership
+	$planet = GetPlanet($planetID);
+	if($planet){
+		CheckSystemMajOwner($planet->System);
+		$sys = GetSystem($planet->System);
+		if($sys) CalcMajOwner($sys->SectorID);
+	}
+	return $planetID;
+}
+
+function ProcessElectionCountdowns(){
+	// Called by turn.cron.php — decrement VoteTurnsLeft, resolve if 0
+	$sql = "SELECT TeamID FROM teams WHERE VoteActive=1 AND VoteTurnsLeft > 0";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	while($row = mysqli_fetch_object($res)){
+		$tid = (int)$row->TeamID;
+		$sql2 = "UPDATE teams SET VoteTurnsLeft = VoteTurnsLeft - 1 WHERE TeamID='$tid'";
+		mysqli_query($GLOBALS["conn"], $sql2);
+	}
+	// Resolve any that hit 0
+	$sql = "SELECT TeamID FROM teams WHERE VoteActive=1 AND VoteTurnsLeft <= 0";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	while($row = mysqli_fetch_object($res)){
+		ResolveLeaderVote((int)$row->TeamID);
+	}
+}

@@ -1,7 +1,7 @@
 <?php
 include("authenticate.inc.php");
 include("connect.inc.php");
-include("userfunctions.inc.php");
+include_once("userfunctions.inc.php");
 
 if(!IsSystem(($_GET['id'] ?? ""))){
 	echo "Not a valid system ID";
@@ -37,7 +37,8 @@ $Planets = ListPlanetsInSystem($SystemID);
 
 foreach($Planets as $key=>$Planet){
 ?>
-    <li> <a href="planet.php?id=<?php echo $Planet->PlanetID; ?>"><?php echo $Planet->Name; ?></a> 
+    <li> <a href="planet.php?id=<?php echo $Planet->PlanetID; ?>"><?php echo $Planet->Name; ?></a><?php if($Planet->PlayerID > 0 && IsHomePlanet($Planet->PlayerID, $Planet->PlanetID)): ?> <strong style="color:#FFFF00;">[H]</strong><?php endif; ?><?php if(HasFleets($Planet->PlanetID)){?>&nbsp;<img title="Has Fleets" align="absmiddle" src="images/ship.gif"><?php }?><?php if(HasShields($Planet->PlanetID)){?>&nbsp;<img title="Has Shields" align="absmiddle" src="images/shieldcount.img.php?id=<?php echo $Planet->PlanetID; ?>"><?php }?><?php if(HasWeapons($Planet->PlanetID)){?>&nbsp;<img title="Has Weapons" align="absmiddle" src="images/weapon.gif"><?php }?>
+    <small><?php echo $Planet->PlayerID > 0 ? '(' . htmlspecialchars(GetPlayerNameFromID($Planet->PlayerID)) . ')' : '(Uncolonised)'; ?></small>
     </li>
     <?php
 }

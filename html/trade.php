@@ -1,10 +1,10 @@
 <?php
 include("authenticate.inc.php");
 include("connect.inc.php");
-include("userfunctions.inc.php");
+include_once("userfunctions.inc.php");
 
-if(isset($_GET['action'])){
-	if(($_GET['action'] ?? "")=="cash"){
+if(isset($_POST['action']) && csrf_validate()){
+	if(($_POST['action'] ?? "")=="cash"){
 		$Metal = ($_POST['metal'] ?? "");
 		$Mineral = ($_POST['mineral'] ?? "");
 		$Astrium = ($_POST['astrium'] ?? "");
@@ -22,12 +22,12 @@ if(isset($_GET['action'])){
 		}
 		header("Location: trade.php");
 	}
-	if(($_GET['action'] ?? "")=="buy"){
+	if(($_POST['action'] ?? "")=="buy"){
 		$Metal = ($_POST['metal'] ?? "");
 		$Mineral = ($_POST['mineral'] ?? "");
 		$Astrium = ($_POST['astrium'] ?? "");
 		if(($Metal>0)||($Mineral>0)||($Astrium>0)){
-			if(GetUserCredits(GetPlayerIDFromName($username))>=(($Astrium*100)+$Metal+(Mineral*10))){
+if(GetUserCredits(GetPlayerIDFromName($username))>=(($Astrium*100)+$Metal+($Mineral*10))){
 				DeductUserCredits(GetPlayerIDFromName($username),$Metal);
 				AddResources(GetPlayerIDFromName($username),1,$Metal);
 				
@@ -61,7 +61,9 @@ You have <?php echo GetUserCredits(GetPlayerIDFromName($username)); ?> Credit(s)
 <div class="side">
 	<div class="panel" style="width:300px;">
 	  <h3>Cash Resources:</h3>
-	<form name="form1" method="post" action="trade.php?action=cash">
+	<form name="form1" method="post" action="trade.php">
+	  <input type="hidden" name="action" value="cash">
+	  <?php echo csrf_token(); ?>
 	  <p><input name="metal" type="text" id="metal" value="0" size="4">
 		Metal @ 1C per Metal</p>
 	  <p><input name="mineral" type="text" id="mineral" value="0" size="4">
@@ -76,7 +78,9 @@ You have <?php echo GetUserCredits(GetPlayerIDFromName($username)); ?> Credit(s)
 	</div>
 	<div class="panel" style="width:300px;">
 	  <h3>Buy Resources:</h3>
-	<form name="form1" method="post" action="trade.php?action=buy">
+	<form name="form2" method="post" action="trade.php">
+	  <input type="hidden" name="action" value="buy">
+	  <?php echo csrf_token(); ?>
 	  <p><input name="metal" type="text" id="metal" value="0" size="4">
         Metal @ 1C</p>
 	  <p><input name="mineral" type="text" id="mineral" value="0" size="4">

@@ -1,8 +1,9 @@
 <?php
 // Redirect to installer if not yet installed
 if(!file_exists(__DIR__ . "/.installed")){ header("Location: install.php"); exit; }
+include_once("session.inc.php");
 session_start();
-include("userfunctions.inc.php");
+include_once("userfunctions.inc.php");
 if(!empty($_SESSION['username'])){
 	header("Location: home.php");
 }

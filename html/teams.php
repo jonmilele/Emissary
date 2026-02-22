@@ -1,8 +1,111 @@
 <?php
 include("authenticate.inc.php");
 include("connect.inc.php");
-include("userfunctions.inc.php");
-//$User = GetUserInfo("nonny");
+include_once("userfunctions.inc.php");
+
+$myPID = GetPlayerIDFromName($username);
+$myTeamID = PlayerTeam($myPID);
+
+// Handle POST actions
+if(isset($_POST['action']) && csrf_validate()){
+	$action = $_POST['action'];
+
+	if($action == "create" && $myTeamID == 0){
+		$tname = trim($_POST['teamname'] ?? "");
+		$tcolour = trim($_POST['teamcolour'] ?? "");
+		$presets = GetTeamColourPresets();
+		if($tname === "" || !in_array($tcolour, $presets)){
+			header("Location: teams.php?msg=Invalid+team+name+or+colour");
+		} elseif(IsTeamColourTaken($tcolour)){
+			header("Location: teams.php?msg=That+colour+is+already+taken");
+		} else {
+			CreateTeam($myPID, $tname, $tcolour);
+			header("Location: teams.php?msg=Team+created");
+		}
+		exit;
+	}
+
+	if($action == "requestjoin" && $myTeamID == 0){
+		$tid = (int)($_POST['teamid'] ?? 0);
+		if($tid > 0){
+			if(RequestJoinTeam($myPID, $tid)){
+				header("Location: teams.php?msg=Join+request+sent");
+			} else {
+				header("Location: teams.php?msg=Could+not+send+request");
+			}
+			exit;
+		}
+	}
+
+	if($action == "cancelrequest" && $myTeamID == 0){
+		CancelJoinRequest($myPID);
+		header("Location: teams.php?msg=Request+cancelled");
+		exit;
+	}
+
+	if($action == "leave" && $myTeamID > 0){
+		LeaveTeam($myPID);
+		header("Location: teams.php?msg=You+left+the+team");
+		exit;
+	}
+
+	if($action == "startvote" && $myTeamID > 0){
+		$teamInfo = GetTeamInfo($myTeamID);
+		if($teamInfo && !$teamInfo->VoteActive){
+			StartLeaderVote($myTeamID);
+		}
+		header("Location: teams.php?msg=Leader+election+started+(5+turns)");
+		exit;
+	}
+
+	if($action == "vote" && $myTeamID > 0){
+		$teamInfo = GetTeamInfo($myTeamID);
+		if($teamInfo && $teamInfo->VoteActive){
+			$cid = (int)($_POST['candidate'] ?? 0);
+			if($cid > 0 && PlayerTeam($cid) == $myTeamID){
+				CastLeaderVote($myTeamID, $myPID, $cid);
+			}
+		}
+		header("Location: teams.php?msg=Vote+recorded");
+		exit;
+	}
+
+	if($action == "edit" && $myTeamID > 0 && IsTeamLeader($myPID)){
+		$tname = trim($_POST['teamname'] ?? "");
+		$tcolour = trim($_POST['teamcolour'] ?? "");
+		$presets = GetTeamColourPresets();
+		if($tname === "" || !in_array($tcolour, $presets)){
+			header("Location: teams.php?msg=Invalid+name+or+colour");
+		} elseif(IsTeamColourTaken($tcolour, $myTeamID)){
+			header("Location: teams.php?msg=That+colour+is+already+taken");
+		} else {
+			$tname = mysqli_real_escape_string($GLOBALS["conn"], $tname);
+			$tcolour = mysqli_real_escape_string($GLOBALS["conn"], $tcolour);
+			$sql = "UPDATE teams SET Name='$tname', Colour='$tcolour' WHERE TeamID='$myTeamID'";
+			mysqli_query($GLOBALS["conn"], $sql);
+			header("Location: teams.php?msg=Team+updated");
+		}
+		exit;
+	}
+
+	if($action == "approve" && $myTeamID > 0 && IsTeamLeader($myPID)){
+		$rid = (int)($_POST['requestid'] ?? 0);
+		if($rid > 0) ApproveJoinRequest($rid);
+		header("Location: teams.php?msg=Request+approved");
+		exit;
+	}
+
+	if($action == "deny" && $myTeamID > 0 && IsTeamLeader($myPID)){
+		$rid = (int)($_POST['requestid'] ?? 0);
+		if($rid > 0) DenyJoinRequest($rid);
+		header("Location: teams.php?msg=Request+denied");
+		exit;
+	}
+}
+
+// Reload state after POST redirect
+$myTeamID = PlayerTeam($myPID);
+$isLeader = IsTeamLeader($myPID);
 ?>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
@@ -11,19 +114,227 @@ include("userfunctions.inc.php");
 <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
 <link href="style.css" rel="stylesheet" type="text/css">
 </head>
-
 <body>
+<?php include("header.inc.php"); ?>
+
+<h1>Team Management</h1>
+
+<?php if($myTeamID == 0): ?>
+<!-- ============ STATE 1: No Team ============ -->
+
 <?php
-include("header.inc.php");
-$Players = ListPlayersInTeam(PlayerTeam(GetPlayerIDFromName($username)));
+$pendingReq = GetPlayerJoinRequest($myPID);
+if($pendingReq):
+	$reqTeamName = TeamNameFromID($pendingReq->TeamID);
 ?>
-<p>Players in your team: <a href="team.php?id=<?php echo PlayerTeam(GetPlayerIDFromName($username)); ?>"><?php echo TeamNameFromID(PlayerTeam(GetPlayerIDFromName($username))); ?></a></p>
+<div class="panel" style="width:500px;">
+<h3>Pending Request</h3>
+<p>You have requested to join <strong><?php echo htmlspecialchars($reqTeamName); ?></strong>
+ (sent <?php echo $pendingReq->RequestedAt; ?>)</p>
+<form method="POST" action="teams.php" style="display:inline;">
+<input type="hidden" name="action" value="cancelrequest">
+<?php echo csrf_token(); ?>
+<input type="submit" value="Cancel Request">
+</form>
+</div>
+<?php else: ?>
+
+<div class="side">
+<div class="panel" style="width:300px;">
+<h3>Create a Team</h3>
+<form method="POST" action="teams.php">
+<input type="hidden" name="action" value="create">
+<?php echo csrf_token(); ?>
+<p>Team Name:<br/><input type="text" name="teamname" maxlength="100" size="25"></p>
+<p>Colour:</p>
+<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">
 <?php
-foreach($Players as $k=>$Player){
+$presets = GetTeamColourPresets();
+$takenColours = [];
+$allTeams = ListAllTeams();
+foreach($allTeams as $t) $takenColours[] = $t->Colour;
+foreach($presets as $c):
+	$taken = in_array($c, $takenColours);
 ?>
-<p><a href="player.php?id=<?php echo $Player; ?>"><?php echo GetPlayerNameFromID($Player); ?></a></p>
+<label style="display:block;width:28px;height:28px;background:rgb(<?php echo $c; ?>);border:2px solid #666;cursor:<?php echo $taken ? 'not-allowed' : 'pointer'; ?>;opacity:<?php echo $taken ? '0.25' : '1'; ?>;position:relative;">
+<input type="radio" name="teamcolour" value="<?php echo $c; ?>" <?php if($taken) echo 'disabled'; ?> style="position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:inherit;" onclick="this.parentElement.parentElement.querySelectorAll('label').forEach(l=>l.style.borderColor='#666');this.parentElement.style.borderColor='#FFF';">
+</label>
+<?php endforeach; ?>
+</div>
+<p><input type="submit" value="Create Team"></p>
+</form>
+</div>
+</div>
+
+<div class="planet" style="width:400px;">
+<h3>Join an Existing Team</h3>
 <?php
+$allTeams = ListAllTeams();
+if(count($allTeams) == 0){
+	echo "<p>No teams exist yet.</p>";
+} else {
+	foreach($allTeams as $t){
+		$memberCount = PlayersInTeam($t->TeamID);
+?>
+<div style="margin:5px 0; padding:5px; border:1px solid #333;">
+<strong><a href="team.php?id=<?php echo $t->TeamID; ?>"><?php echo htmlspecialchars($t->Name); ?></a></strong>
+ &mdash; <?php echo $memberCount; ?> member(s)
+ <img src="teamcolour.img.php?id=<?php echo $t->TeamID; ?>" style="vertical-align:middle;" width="20" height="10">
+<form method="POST" action="teams.php" style="display:inline;">
+<input type="hidden" name="action" value="requestjoin">
+<input type="hidden" name="teamid" value="<?php echo $t->TeamID; ?>">
+<?php echo csrf_token(); ?>
+<input type="submit" value="Request to Join">
+</form>
+</div>
+<?php
+	}
 }
 ?>
+</div>
+
+<?php endif; ?>
+
+<?php else: ?>
+<!-- ============ STATE 2/3: In a Team ============ -->
+<?php
+$teamInfo = GetTeamInfo($myTeamID);
+$leaderName = GetPlayerNameFromID($teamInfo->LeaderID);
+$members = ListPlayersInTeam($myTeamID);
+?>
+
+<div class="side">
+<div class="panel" style="width:300px;">
+<h3>Team: <?php echo htmlspecialchars($teamInfo->Name); ?></h3>
+<p>Colour: <img src="teamcolour.img.php?id=<?php echo $myTeamID; ?>" style="vertical-align:middle;"></p>
+<p>Leader: <a href="player.php?id=<?php echo $teamInfo->LeaderID; ?>"><?php echo htmlspecialchars($leaderName); ?></a></p>
+<p>Members: <?php echo count($members); ?></p>
+<p>Planets: <?php echo GetNumberOfPlanetsInTeam($myTeamID); ?></p>
+<h3>Members</h3>
+<ul>
+<?php foreach($members as $pid): ?>
+<li><a href="player.php?id=<?php echo $pid; ?>"><?php echo htmlspecialchars(GetPlayerNameFromID($pid)); ?></a>
+<?php if($pid == $teamInfo->LeaderID) echo " <small>(Leader)</small>"; ?></li>
+<?php endforeach; ?>
+</ul>
+<form method="POST" action="teams.php" onsubmit="return confirm('Are you sure you want to leave this team?');">
+<input type="hidden" name="action" value="leave">
+<?php echo csrf_token(); ?>
+<input type="submit" value="Leave Team">
+</form>
+</div>
+
+<!-- ============ Leader Election ============ -->
+<div class="panel" style="width:300px;">
+<?php if($teamInfo->VoteActive): ?>
+<h3>Leader Election</h3>
+<p><strong><?php echo $teamInfo->VoteTurnsLeft; ?> turn(s) remaining</strong></p>
+<?php
+$voteStatus = GetVoteStatus($myTeamID);
+$myCurrentVote = $voteStatus["votes"][$myPID] ?? 0;
+?>
+<form method="POST" action="teams.php">
+<input type="hidden" name="action" value="vote">
+<?php echo csrf_token(); ?>
+<p>Vote for:
+<select name="candidate">
+<?php foreach($members as $pid): ?>
+<option value="<?php echo $pid; ?>"<?php if($pid == $myCurrentVote) echo " selected"; ?>>
+<?php echo htmlspecialchars(GetPlayerNameFromID($pid)); ?></option>
+<?php endforeach; ?>
+</select>
+<input type="submit" value="<?php echo $myCurrentVote ? 'Change Vote' : 'Cast Vote'; ?>">
+</p>
+</form>
+<?php if($myCurrentVote): ?>
+<p><small>Your current vote: <?php echo htmlspecialchars(GetPlayerNameFromID($myCurrentVote)); ?></small></p>
+<?php endif; ?>
+<h3>Current Tally</h3>
+<?php
+if(empty($voteStatus["tally"])){
+	echo "<p>No votes cast yet.</p>";
+} else {
+	foreach($voteStatus["tally"] as $cid => $cnt){
+		echo "<p>" . htmlspecialchars(GetPlayerNameFromID($cid)) . ": $cnt vote(s)</p>";
+	}
+}
+?>
+<p><small><?php echo count($voteStatus["votes"]); ?>/<?php echo count($members); ?> members voted</small></p>
+<?php else: ?>
+<h3>Leadership</h3>
+<form method="POST" action="teams.php" onsubmit="return confirm('Start a leader election? It will run for 5 turns.');">
+<input type="hidden" name="action" value="startvote">
+<?php echo csrf_token(); ?>
+<input type="submit" value="Call Leader Election">
+</form>
+<?php endif; ?>
+</div>
+</div>
+
+<!-- ============ Leader-Only: Edit & Join Requests ============ -->
+<?php if($isLeader): ?>
+<div class="planet" style="width:400px;">
+<div class="panel">
+<h3>Edit Team</h3>
+<form method="POST" action="teams.php">
+<input type="hidden" name="action" value="edit">
+<?php echo csrf_token(); ?>
+<p>Team Name:<br/><input type="text" name="teamname" value="<?php echo htmlspecialchars($teamInfo->Name); ?>" maxlength="100" size="25"></p>
+<p>Colour:</p>
+<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">
+<?php
+$presets = GetTeamColourPresets();
+$takenColours = [];
+$otherTeams = ListAllTeams();
+foreach($otherTeams as $ot) if($ot->TeamID != $myTeamID) $takenColours[] = $ot->Colour;
+foreach($presets as $c):
+	$taken = in_array($c, $takenColours);
+	$selected = ($c === $teamInfo->Colour);
+?>
+<label style="display:block;width:28px;height:28px;background:rgb(<?php echo $c; ?>);border:2px solid <?php echo $selected ? '#FFF' : '#666'; ?>;cursor:<?php echo $taken ? 'not-allowed' : 'pointer'; ?>;opacity:<?php echo $taken ? '0.25' : '1'; ?>;position:relative;">
+<input type="radio" name="teamcolour" value="<?php echo $c; ?>" <?php if($selected) echo 'checked'; ?> <?php if($taken) echo 'disabled'; ?> style="position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:inherit;" onclick="this.parentElement.parentElement.querySelectorAll('label').forEach(l=>l.style.borderColor='#666');this.parentElement.style.borderColor='#FFF';">
+</label>
+<?php endforeach; ?>
+</div>
+<p><input type="submit" value="Save Changes"></p>
+</form>
+</div>
+
+<div class="panel">
+<h3>Join Requests</h3>
+<?php
+$requests = GetPendingJoinRequests($myTeamID);
+if(count($requests) == 0){
+	echo "<p>No pending requests.</p>";
+} else {
+	foreach($requests as $req){
+		$reqPlayerName = GetPlayerNameFromID($req->PlayerID);
+?>
+<div style="margin:5px 0; padding:5px; border:1px solid #333;">
+<a href="player.php?id=<?php echo $req->PlayerID; ?>"><?php echo htmlspecialchars($reqPlayerName); ?></a>
+ <small>(<?php echo $req->RequestedAt; ?>)</small>
+<form method="POST" action="teams.php" style="display:inline;">
+<input type="hidden" name="action" value="approve">
+<input type="hidden" name="requestid" value="<?php echo $req->RequestID; ?>">
+<?php echo csrf_token(); ?>
+<input type="submit" value="Approve">
+</form>
+<form method="POST" action="teams.php" style="display:inline;">
+<input type="hidden" name="action" value="deny">
+<input type="hidden" name="requestid" value="<?php echo $req->RequestID; ?>">
+<?php echo csrf_token(); ?>
+<input type="submit" value="Deny">
+</form>
+</div>
+<?php
+	}
+}
+?>
+</div>
+</div>
+<?php endif; ?>
+
+<?php endif; ?>
+
 </body>
 </html>

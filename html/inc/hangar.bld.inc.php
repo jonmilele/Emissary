@@ -7,8 +7,16 @@ if($Ships["Total"]>0){
 ?>
 <div class="panel" style="width:500px;">
 <h3>Move Unassigned Ships to Fleet:</h3>
-<p>[<a href="building.php?action=createfleet&planet=<?php echo $PlanetID; ?>">Create a new Fleet with all of these ships</a>]</p>
-<form action="building.php?action=addtofleet&planet=<?php echo $PlanetID; ?>" method="post">
+<form method="post" action="building.php" style="display:inline;">
+  <input type="hidden" name="action" value="createfleet">
+  <input type="hidden" name="planet" value="<?php echo $PlanetID; ?>">
+  <?php echo csrf_token(); ?>
+  <p>[<button type="submit">Create a new Fleet with all of these ships</button>]</p>
+</form>
+<form action="building.php" method="post">
+  <input type="hidden" name="action" value="addtofleet">
+  <input type="hidden" name="planet" value="<?php echo $PlanetID; ?>">
+  <?php echo csrf_token(); ?>
   <p> Transports (<?php echo $Ships["Transports"]; ?> avaliable): 
     <input name="transports" type="text" value="0" size="4">
   </p>

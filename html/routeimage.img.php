@@ -1,7 +1,7 @@
 <?php
 include("authenticate.inc.php");
 include("connect.inc.php");
-include("userfunctions.inc.php");
+include_once("userfunctions.inc.php");
 //$SectorID = ($_GET['id'] ?? "");
 //$Systems = GetSystemsInSector($SectorID);
 function DrawRoute($image,$colour,$textcolour,$FleetID){

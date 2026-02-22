@@ -1,51 +1,69 @@
 <?php
 include("authenticate.inc.php");
 include("connect.inc.php");
-include("userfunctions.inc.php");
+include_once("userfunctions.inc.php");
 
-if(isset($_GET['action'])){
-	if(($_GET['action'] ?? "")=="move"){
+if(isset($_POST['action']) && csrf_validate()){
+	if(($_POST['action'] ?? "")=="move"){
 		$FleetID = ($_POST["fleet"] ?? "");
-		$Target = "P:".($_POST["value"] ?? "");
-		$Strategy = ($_POST["strat"] ?? "");
-		if(!EnemyOwned(($_POST["value"] ?? ""))&&($Strategy>1)){ // Free planets can't be attacked/invaded....enter orbit
-			$Strategy = 0;
-		}
-		
-		if(($Strategy<2)&&EnemyOwned(($_POST["value"] ?? ""))){ // Trying to Colonise or Enter orbit of enemy owned planet.
-			header("Location: fleet.php?id=".$FleetID."&msg=Enemy+Owned");
+		if(!OwnsFleet($username, $FleetID)){
+			header("Location: fleetlist.php?msg=Not+your+fleet");
 		}else{
-			MoveFleet($FleetID,$Target,$Strategy);
-			header("Location: fleet.php?id=".$FleetID."&msg=Moving");
+			$Target = "P:".($_POST["value"] ?? "");
+			$Strategy = ($_POST["strat"] ?? "");
+			if(!EnemyOwned(($_POST["value"] ?? ""))&&($Strategy>1)){ // Free planets can't be attacked/invaded....enter orbit
+				$Strategy = 0;
+			}
+			
+			if(($Strategy<2)&&EnemyOwned(($_POST["value"] ?? ""))){ // Trying to Colonise or Enter orbit of enemy owned planet.
+				header("Location: fleet.php?id=".$FleetID."&msg=Enemy+Owned");
+			}else{
+				MoveFleet($FleetID,$Target,$Strategy);
+				header("Location: fleet.php?id=".$FleetID."&msg=Moving");
+			}
 		}
 	}
-	if(($_GET['action'] ?? "")=="rename"){
+	if(($_POST['action'] ?? "")=="rename"){
 		$FleetID = ($_POST["fleet"] ?? "");
-		$Name = ($_POST["new_name"] ?? "");
-		if($Name!=""){
-			$sql = "UPDATE fleets SET Name = '$Name' WHERE(FleetID = '$FleetID')";
-			$res = mysqli_query($GLOBALS["conn"], $sql);
-			header("Location: fleet.php?id=".$FleetID);
+		if(!OwnsFleet($username, $FleetID)){
+			header("Location: fleetlist.php?msg=Not+your+fleet");
 		}else{
-			header("Location: fleet.php?id=".$FleetID."&msg=Fleet+name+cannot+be+empty");
+			$Name = ($_POST["new_name"] ?? "");
+			if($Name!=""){
+				$sql = "UPDATE fleets SET Name = '$Name' WHERE(FleetID = '$FleetID')";
+				$res = mysqli_query($GLOBALS["conn"], $sql);
+				header("Location: fleet.php?id=".$FleetID);
+			}else{
+				header("Location: fleet.php?id=".$FleetID."&msg=Fleet+name+cannot+be+empty");
+			}
 		}
 	}
-	if(($_GET['action'] ?? "")=="abort"){
-		$Fleet = GetFleet(($_GET["id"] ?? ""));
-		$Orig_TTF = CalcTTF($Fleet->MovingFrom,$Fleet->Destination);
-		$Abort_TTF = $Orig_TTF-$Fleet->TTF;
-		if($Abort_TTF<1){
-			$Abort_TTF = 1;
-		}
-		$sql = "UPDATE fleets SET Strategy = '0', MovingFrom = '".$Fleet->Destination."', Destination = '".$Fleet->MovingFrom."', TTF = '".$Abort_TTF."' WHERE(FleetID = '".$Fleet->FleetID."')";
-		$res = mysqli_query($GLOBALS["conn"], $sql) or die(mysqli_error($GLOBALS["conn"]));
-		header("Location: fleet.php?id=".$Fleet->FleetID."&msg=Fleet+movement+aborted+".$Abort_TTF);
-	}
-	if(($_GET['action'] ?? "")=="delete"){
-		if(DeleteFleet(($_GET["id"] ?? ""))){
-			header("Location: fleetlist.php?msg=Fleet+deleted");
+	if(($_POST['action'] ?? "")=="abort"){
+		$FleetID = ($_POST["id"] ?? "");
+		if(!OwnsFleet($username, $FleetID)){
+			header("Location: fleetlist.php?msg=Not+your+fleet");
 		}else{
-			header("Location: fleetlist.php?msg=Fleet+cannot+be+deleted");
+			$Fleet = GetFleet($FleetID);
+			$Orig_TTF = CalcTTF($Fleet->MovingFrom,$Fleet->Destination);
+			$Abort_TTF = $Orig_TTF-$Fleet->TTF;
+			if($Abort_TTF<1){
+				$Abort_TTF = 1;
+			}
+			$sql = "UPDATE fleets SET Strategy = '0', MovingFrom = '".$Fleet->Destination."', Destination = '".$Fleet->MovingFrom."', TTF = '".$Abort_TTF."' WHERE(FleetID = '".$Fleet->FleetID."')";
+			$res = mysqli_query($GLOBALS["conn"], $sql) or die(mysqli_error($GLOBALS["conn"]));
+			header("Location: fleet.php?id=".$Fleet->FleetID."&msg=Fleet+movement+aborted+".$Abort_TTF);
+		}
+	}
+	if(($_POST['action'] ?? "")=="delete"){
+		$FleetID = ($_POST["id"] ?? "");
+		if(!OwnsFleet($username, $FleetID)){
+			header("Location: fleetlist.php?msg=Not+your+fleet");
+		}else{
+			if(DeleteFleet($FleetID)){
+				header("Location: fleetlist.php?msg=Fleet+deleted");
+			}else{
+				header("Location: fleetlist.php?msg=Fleet+cannot+be+deleted");
+			}
 		}
 	}
 }
@@ -72,7 +90,12 @@ $CurrentPlanet = 0;
     <p>Location: <?php echo GetFleetLocationString($FleetID); ?></p>
 	<p>
       <?php if($Fleet->Destination!=""&&(substr($Fleet->MovingFrom,0,2)!="X:")){ ?>
-      <a href="fleet.php?action=abort&id=<?php echo $FleetID; ?>">Abort</a>
+      <form method="post" action="fleet.php" style="display:inline;">
+        <input type="hidden" name="action" value="abort">
+        <input type="hidden" name="id" value="<?php echo $FleetID; ?>">
+        <?php echo csrf_token(); ?>
+        <button type="submit">Abort</button>
+      </form>
       <?php } ?>
     </p>
     <p>HP: <?php echo FleetHP($FleetID); ?><br/>
@@ -80,16 +103,23 @@ $CurrentPlanet = 0;
 </div><div class="panel" style="width:250;">
 <h3>Fleet Modification</h3>
     <p>Rename Fleet:</p>
-    <form name="form2" method="post" action="fleet.php?action=rename">
+    <form name="form2" method="post" action="fleet.php">
+      <input type="hidden" name="action" value="rename">
+      <input name="fleet" type="hidden" value="<?php echo $FleetID; ?>">
+      <?php echo csrf_token(); ?>
       <p> Name: 
         <input name="new_name" type="text" id="new_name" size="15">
       </p>
       <p>
         <input type="submit" name="Submit2" value="Rename">
-		<input name="fleet" type="hidden" value="<?php echo $FleetID; ?>">
       </p>
     </form>
-    <p><a href="fleet.php?action=delete&id=<?php echo $FleetID; ?>">Delete Fleet</a></p>
+    <form method="post" action="fleet.php" style="display:inline;">
+      <input type="hidden" name="action" value="delete">
+      <input type="hidden" name="id" value="<?php echo $FleetID; ?>">
+      <?php echo csrf_token(); ?>
+      <button type="submit" onclick="return confirm('Delete this fleet?');">Delete Fleet</button>
+    </form>
   </div>
 
 <div class="panel" style="width:250;"><p>Ships:</p>
@@ -175,7 +205,9 @@ $CurrentPlanet = 0;
 
 <?php }else{ ?>
 <h1>Fleet Movement</h1>
-<form name="form1" method="post" action="fleet.php?action=move">
+<form name="form1" method="post" action="fleet.php">
+    <input type="hidden" name="action" value="move">
+    <?php echo csrf_token(); ?>
     <p>Target: 
       <input name="fleet" type="hidden" value="<?php echo $FleetID; ?>">
       <input name="value" type="text" id="value" size="10">

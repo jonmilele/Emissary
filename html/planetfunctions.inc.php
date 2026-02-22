@@ -21,6 +21,9 @@ function AssignStartingPlanet($PlayerID){
 		$planetID = $row->PlanetID;
 		$sql = "UPDATE planets SET PlayerID = '$PlayerID' WHERE PlanetID = '$planetID'";
 		mysqli_query($GLOBALS["conn"], $sql);
+		// Grant starting resources
+		$sql = "UPDATE players SET Metal = 500, Mineral = 250, Astrium = 50, HomePlanetID = '$planetID' WHERE PlayerID = '$PlayerID'";
+		mysqli_query($GLOBALS["conn"], $sql);
 		// Recalculate system and sector ownership
 		$planet = GetPlanet($planetID);
 		if($planet){
@@ -274,12 +277,30 @@ function GetPlanetIncome($PlanetID){
 	return $income;
 }
 
+function IsHomeWorldPlanet($PlanetID){
+	$sql = "SELECT PlayerID FROM planets WHERE PlanetID='" . (int)$PlanetID . "'";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	$row = mysqli_fetch_object($res);
+	if(!$row || $row->PlayerID == 0) return false;
+	return IsHomePlanet((int)$row->PlayerID, (int)$PlanetID);
+}
+
+function GetEffectiveBuildingHP($HP, $PlanetID){
+	// Home world buildings get +50% HP
+	if(IsHomeWorldPlanet($PlanetID)){
+		return (int)round($HP * 1.5);
+	}
+	return (int)$HP;
+}
+
 function GetPlanetDefenceStrength($PlanetID){
 	$strength = 0;
+	$isHome = IsHomeWorldPlanet($PlanetID);
 	$sql= "SELECT HP FROM buildings WHERE(PlanetID = '$PlanetID' AND (Type = 6 OR Type = '8'))";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	while($row = mysqli_fetch_object($rescount)){
-		$strength += $row->HP;
+		$hp = $isHome ? (int)round($row->HP * 1.5) : (int)$row->HP;
+		$strength += $hp;
 	}
 	return $strength;
 }

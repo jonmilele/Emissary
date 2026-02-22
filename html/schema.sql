@@ -22,7 +22,8 @@ CREATE TABLE `players` (
   `Metal` INT DEFAULT 0,
   `Mineral` INT DEFAULT 0,
   `Astrium` INT DEFAULT 0,
-  `Credits` INT DEFAULT 0
+  `Credits` INT DEFAULT 0,
+  `HomePlanetID` INT DEFAULT 0
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 -- ----------------------------
@@ -31,7 +32,44 @@ CREATE TABLE `players` (
 CREATE TABLE `teams` (
   `TeamID` INT AUTO_INCREMENT PRIMARY KEY,
   `Name` VARCHAR(100) NOT NULL,
-  `Colour` VARCHAR(20) DEFAULT '255,255,255'
+  `Colour` VARCHAR(20) DEFAULT '255,255,255',
+  `LeaderID` INT DEFAULT 0,
+  `VoteActive` TINYINT DEFAULT 0,
+  `VoteTurnsLeft` INT DEFAULT 0
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
+-- ----------------------------
+-- Team leader election votes (active)
+-- ----------------------------
+CREATE TABLE `team_votes` (
+  `TeamID` INT NOT NULL,
+  `VoterID` INT NOT NULL,
+  `CandidateID` INT NOT NULL,
+  PRIMARY KEY (`TeamID`, `VoterID`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
+-- ----------------------------
+-- Team join requests
+-- ----------------------------
+CREATE TABLE `team_join_requests` (
+  `RequestID` INT AUTO_INCREMENT PRIMARY KEY,
+  `PlayerID` INT NOT NULL,
+  `TeamID` INT NOT NULL,
+  `RequestedAt` DATETIME NOT NULL
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
+-- ----------------------------
+-- Team election history
+-- ----------------------------
+CREATE TABLE `team_election_history` (
+  `ElectionID` INT AUTO_INCREMENT PRIMARY KEY,
+  `TeamID` INT NOT NULL,
+  `WinnerID` INT NOT NULL,
+  `Votes` INT DEFAULT 0,
+  `RunnerUpID` INT DEFAULT 0,
+  `RunnerUpVotes` INT DEFAULT 0,
+  `TotalVoters` INT DEFAULT 0,
+  `ResolvedAt` DATETIME NOT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 -- ----------------------------

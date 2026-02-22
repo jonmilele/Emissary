@@ -1,7 +1,7 @@
 <?php
 include("authenticate.inc.php");
 include("connect.inc.php");
-include("userfunctions.inc.php");
+include_once("userfunctions.inc.php");
 
 $BattleID = ($_GET["id"] ?? "");
 $Battle = GetBattle($BattleID);

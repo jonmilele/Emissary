@@ -1,14 +1,14 @@
 <?php
 include("authenticate.inc.php");
 include("connect.inc.php");
-include("userfunctions.inc.php");
+include_once("userfunctions.inc.php");
 
-if(isset($_GET['action'])){
-	if(($_GET['action'] ?? "")=="build"){
-		$PlanetID = ($_GET["planet"] ?? "");
+if(isset($_POST['action']) && csrf_validate()){
+	if(($_POST['action'] ?? "")=="build"){
+		$PlanetID = ($_POST["planet"] ?? "");
 		if(OwnsPlanet($username,$PlanetID)){
-			$BuildingType = ($_GET["id"] ?? "");
-			$Grid = ($_GET["grid"] ?? "");
+			$BuildingType = ($_POST["building_type"] ?? "");
+			$Grid = ($_POST["grid"] ?? "");
 			$ret = Build($PlanetID,$BuildingType,$Grid);
 		}
 		if($ret>0){
@@ -17,35 +17,63 @@ if(isset($_GET['action'])){
 			header("Location: building.php?planet=".$PlanetID."&id=".$Grid."&msg=Insufficient+Resources");
 		}
 	}
-	if(($_GET['action'] ?? "")=="repair"){
-		$PlanetID = ($_GET["planet"] ?? "");
+	if(($_POST['action'] ?? "")=="repair"){
+		$PlanetID = ($_POST["planet"] ?? "");
 		if(OwnsPlanet($username,$PlanetID)){
-			$Grid = ($_GET["grid"] ?? "");
+			$Grid = ($_POST["grid"] ?? "");
 			Repair(GetBldIDFromGrid($PlanetID,$Grid));
 			header("Location: building.php?planet=".$PlanetID."&id=".$Grid);	
 		}else{
 			header("Location: building.php?planet=".$PlanetID."&id=".$Grid."&msg=You+don't+own+this+planet");
 		}
 	}
-	if(($_GET['action'] ?? "")=="demolish"){
-		$PlanetID = ($_GET["planet"] ?? "");
+	if(($_POST['action'] ?? "")=="demolish"){
+		$PlanetID = ($_POST["planet"] ?? "");
 		if(OwnsPlanet($username,$PlanetID)){
-			$Grid = ($_GET["grid"] ?? "");
+			$Grid = ($_POST["grid"] ?? "");
 			$sql = "DELETE FROM buildings WHERE(GridSquare = '$Grid')";
 			$res = mysqli_query($GLOBALS["conn"], $sql);
 		}
 		header("Location: planet.php?id=".$PlanetID."&msg=Building+Demolished");
 	}
-	if(($_GET['action'] ?? "")=="cancel"){
-		$PlanetID = ($_GET["planet"] ?? "");
+	if(($_POST['action'] ?? "")=="cancel"){
+		$PlanetID = ($_POST["planet"] ?? "");
+		$cancelMsg = "Building+Cancelled";
 		if(OwnsPlanet($username,$PlanetID)){
-			$Grid = ($_GET["grid"] ?? "");
-			$sql = "DELETE FROM cbuildings WHERE(Grid = '$Grid')";
+			$Grid = ($_POST["grid"] ?? "");
+			// Check construction still exists (may have completed between page load and click)
+			if(!ConstructingBuilding($PlanetID,$Grid)){
+				header("Location: building.php?planet=".$PlanetID."&id=".$Grid."&msg=Construction+already+completed");
+				exit;
+			}
+			// Fetch construction record before deleting
+			$sql = "SELECT Type, TTF, PlayerID FROM cbuildings WHERE(Grid = '$Grid' AND PlanetID = '$PlanetID')";
 			$res = mysqli_query($GLOBALS["conn"], $sql);
+			$cbld = mysqli_fetch_object($res);
+			if($cbld){
+				// Get original build costs
+				$sql = "SELECT Metal, Mineral, Astrium, Turns FROM building_types WHERE(Type = '{$cbld->Type}')";
+				$res = mysqli_query($GLOBALS["conn"], $sql);
+				$costs = mysqli_fetch_object($res);
+				if($costs){
+					$totalTime = CalculateBuildTime($PlanetID, $cbld->Type);
+					if($totalTime < $cbld->TTF) $totalTime = $cbld->TTF;
+					$refundRate = ($totalTime > 0) ? $cbld->TTF / $totalTime : 0;
+					$refundMetal = round($costs->Metal * $refundRate);
+					$refundMineral = round($costs->Mineral * $refundRate);
+					$refundAstrium = round($costs->Astrium * $refundRate);
+					if($refundMetal > 0) AddResources($cbld->PlayerID, 1, $refundMetal);
+					if($refundMineral > 0) AddResources($cbld->PlayerID, 2, $refundMineral);
+					if($refundAstrium > 0) AddResources($cbld->PlayerID, 3, $refundAstrium);
+					$cancelMsg = "Building+Cancelled.+Refund:+{$refundMetal}+Metal,+{$refundMineral}+Mineral,+{$refundAstrium}+Astrium";
+				}
+				$sql = "DELETE FROM cbuildings WHERE(Grid = '$Grid' AND PlanetID = '$PlanetID')";
+				$res = mysqli_query($GLOBALS["conn"], $sql);
+			}
 		}
-		header("Location: planet.php?id=".$PlanetID."&msg=Building+Cancelled");
+		header("Location: planet.php?id=".$PlanetID."&msg=".$cancelMsg);
 	}
-	if(($_GET['action'] ?? "")=="consship"){
+	if(($_POST['action'] ?? "")=="consship"){
 		$PlanetID = ($_POST["planet"] ?? "");
 		if(OwnsPlanet($username,$PlanetID)){
 			$Type = ($_POST["type"] ?? "");
@@ -65,7 +93,7 @@ if(isset($_GET['action'])){
 		}
 		
 	}
-	if(($_GET['action'] ?? "")=="addtoqueue"){
+	if(($_POST['action'] ?? "")=="addtoqueue"){
 		$PlanetID = ($_POST["planet"] ?? "");
 		if(OwnsPlanet($username,$PlanetID)){
 			$Type = ($_POST["type"] ?? "");
@@ -84,16 +112,16 @@ if(isset($_GET['action'])){
 			}
 		}
 	}
-	if(($_GET['action'] ?? "")=="createfleet"){
-		$PlanetID = ($_GET["planet"] ?? "");
+	if(($_POST['action'] ?? "")=="createfleet"){
+		$PlanetID = ($_POST["planet"] ?? "");
 		if(OwnsPlanet($username,$PlanetID)){
 			$Name = GetDefaultFleetName(GetPlayerIDFromName($username));
 			CreateFleet($PlanetID,$Name,true);
 		}
 		header("Location: planet.php?dorefresh=1&id=".$PlanetID);
 	}
-	if(($_GET['action'] ?? "")=="addtofleet"){
-		$PlanetID = ($_GET["planet"] ?? "");
+	if(($_POST['action'] ?? "")=="addtofleet"){
+		$PlanetID = ($_POST["planet"] ?? "");
 		if(OwnsPlanet($username,$PlanetID)){
 			$FleetID = ($_POST["fleet"] ?? "");
 			if($FleetID == "new"){
@@ -183,24 +211,82 @@ $bldg = BuildingUnderConstruction($PlanetID,$Grid);
 <div class="panel" style="width:400px;">
   <p>Constructing: <?php echo GetGridContentString($bldg["Type"]); ?><br>
     Time Left: <?php echo $bldg["TTF"]; ?> minutes </p>
-  <p><a href="building.php?action=cancel&planet=<?php echo $PlanetID; ?>&grid=<?php echo $Grid; ?>">Cancel</a> </p>
+  <?php
+  $cq = "SELECT Metal, Mineral, Astrium, Turns FROM building_types WHERE(Type = '".$bldg["Type"]."')";
+  $cr = mysqli_query($GLOBALS["conn"], $cq);
+  $ccosts = mysqli_fetch_object($cr);
+  $refundStr = "unknown";
+  if($ccosts){
+    $prevTotal = CalculateBuildTime($PlanetID, $bldg["Type"]);
+    if($prevTotal < $bldg["TTF"]) $prevTotal = $bldg["TTF"];
+    $prevRate = ($prevTotal > 0) ? $bldg["TTF"] / $prevTotal : 0;
+    $refundStr = round($ccosts->Metal * $prevRate) . " Metal, " . round($ccosts->Mineral * $prevRate) . " Mineral, " . round($ccosts->Astrium * $prevRate) . " Astrium";
+  }
+  ?>
+  <p><small>Refund if cancelled: <?php echo $refundStr; ?></small></p>
+  <p><form method="post" action="building.php" style="display:inline;">
+    <input type="hidden" name="action" value="cancel">
+    <input type="hidden" name="planet" value="<?php echo $PlanetID; ?>">
+    <input type="hidden" name="grid" value="<?php echo $Grid; ?>">
+    <?php echo csrf_token(); ?>
+    <button type="submit" onclick="return confirm('Cancel construction? Refund: <?php echo $refundStr; ?>');">Cancel</button>
+  </form></p>
 </div>
 <?php }else{ ?>
 <p>This grid contains: <?php echo GetGridContentString($GridContents); ?></p>
-<?php if(($GridContents>0)&&(edit)){?>
-<p>HP: <?php echo $hp."/".$default_hp; ?> [<a href="building.php?action=repair&planet=<?php echo $PlanetID; ?>&grid=<?php echo $Grid; ?>">Repair</a>]</p>
-<p><a href="building.php?action=demolish&planet=<?php echo $PlanetID; ?>&grid=<?php echo $Grid; ?>">Demolish</a></p>
+<?php if(($GridContents>0)&&($edit)){?>
+<p>HP: <?php echo $hp."/".$default_hp; ?>
+  [<form method="post" action="building.php" style="display:inline;">
+    <input type="hidden" name="action" value="repair">
+    <input type="hidden" name="planet" value="<?php echo $PlanetID; ?>">
+    <input type="hidden" name="grid" value="<?php echo $Grid; ?>">
+    <?php echo csrf_token(); ?>
+    <button type="submit">Repair</button>
+  </form>]</p>
+<p><form method="post" action="building.php" style="display:inline;">
+    <input type="hidden" name="action" value="demolish">
+    <input type="hidden" name="planet" value="<?php echo $PlanetID; ?>">
+    <input type="hidden" name="grid" value="<?php echo $Grid; ?>">
+    <?php echo csrf_token(); ?>
+    <button type="submit" onclick="return confirm('Demolish this building?');">Demolish</button>
+  </form></p>
 <p><?php PrintGridFunctions($PlanetID,$Grid); ?></p>
 <?php } ?>
-<?php if((!$GridContents>0)&&(edit)){?>
+<?php if((!$GridContents>0)&&($edit)){?>
 <h3>Build on this grid:</h3>
 <?php
+	$descriptions = array(
+		1 => 'Reduces construction time of all buildings on this planet by 5% (stacks).',
+		2 => 'Research facility. No gameplay effect yet.',
+		3 => 'Increases all resource income on this planet by 5% (stacks).',
+		4 => 'Allows construction of ships on this planet.',
+		5 => 'Provides docking space for ships and fleets.',
+		6 => 'Absorbs damage from orbital attacks. Must be destroyed before weapons can be hit.',
+		7 => 'Fires on attacking fleets. 1-in-3 chance to fire each round.',
+		8 => 'Heavy shield — absorbs large amounts of damage from orbital attacks.',
+		9 => 'Heavy weapon — high firepower against attacking fleets.',
+	);
 	$sql = "SELECT * FROM building_types ORDER BY Type ASC";
 	$res = mysqli_query($GLOBALS["conn"], $sql);
 	while($row = mysqli_fetch_object($res)){
+		$cost = $row->Metal . " Metal, " . $row->Mineral . " Mineral";
+		if($row->Astrium > 0) $cost .= ", " . $row->Astrium . " Astrium";
+		$stats = "HP: " . $row->HP;
+		if($row->AP > 0) $stats .= " | AP: " . $row->AP;
+		$desc = $descriptions[$row->Type] ?? '';
 ?>
-<p><a href="building.php?action=build&planet=<?php echo $PlanetID; ?>&grid=<?php echo $Grid; ?>&id=<?php echo $row->Type; ?>"><?php echo $row->Name; ?></a> 
-  - <?php echo $row->Metal; ?> Metal, <?php echo $row->Mineral; ?> Mineral - <?php echo $row->Turns; ?> turn(s)</p>
+<div class="panel" style="width:500px; margin-bottom:6px; padding:6px 10px;">
+  <form method="post" action="building.php" style="display:inline;">
+    <input type="hidden" name="action" value="build">
+    <input type="hidden" name="planet" value="<?php echo $PlanetID; ?>">
+    <input type="hidden" name="grid" value="<?php echo $Grid; ?>">
+    <input type="hidden" name="building_type" value="<?php echo $row->Type; ?>">
+    <?php echo csrf_token(); ?>
+    <p style="margin:2px 0;"><button type="submit" onclick="return confirm('Build <?php echo $row->Name; ?> for <?php echo $cost; ?>?');" style="background:none;border:none;color:inherit;cursor:pointer;padding:0;font:inherit;text-decoration:underline;"><strong><?php echo $row->Name; ?></strong></button>
+    — <?php echo $cost; ?> — <?php echo $row->Turns; ?> turn(s)<br/>
+    <small><?php echo $stats; ?><?php if($desc){ echo ' — ' . $desc; } ?></small></p>
+  </form>
+</div>
 <?php } ?>
 <?php } ?></body>
 </html>
