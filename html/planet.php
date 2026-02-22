@@ -36,19 +36,9 @@ if(!IsPlanet(($_GET['id'] ?? ""))){
 <meta http-equiv="refresh" content="0;URL=<?php $PHP_SELF;?>?id=<?php echo $PlanetID; ?>">
 <?php
 }?>
-<script language="JavaScript" type="text/JavaScript">
-<!--
-function MM_jumpMenu(targ,selObj,restore){ //v3.0
-  eval(targ+".location='"+selObj.options[selObj.selectedIndex].value+"'");
-  if (restore) selObj.selectedIndex=0;
-}
-//-->
-</script>
-<script type="text/javascript" src="jsdomenu.js"></script>
-<script type="text/javascript" src="jsdomenu.inc.js"></script>
 </head>
 
-<body onload="initjsDOMenu()">
+<body>
 <?php
 include("header.inc.php");
 ?>
