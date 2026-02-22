@@ -1,11 +1,11 @@
 <?php
 
-include("fleetfunctions.inc.php");
-include("planetfunctions.inc.php");
-include("buildingfunctions.inc.php");
+include_once("fleetfunctions.inc.php");
+include_once("planetfunctions.inc.php");
+include_once("buildingfunctions.inc.php");
 include_once("turnfunctions.inc.php");
-include("logfunctions.inc.php");
-include("resourcefunctions.inc.php");
+include_once("logfunctions.inc.php");
+include_once("resourcefunctions.inc.php");
 function untag($string,$tag,$mode){
 	$tmpval="";
 	$preg="/<".$tag.">(.*?)<\/".$tag.">/si";
@@ -753,11 +753,15 @@ function DenyJoinRequest($RequestID){
 
 function StartLeaderVote($TeamID){
 	$tid = (int)$TeamID;
+	// Clear any active motion
+	ClearMotion($tid);
 	// Clear any existing votes
 	$sql = "DELETE FROM team_votes WHERE TeamID='$tid'";
 	mysqli_query($GLOBALS["conn"], $sql);
-	// Set vote active with 5 turn countdown
-	$sql = "UPDATE teams SET VoteActive=1, VoteTurnsLeft=5 WHERE TeamID='$tid'";
+	// Set vote active with configurable turn countdown
+	$duration = (int)GetGameSetting('election_duration', 5);
+	$turnCounter = (int)GetGameSetting('turn_counter', 0);
+	$sql = "UPDATE teams SET VoteActive=1, VoteTurnsLeft='$duration', LastElectionTurn='$turnCounter' WHERE TeamID='$tid'";
 	mysqli_query($GLOBALS["conn"], $sql);
 }
 
@@ -902,10 +906,12 @@ function NeedsHomePlanet($PlayerID){
 
 function BuyPlanet($PlayerID){
 	$pid = (int)$PlayerID;
-	// Cost: 2000 Metal, 1000 Mineral, 200 Astrium
-	if(!HasSufficientResources($pid, 1, 2000)) return 0;
-	if(!HasSufficientResources($pid, 2, 1000)) return 0;
-	if(!HasSufficientResources($pid, 3, 200)) return 0;
+	$costMetal = (int)GetGameSetting('buy_planet_metal', 2000);
+	$costMineral = (int)GetGameSetting('buy_planet_mineral', 1000);
+	$costAstrium = (int)GetGameSetting('buy_planet_astrium', 200);
+	if(!HasSufficientResources($pid, 1, $costMetal)) return 0;
+	if(!HasSufficientResources($pid, 2, $costMineral)) return 0;
+	if(!HasSufficientResources($pid, 3, $costAstrium)) return 0;
 	// Find unclaimed planet (same logic as AssignStartingPlanet)
 	$sql = "SELECT p.PlanetID FROM planets p
 	        INNER JOIN Systems s ON p.`System` = s.SystemID
@@ -921,9 +927,9 @@ function BuyPlanet($PlayerID){
 	}
 	if(!$row) return 0; // No unclaimed planets
 	$planetID = (int)$row->PlanetID;
-	DeductResources($pid, 1, 2000);
-	DeductResources($pid, 2, 1000);
-	DeductResources($pid, 3, 200);
+	DeductResources($pid, 1, $costMetal);
+	DeductResources($pid, 2, $costMineral);
+	DeductResources($pid, 3, $costAstrium);
 	$sql = "UPDATE planets SET PlayerID='$pid' WHERE PlanetID='$planetID'";
 	mysqli_query($GLOBALS["conn"], $sql);
 	// Set as home planet
@@ -940,7 +946,11 @@ function BuyPlanet($PlayerID){
 }
 
 function ProcessElectionCountdowns(){
-	// Called by turn.cron.php — decrement VoteTurnsLeft, resolve if 0
+	// Increment global turn counter
+	$turnCounter = (int)GetGameSetting('turn_counter', 0) + 1;
+	SetGameSetting('turn_counter', $turnCounter);
+
+	// Decrement VoteTurnsLeft for active elections, resolve if 0
 	$sql = "SELECT TeamID FROM teams WHERE VoteActive=1 AND VoteTurnsLeft > 0";
 	$res = mysqli_query($GLOBALS["conn"], $sql);
 	while($row = mysqli_fetch_object($res)){
@@ -948,10 +958,121 @@ function ProcessElectionCountdowns(){
 		$sql2 = "UPDATE teams SET VoteTurnsLeft = VoteTurnsLeft - 1 WHERE TeamID='$tid'";
 		mysqli_query($GLOBALS["conn"], $sql2);
 	}
-	// Resolve any that hit 0
 	$sql = "SELECT TeamID FROM teams WHERE VoteActive=1 AND VoteTurnsLeft <= 0";
 	$res = mysqli_query($GLOBALS["conn"], $sql);
 	while($row = mysqli_fetch_object($res)){
 		ResolveLeaderVote((int)$row->TeamID);
 	}
+
+	// Auto-elections: trigger for teams that haven't had one in N turns
+	$interval = (int)GetGameSetting('election_auto_interval', 100);
+	if($interval > 0){
+		$sql = "SELECT TeamID FROM teams WHERE VoteActive=0";
+		$res = mysqli_query($GLOBALS["conn"], $sql);
+		while($row = mysqli_fetch_object($res)){
+			$tid = (int)$row->TeamID;
+			if(PlayersInTeam($tid) < 2) continue;
+			$team = GetTeamInfo($tid);
+			$lastElection = (int)$team->LastElectionTurn;
+			if(($turnCounter - $lastElection) >= $interval){
+				StartLeaderVote($tid);
+			}
+		}
+	}
+}
+
+// ============================================
+// Election Motion Functions
+// ============================================
+
+function RaiseElectionMotion($TeamID, $PlayerID){
+	$tid = (int)$TeamID;
+	$pid = (int)$PlayerID;
+	// Can't raise motion if election already active or motion already exists
+	$team = GetTeamInfo($tid);
+	if(!$team || $team->VoteActive) return false;
+	if(GetActiveMotion($tid)) return false;
+	// Must be a member of the team
+	if(PlayerTeam($pid) != $tid) return false;
+	$sql = "INSERT INTO election_motions(TeamID, ProposerID, CreatedAt) VALUES('$tid', '$pid', NOW())";
+	mysqli_query($GLOBALS["conn"], $sql);
+	// Proposer automatically seconds
+	$sql = "INSERT INTO election_motion_seconds(TeamID, PlayerID) VALUES('$tid', '$pid')";
+	mysqli_query($GLOBALS["conn"], $sql);
+	// Check if threshold already met (small teams)
+	CheckMotionThreshold($tid);
+	return true;
+}
+
+function SecondElectionMotion($TeamID, $PlayerID){
+	$tid = (int)$TeamID;
+	$pid = (int)$PlayerID;
+	if(!GetActiveMotion($tid)) return false;
+	if(PlayerTeam($pid) != $tid) return false;
+	$sql = "INSERT IGNORE INTO election_motion_seconds(TeamID, PlayerID) VALUES('$tid', '$pid')";
+	mysqli_query($GLOBALS["conn"], $sql);
+	CheckMotionThreshold($tid);
+	return true;
+}
+
+function CheckMotionThreshold($TeamID){
+	$tid = (int)$TeamID;
+	$totalMembers = PlayersInTeam($tid);
+	if($totalMembers < 2) return;
+	$threshold = (float)GetGameSetting('election_motion_threshold', 25) / 100;
+	$needed = max(1, ceil($totalMembers * $threshold));
+	$seconds = CountMotionSeconds($tid);
+	if($seconds >= $needed){
+		StartLeaderVote($tid); // This also clears the motion
+	}
+}
+
+function GetActiveMotion($TeamID){
+	$tid = (int)$TeamID;
+	$sql = "SELECT * FROM election_motions WHERE TeamID='$tid'";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	return mysqli_fetch_object($res);
+}
+
+function GetMotionSeconds($TeamID){
+	$seconds = array();
+	$tid = (int)$TeamID;
+	$sql = "SELECT PlayerID FROM election_motion_seconds WHERE TeamID='$tid'";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	while($row = mysqli_fetch_object($res)){
+		$seconds[] = (int)$row->PlayerID;
+	}
+	return $seconds;
+}
+
+function CountMotionSeconds($TeamID){
+	$tid = (int)$TeamID;
+	$sql = "SELECT COUNT(*) AS cnt FROM election_motion_seconds WHERE TeamID='$tid'";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	$row = mysqli_fetch_object($res);
+	return $row ? (int)$row->cnt : 0;
+}
+
+function ClearMotion($TeamID){
+	$tid = (int)$TeamID;
+	mysqli_query($GLOBALS["conn"], "DELETE FROM election_motions WHERE TeamID='$tid'");
+	mysqli_query($GLOBALS["conn"], "DELETE FROM election_motion_seconds WHERE TeamID='$tid'");
+}
+
+function HasSecondedMotion($TeamID, $PlayerID){
+	$tid = (int)$TeamID;
+	$pid = (int)$PlayerID;
+	$sql = "SELECT 1 FROM election_motion_seconds WHERE TeamID='$tid' AND PlayerID='$pid'";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	return mysqli_num_rows($res) > 0;
+}
+
+function ResignAsLeader($PlayerID){
+	$pid = (int)$PlayerID;
+	$tid = PlayerTeam($pid);
+	if(!$tid) return false;
+	if(GetTeamLeader($tid) != $pid) return false;
+	// Start election immediately
+	StartLeaderVote($tid);
+	return true;
 }

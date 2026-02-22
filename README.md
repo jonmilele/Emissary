@@ -69,8 +69,10 @@ A summarized changelog is also available in [`CHANGELOG.md`](CHANGELOG.md).
 - **POST + CSRF migration** — all state-changing actions converted from GET to POST with CSRF token validation
 - **Session security hardening** — IP+UA fingerprinting, secure cookie flags, session timeout, regeneration on login
 - **Team management system** — create/join/leave teams, leader elections with 5-turn voting, team editing, join request approval, election history
+- **Election motion system** — elections require a motion raised by a member and seconded by 25% of the team before voting begins; automatic elections every 100 turns; leader can resign to trigger an immediate election
 - **Team colour system** — 16 preset colours with uniqueness enforcement and visual colour picker
 - **Home world system** — starting planet as home world, 2× resource production, 1.5× building HP, forced re-selection on invasion, game-over flow with planet purchase option
+- **Configurable game settings** — 13 game balance values (home world multipliers, starting resources, buy planet costs, harvester bonus, election parameters, weapon hit chance) stored in the database and editable from the admin panel
 - **Galaxy map tooltips** — hover shows sector number, system/planet counts, controlling team, and player breakdown
 - **System page improvements** — planet sidebar shows fleet/shield/weapon icons and home world badges
 - **Planet list improvements** — home world badge, building/fleet/weapon status icons
@@ -157,7 +159,7 @@ All building and ship stat values are estimates — the originals were not recov
 - Repair is completely free — restores full HP at zero cost
 - No upkeep or maintenance costs for ships or buildings
 - Harvester income bonus (5% per harvester) stacks without any cap
-- Planet weapon hit chance is hardcoded at 1-in-3 with no modifiers
+- ~~Planet weapon hit chance is hardcoded at 1-in-3 with no modifiers~~ *(now configurable via admin panel)*
 - No ship-type advantages or counters — combat is purely stat-based
 
 #### Infrastructure & Testing
@@ -235,8 +237,9 @@ Emissary/
 
 ## Admin Panel
 
-The admin panel (accessible to PlayerID 1 at `/admin/`) provides:
+The admin panel (accessible to PlayerID 1 at `/admin/`, linked from the header bar) provides:
 - Database stats and player management
+- **Game Settings** — configure 13 game balance values (home world multipliers, starting resources, planet purchase costs, election timing, weapon hit chance, and more)
 - Galaxy population and sector ownership tools
 - Manual turn processing (mini-turn and income turn)
 - **The Burn** — full galaxy reset that wipes all game data while preserving player accounts

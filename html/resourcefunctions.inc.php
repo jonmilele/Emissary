@@ -202,9 +202,10 @@ function GetUserIncome($PlayerID){
 	$Planets = GetPlanetList($PlayerID);
 	foreach($Planets as $key=>$Planet){
 		$income = GetPlanetIncome($Planet->PlanetID);
-		// Home world gets 2x resource production
+		// Home world gets multiplied resource production
 		if($Planet->PlanetID == $homePlanetID){
-			$income->Percentage(2, 0);
+			$mult = (float)GetGameSetting('home_income_multiplier', 2);
+			$income->Percentage($mult, 0);
 		}
 		$total->AddAll($income->Metal,$income->Mineral,$income->Astrium);
 	}

@@ -12,7 +12,7 @@ if(!empty($_SESSION['username'])){
 <html>
 <head>
 <title>Emissary</title>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <link href="style.css" rel="stylesheet" type="text/css">
 </head>
 

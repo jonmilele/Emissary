@@ -6,8 +6,8 @@ if(!$lockFp || !flock($lockFp, LOCK_EX | LOCK_NB)){
 	exit(0);
 }
 
-include(__DIR__ . "/connect.inc.php");
-include(__DIR__ . "/userfunctions.inc.php");
+include_once(__DIR__ . "/connect.inc.php");
+include_once(__DIR__ . "/userfunctions.inc.php");
 
 include_once(__DIR__ . "/turnfunctions.inc.php");
 ResetTurnTimer();

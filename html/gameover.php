@@ -24,15 +24,19 @@ if(isset($_POST['action']) && csrf_validate()){
 	}
 }
 
+include_once("turnfunctions.inc.php");
 $resources = GetPlayerResources($myPID);
-$canBuy = ($resources["Metal"] >= 2000 && $resources["Mineral"] >= 1000 && $resources["Astrium"] >= 200);
+$bpMetal = (int)GetGameSetting('buy_planet_metal', 2000);
+$bpMineral = (int)GetGameSetting('buy_planet_mineral', 1000);
+$bpAstrium = (int)GetGameSetting('buy_planet_astrium', 200);
+$canBuy = ($resources["Metal"] >= $bpMetal && $resources["Mineral"] >= $bpMineral && $resources["Astrium"] >= $bpAstrium);
 $myTeamID = PlayerTeam($myPID);
 ?>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
 <title>All Planets Lost</title>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <link href="style.css" rel="stylesheet" type="text/css">
 </head>
 <body>
@@ -45,7 +49,7 @@ $myTeamID = PlayerTeam($myPID);
 <div class="panel" style="width:500px;">
 <h3>Buy a Planet</h3>
 <p>Purchase a random unclaimed planet to start over.</p>
-<p>Cost: <strong>2,000 Metal</strong> / <strong>1,000 Mineral</strong> / <strong>200 Astrium</strong></p>
+<p>Cost: <strong><?php echo number_format($bpMetal); ?> Metal</strong> / <strong><?php echo number_format($bpMineral); ?> Mineral</strong> / <strong><?php echo number_format($bpAstrium); ?> Astrium</strong></p>
 <p>Your resources: <?php echo $resources["Metal"]; ?> Metal / <?php echo $resources["Mineral"]; ?> Mineral / <?php echo $resources["Astrium"]; ?> Astrium</p>
 <?php if($canBuy): ?>
 <form method="POST" action="gameover.php" onsubmit="return confirm('Purchase a random unclaimed planet?');">

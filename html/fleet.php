@@ -78,7 +78,7 @@ $CurrentPlanet = 0;
 <html>
 <head>
 <title>Fleet: <?php echo GetFleetName($FleetID); ?></title>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <link href="style.css" rel="stylesheet" type="text/css">
 </head>
 
@@ -94,7 +94,7 @@ $CurrentPlanet = 0;
         <input type="hidden" name="action" value="abort">
         <input type="hidden" name="id" value="<?php echo $FleetID; ?>">
         <?php echo csrf_token(); ?>
-        <button type="submit">Abort</button>
+        <button type="submit" onclick="return confirm('Abort fleet movement?');">Abort</button>
       </form>
       <?php } ?>
     </p>
@@ -218,7 +218,7 @@ $CurrentPlanet = 0;
         <option value="2">Attack</option>
         <option value="3">Invade</option>
       </select>
-      <input type="submit" name="Submit" value="Launch">
+      <input type="submit" name="Submit" value="Launch" onclick="var s=document.querySelector('[name=strat]');if(s&&s.value>=2)return confirm('Launch fleet with '+(s.value==2?'Attack':'Invade')+' strategy?');return true;">
     </p>
     <h3>Strategies</h3>
     <ol style="width: 400px;">

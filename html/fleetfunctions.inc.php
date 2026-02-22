@@ -1018,7 +1018,8 @@ function AttackPlanet($FleetID,$PlanetID,$Invade = false){
 function PlanetFires($PlanetID,$FleetID){	
 	global $echo;
 
-	$rhit = rand(1,3); // 1 in 3 chance of hitting the fleet
+	$hitChance = (int)GetGameSetting('planet_weapon_hit_chance', 3);
+	$rhit = rand(1, $hitChance); // 1 in N chance of hitting the fleet
 	if($rhit==1){
 		$echo .= "Planet Fires!<br/>";
 		$weapons = GetWeapons($PlanetID);

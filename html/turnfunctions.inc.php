@@ -1,13 +1,18 @@
 <?php
+// Global settings cache — loaded once per request
+$GLOBALS['_gs_cache'] = null;
+
 function GetGameSetting($key, $default = null){
-	$key = mysqli_real_escape_string($GLOBALS["conn"], $key);
-	$sql = "SELECT setting_value FROM game_settings WHERE setting_key = '$key'";
-	$res = mysqli_query($GLOBALS["conn"], $sql);
-	if($res){
-		$row = mysqli_fetch_object($res);
-		if($row) return $row->setting_value;
+	if($GLOBALS['_gs_cache'] === null){
+		$GLOBALS['_gs_cache'] = [];
+		$res = mysqli_query($GLOBALS["conn"], "SELECT setting_key, setting_value FROM game_settings");
+		if($res){
+			while($row = mysqli_fetch_object($res)){
+				$GLOBALS['_gs_cache'][$row->setting_key] = $row->setting_value;
+			}
+		}
 	}
-	return $default;
+	return array_key_exists($key, $GLOBALS['_gs_cache']) ? $GLOBALS['_gs_cache'][$key] : $default;
 }
 
 function SetGameSetting($key, $value){
@@ -15,6 +20,18 @@ function SetGameSetting($key, $value){
 	$value = mysqli_real_escape_string($GLOBALS["conn"], $value);
 	$sql = "REPLACE INTO game_settings(setting_key, setting_value) VALUES('$key', '$value')";
 	mysqli_query($GLOBALS["conn"], $sql);
+	$GLOBALS['_gs_cache'] = null; // invalidate cache
+}
+
+function LoadAllSettings(){
+	$settings = [];
+	$res = mysqli_query($GLOBALS["conn"], "SELECT setting_key, setting_value FROM game_settings ORDER BY setting_key");
+	if($res){
+		while($row = mysqli_fetch_object($res)){
+			$settings[$row->setting_key] = $row->setting_value;
+		}
+	}
+	return $settings;
 }
 
 function GetTurnInterval(){

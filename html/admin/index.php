@@ -1,7 +1,7 @@
 <?php
 include("../authenticate.inc.php");
 include("../connect.inc.php");
-include("../userfunctions.inc.php");
+include_once("../userfunctions.inc.php");
 
 // --- Admin check: only PlayerID 1 can access ---
 $adminID = GetPlayerIDFromName($username);
@@ -82,6 +82,25 @@ if($action != ""){
 			ResetTurnTimer();
 			echo "Turn timer reset to now. Next income turn in 30 minutes.";
 			break;
+		case "save_settings":
+			include_once(__DIR__ . "/../turnfunctions.inc.php");
+			$setting_keys = [
+				'home_hp_multiplier','home_income_multiplier',
+				'buy_planet_metal','buy_planet_mineral','buy_planet_astrium',
+				'harvester_bonus','election_duration',
+				'election_auto_interval','election_motion_threshold',
+				'starting_metal','starting_mineral','starting_astrium',
+				'planet_weapon_hit_chance'
+			];
+			$updated = 0;
+			foreach($setting_keys as $sk){
+				if(isset($_POST[$sk])){
+					SetGameSetting($sk, $_POST[$sk]);
+					$updated++;
+				}
+			}
+			echo "$updated game settings saved.";
+			break;
 		case "the_burn":
 			include("tools.php");
 			include_once("../turnfunctions.inc.php");
@@ -156,7 +175,7 @@ $players_result = mysqli_query($conn, "SELECT PlayerID, UserName, Email, TeamID,
 <html>
 <head>
 <title>Admin Panel</title>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <link href="../style.css" rel="stylesheet" type="text/css">
 <style>
 	.admin-section { background: #1a1a2e; border: 1px solid #444; padding: 10px; margin: 10px 0; }
@@ -193,6 +212,44 @@ $players_result = mysqli_query($conn, "SELECT PlayerID, UserName, Email, TeamID,
 		<div class="stat-box"><strong><?php echo $count; ?></strong> <?php echo $label; ?></div>
 	<?php endforeach; ?>
 	</div>
+</div>
+
+<!-- Game Settings -->
+<?php
+	include_once(__DIR__ . "/../turnfunctions.inc.php");
+	$gs_defs = [
+		'home_hp_multiplier'     => ['label' => 'Home World HP Multiplier',       'default' => '1.5',  'hint' => 'Building HP multiplier on home planets (e.g. 1.5 = +50%)'],
+		'home_income_multiplier' => ['label' => 'Home World Income Multiplier',   'default' => '2',    'hint' => 'Resource income multiplier on home planet (e.g. 2 = double)'],
+		'harvester_bonus'        => ['label' => 'Harvester Income Bonus',         'default' => '0.05', 'hint' => 'Per-harvester income bonus (0.05 = 5% each, stacks)'],
+		'starting_metal'         => ['label' => 'Starting Metal',                 'default' => '500',  'hint' => 'Metal given to new players'],
+		'starting_mineral'       => ['label' => 'Starting Mineral',               'default' => '250',  'hint' => 'Mineral given to new players'],
+		'starting_astrium'       => ['label' => 'Starting Astrium',               'default' => '50',   'hint' => 'Astrium given to new players'],
+		'buy_planet_metal'       => ['label' => 'Buy Planet Cost: Metal',         'default' => '2000', 'hint' => 'Metal cost to purchase a planet'],
+		'buy_planet_mineral'     => ['label' => 'Buy Planet Cost: Mineral',       'default' => '1000', 'hint' => 'Mineral cost to purchase a planet'],
+		'buy_planet_astrium'     => ['label' => 'Buy Planet Cost: Astrium',       'default' => '200',  'hint' => 'Astrium cost to purchase a planet'],
+		'election_duration'      => ['label' => 'Election Duration (turns)',      'default' => '5',    'hint' => 'Number of income turns before election resolves'],
+		'election_auto_interval' => ['label' => 'Auto-Election Interval (turns)', 'default' => '100',  'hint' => 'Automatic election every N income turns (0 = disabled)'],
+		'election_motion_threshold' => ['label' => 'Election Motion Threshold (%)', 'default' => '25', 'hint' => 'Percentage of team members needed to second a motion'],
+		'planet_weapon_hit_chance' => ['label' => 'Planet Weapon Hit Chance (1-in-N)', 'default' => '3', 'hint' => 'Planet weapons fire with 1-in-N chance per round (higher = less accurate)'],
+	];
+?>
+<div class="admin-section">
+	<h3>Game Settings</h3>
+	<form method="post">
+		<input type="hidden" name="action" value="save_settings">
+		<table>
+			<tr><th>Setting</th><th>Value</th><th>Hint</th></tr>
+			<?php foreach($gs_defs as $key => $def): ?>
+			<tr>
+				<td><?php echo $def['label']; ?></td>
+				<td><input type="text" name="<?php echo $key; ?>" value="<?php echo htmlspecialchars(GetGameSetting($key, $def['default'])); ?>" size="10"></td>
+				<td><small><?php echo $def['hint']; ?></small></td>
+			</tr>
+			<?php endforeach; ?>
+		</table>
+		<br>
+		<input type="submit" value="Save Settings">
+	</form>
 </div>
 
 <!-- Player List -->

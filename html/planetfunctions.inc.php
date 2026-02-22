@@ -22,7 +22,10 @@ function AssignStartingPlanet($PlayerID){
 		$sql = "UPDATE planets SET PlayerID = '$PlayerID' WHERE PlanetID = '$planetID'";
 		mysqli_query($GLOBALS["conn"], $sql);
 		// Grant starting resources
-		$sql = "UPDATE players SET Metal = 500, Mineral = 250, Astrium = 50, HomePlanetID = '$planetID' WHERE PlayerID = '$PlayerID'";
+		$sMetal = (int)GetGameSetting('starting_metal', 500);
+		$sMineral = (int)GetGameSetting('starting_mineral', 250);
+		$sAstrium = (int)GetGameSetting('starting_astrium', 50);
+		$sql = "UPDATE players SET Metal = '$sMetal', Mineral = '$sMineral', Astrium = '$sAstrium', HomePlanetID = '$planetID' WHERE PlayerID = '$PlayerID'";
 		mysqli_query($GLOBALS["conn"], $sql);
 		// Recalculate system and sector ownership
 		$planet = GetPlanet($planetID);
@@ -270,7 +273,8 @@ function GetPlanetIncome($PlanetID){
 	}
 	if($total_count>0){
 		//echo "Percenting $total_count harvesters<br/>";
-		$percentage = 1+($total_count*0.05);
+		$harvesterBonus = (float)GetGameSetting('harvester_bonus', 0.05);
+		$percentage = 1+($total_count*$harvesterBonus);
 		$income->Percentage($percentage,0);
 	}
 	
@@ -286,9 +290,10 @@ function IsHomeWorldPlanet($PlanetID){
 }
 
 function GetEffectiveBuildingHP($HP, $PlanetID){
-	// Home world buildings get +50% HP
+	// Home world buildings get HP multiplier
 	if(IsHomeWorldPlanet($PlanetID)){
-		return (int)round($HP * 1.5);
+		$mult = (float)GetGameSetting('home_hp_multiplier', 1.5);
+		return (int)round($HP * $mult);
 	}
 	return (int)$HP;
 }
@@ -296,10 +301,11 @@ function GetEffectiveBuildingHP($HP, $PlanetID){
 function GetPlanetDefenceStrength($PlanetID){
 	$strength = 0;
 	$isHome = IsHomeWorldPlanet($PlanetID);
+	$hpMult = (float)GetGameSetting('home_hp_multiplier', 1.5);
 	$sql= "SELECT HP FROM buildings WHERE(PlanetID = '$PlanetID' AND (Type = 6 OR Type = '8'))";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	while($row = mysqli_fetch_object($rescount)){
-		$hp = $isHome ? (int)round($row->HP * 1.5) : (int)$row->HP;
+		$hp = $isHome ? (int)round($row->HP * $hpMult) : (int)$row->HP;
 		$strength += $hp;
 	}
 	return $strength;

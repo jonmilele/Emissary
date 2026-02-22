@@ -21,25 +21,35 @@ for($j = 50;$j<500;$j+=50){
 	imageline($image,0,$j,500,$j,$bordergray);
 }
 $myPID = GetPlayerIDFromName($username);
+
+// Bulk: team with most planets per sector + their colour
+$_sectorTeam = [];
+$res = mysqli_query($GLOBALS["conn"], "SELECT s.SectorID, pl.TeamID, t.Colour, COUNT(*) AS cnt FROM Systems s JOIN planets p ON p.`System`=s.SystemID JOIN players pl ON pl.PlayerID=p.PlayerID JOIN teams t ON t.TeamID=pl.TeamID WHERE p.PlayerID>0 AND pl.TeamID>0 GROUP BY s.SectorID, pl.TeamID ORDER BY s.SectorID, cnt DESC");
+while($row = mysqli_fetch_object($res)){
+	$sid = (int)$row->SectorID;
+	if(!isset($_sectorTeam[$sid])){
+		$_sectorTeam[$sid] = ['colour' => $row->Colour, 'cnt' => (int)$row->cnt];
+	} elseif((int)$row->cnt == $_sectorTeam[$sid]['cnt']){
+		$_sectorTeam[$sid] = null; // tied
+	}
+}
+
+// Bulk: sectors where current player owns systems
+$_mySecHighlight = [];
+$res = mysqli_query($GLOBALS["conn"], "SELECT SectorID FROM Systems WHERE PlayerID='$myPID' GROUP BY SectorID");
+while($row = mysqli_fetch_object($res)) $_mySecHighlight[(int)$row->SectorID] = true;
+
 $secid = 1;
 for($i = 0;$i<10;$i++){
 	for($j = 0;$j<10;$j++){
-		$owner = GetSectorMajOwnerTeam($secid);
-		if($owner>0){
-			$c = GetTeamColour($owner);
-			$col = explode(",",$c);
-			
-			$tfill = imagecolorallocatealpha($image,$col[0],$col[1],$col[2],80);
-			$tborder = imagecolorallocate($image,$col[0],$col[1],$col[2]);
-			
+		if(!empty($_sectorTeam[$secid])){
+			$col = explode(",",$_sectorTeam[$secid]['colour']);
+			$tfill = imagecolorallocatealpha($image,(int)$col[0],(int)$col[1],(int)$col[2],80);
+			$tborder = imagecolorallocate($image,(int)$col[0],(int)$col[1],(int)$col[2]);
 			imagefilledrectangle($image,$j*50,$i*50,($j*50)+50,($i*50)+50,$tfill);
 			imagerectangle($image,$j*50,$i*50,($j*50)+50,($i*50)+50,$tborder);
 		}
-		// Highlight sectors where the current user owns at least one system
-		$sql = "SELECT COUNT(*) AS count FROM Systems WHERE SectorID='$secid' AND PlayerID='$myPID'";
-		$res = mysqli_query($GLOBALS["conn"], $sql);
-		$row = mysqli_fetch_object($res);
-		if($row && $row->count > 0){
+		if(isset($_mySecHighlight[$secid])){
 			imagerectangle($image,$j*50,$i*50,($j*50)+50,($i*50)+50,$yellow);
 			imagerectangle($image,$j*50+1,$i*50+1,($j*50)+49,($i*50)+49,$yellow);
 		}

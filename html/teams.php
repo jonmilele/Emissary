@@ -49,12 +49,41 @@ if(isset($_POST['action']) && csrf_validate()){
 		exit;
 	}
 
-	if($action == "startvote" && $myTeamID > 0){
-		$teamInfo = GetTeamInfo($myTeamID);
-		if($teamInfo && !$teamInfo->VoteActive){
-			StartLeaderVote($myTeamID);
+	if($action == "raisemotion" && $myTeamID > 0){
+		if(RaiseElectionMotion($myTeamID, $myPID)){
+			// Check if election started immediately (small team)
+			$ti = GetTeamInfo($myTeamID);
+			if($ti && $ti->VoteActive){
+				header("Location: teams.php?msg=Motion+carried+%E2%80%94+election+started");
+			} else {
+				header("Location: teams.php?msg=Motion+raised.+Needs+seconds+from+other+members.");
+			}
+		} else {
+			header("Location: teams.php?msg=Cannot+raise+motion+right+now");
 		}
-		header("Location: teams.php?msg=Leader+election+started+(5+turns)");
+		exit;
+	}
+
+	if($action == "secondmotion" && $myTeamID > 0){
+		if(SecondElectionMotion($myTeamID, $myPID)){
+			$ti = GetTeamInfo($myTeamID);
+			if($ti && $ti->VoteActive){
+				header("Location: teams.php?msg=Motion+carried+%E2%80%94+election+started");
+			} else {
+				header("Location: teams.php?msg=Motion+seconded");
+			}
+		} else {
+			header("Location: teams.php?msg=Cannot+second+motion");
+		}
+		exit;
+	}
+
+	if($action == "resignleader" && $myTeamID > 0 && IsTeamLeader($myPID)){
+		if(ResignAsLeader($myPID)){
+			header("Location: teams.php?msg=You+resigned+as+leader.+Election+called.");
+		} else {
+			header("Location: teams.php?msg=Could+not+resign");
+		}
 		exit;
 	}
 
@@ -111,7 +140,7 @@ $isLeader = IsTeamLeader($myPID);
 <html>
 <head>
 <title>Teams</title>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <link href="style.css" rel="stylesheet" type="text/css">
 </head>
 <body>
@@ -261,12 +290,47 @@ if(empty($voteStatus["tally"])){
 ?>
 <p><small><?php echo count($voteStatus["votes"]); ?>/<?php echo count($members); ?> members voted</small></p>
 <?php else: ?>
+<?php
+$activeMotion = GetActiveMotion($myTeamID);
+$motionThreshold = (float)GetGameSetting('election_motion_threshold', 25) / 100;
+$neededSeconds = max(1, ceil(count($members) * $motionThreshold));
+?>
 <h3>Leadership</h3>
-<form method="POST" action="teams.php" onsubmit="return confirm('Start a leader election? It will run for 5 turns.');">
-<input type="hidden" name="action" value="startvote">
+<?php if($activeMotion): ?>
+<?php
+$motionSeconds = GetMotionSeconds($myTeamID);
+$secondCount = count($motionSeconds);
+$hasSeconded = HasSecondedMotion($myTeamID, $myPID);
+?>
+<p><strong>Motion for election</strong> raised by <?php echo htmlspecialchars(GetPlayerNameFromID($activeMotion->ProposerID)); ?></p>
+<p>Seconds: <strong><?php echo $secondCount; ?>/<?php echo $neededSeconds; ?></strong> needed</p>
+<?php if(!$hasSeconded): ?>
+<form method="POST" action="teams.php" onsubmit="return confirm('Second this motion for a leadership election?');">
+<input type="hidden" name="action" value="secondmotion">
 <?php echo csrf_token(); ?>
-<input type="submit" value="Call Leader Election">
+<input type="submit" value="Second Motion">
 </form>
+<?php else: ?>
+<p><small>You have seconded this motion.</small></p>
+<?php endif; ?>
+<?php else: ?>
+<p><small>Any member can raise a motion for election. It requires <?php echo round($motionThreshold * 100); ?>% of members (<?php echo $neededSeconds; ?>) to second it before an election begins.</small></p>
+<?php if(count($members) >= 2): ?>
+<form method="POST" action="teams.php" onsubmit="return confirm('Raise a motion for a leadership election?');">
+<input type="hidden" name="action" value="raisemotion">
+<?php echo csrf_token(); ?>
+<input type="submit" value="Raise Motion for Election">
+</form>
+<?php endif; ?>
+<?php endif; ?>
+<?php if($isLeader && count($members) >= 2): ?>
+<hr style="border-color:#444;">
+<form method="POST" action="teams.php" onsubmit="return confirm('Resign as team leader? An election will be called immediately.');">
+<input type="hidden" name="action" value="resignleader">
+<?php echo csrf_token(); ?>
+<input type="submit" value="Resign as Leader">
+</form>
+<?php endif; ?>
 <?php endif; ?>
 </div>
 </div>

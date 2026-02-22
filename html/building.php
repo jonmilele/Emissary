@@ -196,7 +196,7 @@ if(!IsPlanet(($_GET['planet'] ?? ""))){
 <html>
 <head>
 <title><?php echo GetPlanetNameFromID($PlanetID); ?> - Grid: <?php echo $Grid; ?></title>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <link href="style.css" rel="stylesheet" type="text/css">
 </head>
 
@@ -262,7 +262,7 @@ $bldg = BuildingUnderConstruction($PlanetID,$Grid);
 		4 => 'Allows construction of ships on this planet.',
 		5 => 'Provides docking space for ships and fleets.',
 		6 => 'Absorbs damage from orbital attacks. Must be destroyed before weapons can be hit.',
-		7 => 'Fires on attacking fleets. 1-in-3 chance to fire each round.',
+		7 => 'Fires on attacking fleets. 1-in-' . (int)GetGameSetting('planet_weapon_hit_chance', 3) . ' chance to fire each round.',
 		8 => 'Heavy shield — absorbs large amounts of damage from orbital attacks.',
 		9 => 'Heavy weapon — high firepower against attacking fleets.',
 	);

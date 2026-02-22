@@ -37,7 +37,7 @@ if(!IsPlanet(($_GET['id'] ?? ""))){
 <html>
 <head>
 <title>Planet: <?php echo GetPlanetNameFromID($PlanetID); ?></title>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <link href="style.css" rel="stylesheet" type="text/css">
 <?php if(isset($_GET['dorefresh'])){
 ?>
@@ -134,7 +134,7 @@ if(YourFleetsInOrbit($PlanetID)>0){
           <input type="hidden" name="id" value="<?php echo $PlanetID; ?>">
           <input type="hidden" name="fleet" value="<?php echo $Fleet->FleetID; ?>">
           <?php echo csrf_token(); ?>
-          <button type="submit">Colonise</button>
+          <button type="submit" onclick="return confirm('Colonise this planet? This will consume a colony ship.');">Colonise</button>
         </form><br/>
         <?php } // Can Colonise?>
       </li>
@@ -167,7 +167,7 @@ if(YourFleetsInOrbit($PlanetID)>0){
       </select>
       <input type="hidden" name="type" value="P">
       <input type="hidden" name="value" value="<?php echo $PlanetID; ?>">
-      <input type="submit" value="Launch">
+      <input type="submit" value="Launch" onclick="var s=document.getElementById('strat');if(s&&s.value>=2)return confirm('Launch fleet with '+(s.value==2?'Attack':'Invade')+' strategy?');return true;">
     </form>
   </div>
   <?php } //Has Fleets ?>

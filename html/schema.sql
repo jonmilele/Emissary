@@ -35,7 +35,8 @@ CREATE TABLE `teams` (
   `Colour` VARCHAR(20) DEFAULT '255,255,255',
   `LeaderID` INT DEFAULT 0,
   `VoteActive` TINYINT DEFAULT 0,
-  `VoteTurnsLeft` INT DEFAULT 0
+  `VoteTurnsLeft` INT DEFAULT 0,
+  `LastElectionTurn` INT DEFAULT 0
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 -- ----------------------------
@@ -46,6 +47,24 @@ CREATE TABLE `team_votes` (
   `VoterID` INT NOT NULL,
   `CandidateID` INT NOT NULL,
   PRIMARY KEY (`TeamID`, `VoterID`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
+-- ----------------------------
+-- Election motions (no-confidence)
+-- ----------------------------
+CREATE TABLE `election_motions` (
+  `TeamID` INT PRIMARY KEY,
+  `ProposerID` INT NOT NULL,
+  `CreatedAt` DATETIME NOT NULL
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
+-- ----------------------------
+-- Election motion seconds
+-- ----------------------------
+CREATE TABLE `election_motion_seconds` (
+  `TeamID` INT NOT NULL,
+  `PlayerID` INT NOT NULL,
+  PRIMARY KEY (`TeamID`, `PlayerID`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 -- ----------------------------
@@ -326,3 +345,19 @@ INSERT INTO `sectors` (`SectorID`, `GridCoords`) VALUES
 (71,'1.8'),(72,'2.8'),(73,'3.8'),(74,'4.8'),(75,'5.8'),(76,'6.8'),(77,'7.8'),(78,'8.8'),(79,'9.8'),(80,'10.8'),
 (81,'1.9'),(82,'2.9'),(83,'3.9'),(84,'4.9'),(85,'5.9'),(86,'6.9'),(87,'7.9'),(88,'8.9'),(89,'9.9'),(90,'10.9'),
 (91,'1.10'),(92,'2.10'),(93,'3.10'),(94,'4.10'),(95,'5.10'),(96,'6.10'),(97,'7.10'),(98,'8.10'),(99,'9.10'),(100,'10.10');
+
+-- Default game settings (configurable via admin panel)
+INSERT INTO `game_settings` (`setting_key`, `setting_value`) VALUES
+('home_hp_multiplier', '1.5'),
+('home_income_multiplier', '2'),
+('buy_planet_metal', '2000'),
+('buy_planet_mineral', '1000'),
+('buy_planet_astrium', '200'),
+('harvester_bonus', '0.05'),
+('election_duration', '5'),
+('election_auto_interval', '100'),
+('election_motion_threshold', '25'),
+('starting_metal', '500'),
+('starting_mineral', '250'),
+('starting_astrium', '50'),
+('planet_weapon_hit_chance', '3');
