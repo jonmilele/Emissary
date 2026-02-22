@@ -5,6 +5,7 @@ A browser-based space strategy game originally developed in 2004, now restored a
 ## About the Game
 
 Emissary is a multiplayer browser-based space strategy game where players compete for control of a galaxy divided into 100 sectors. Players colonize planets, build structures, construct fleets, form teams, and wage war across star systems.
+This should be familiar with anyone (thinking millenials mainly!) who played DOS games like Ascendancy or browser-based games like Planetarion back in the day. It was Planetarion that I was originally trying to recreate with this project.
 
 ### Core Gameplay
 
