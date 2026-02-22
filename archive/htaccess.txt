@@ -1,0 +1,8 @@
+RewriteEngine On
+Options +FollowSymlinks
+RewriteBase /
+
+
+RewriteCond %{HTTP_HOST} game.nonny.com$
+RewriteCond %{REQUEST_URI} !game/
+RewriteRule ^(.*)$ game/$1

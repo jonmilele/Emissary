@@ -1,0 +1,137 @@
+body {
+	font-family: "Courier New", Courier, mono;
+	font-size: 14pt;
+	color: #FFFFFF;
+	background-color: #000000;
+}
+
+input {
+	font-family: "Courier New", Courier, mono;
+	font-size: 10pt;
+	color: #FFFFFF;
+	text-decoration: none;
+	background-color: #000000;
+	border: 1px solid #FF0000;
+}
+.login {
+	font-family: "Courier New", Courier, mono;
+	font-size: 10pt;
+	color: #FFFFFF;
+	text-decoration: none;
+	width: 150px;
+	float: left;
+	margin: 10px;
+	padding: 10px;
+	border: 1px solid #FF0000;
+}
+.login input {
+		font-family: "Courier New", Courier, mono;
+	font-size: 10pt;
+	color: #000000;
+	text-decoration: none;
+	background-color: #FFFFFF;
+	border: 1px solid #FF0000;
+}
+small {
+	font-family: "Courier New", Courier, mono;
+	font-size: 9pt;
+	color: #FFFFFF;
+}
+a {
+	font-family: "Courier New", Courier, mono;
+	font-size: 12pt;
+	color: #FF0000;
+	text-decoration: none;
+}
+.planet {
+	font-family: "Courier New", Courier, mono;
+	font-size: 12pt;
+	color: #FFFFFF;
+	border: 1px solid #FF0000;
+	margin: 10px;
+	float: left;
+	padding: 10px;
+}
+.system {
+	font-family: "Courier New", Courier, mono;
+	font-size: 12pt;
+	color: #FFFFFF;
+	float: left;
+}
+.galaxy {
+	font-family: "Courier New", Courier, mono;
+	font-size: 12pt;
+	color: #FFFFFF;
+	float: left;
+}
+.side {
+	margin: 0px;
+	float: left;
+}
+.description {
+	float: left;
+	margin: 10px;
+
+}
+.panel {
+	margin: 10px;
+	padding: 10px;
+	border: 1px solid #FF0000;
+	font-size: 11pt;
+}
+.panel h3 {
+	margin: 0px;
+	padding: 0px;
+}
+.panel h2 {
+	margin: 0px;
+	padding: 0px;
+}
+.panel li {
+	margin: 0px 0px 5px;
+}
+.content {
+	font-family: "Courier New", Courier, mono;
+	font-size: 12pt;
+	color: #FFFFFF;
+	border: 1px solid #FF0000;
+	margin: 10px;
+	width:650px;
+	float: left;
+	padding: 10px;
+}
+.date{
+	border-bottom:1px solid #999;
+}
+.wrapper {
+	text-align: center;
+	margin: auto;
+	border: 1px solid #FFFFFF;
+	width: 900px;
+}
+.title{
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+	border-bottom-color: #FFFFFF;
+	float: left;
+
+	
+
+}
+.message {
+	color: #FFFFFF;
+	background-color: #FF0000;
+	border-right-width: 2px;
+	border-bottom-width: 2px;
+	border-right-style: solid;
+	border-bottom-style: solid;
+	border-right-color: #CC0033;
+	border-bottom-color: #CC0033;
+	width: 600px;
+}
+.ship {
+	width: 500px;
+	margin: 5px;
+	padding: 5px;
+	font-size: 11pt;
+}

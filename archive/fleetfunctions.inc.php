@@ -1,0 +1,1248 @@
+<?php
+function PlayerFleets($PlayerID){
+	$total_count = 0;
+
+	//echo $filterdate." ";
+	$sql= "SELECT COUNT(*) AS count FROM fleets WHERE(PlayerID = '$PlayerID')";
+	$rescount=mysql_query($sql);
+	if ($rescount)
+		if ($rowcount = mysql_fetch_object($rescount))
+			$total_count = $rowcount->count;
+	return $total_count;
+}
+
+function GetFleetOwner($FleetID){
+	$sql= "SELECT PlayerID FROM fleets WHERE(FleetID = '$FleetID')";
+	$rescount=mysql_query($sql);
+	$row = mysql_fetch_object($rescount);
+	return $row->PlayerID;
+}
+
+function GetFleetName($FleetID){
+	$sql= "SELECT Name FROM fleets WHERE(FleetID = '$FleetID')";
+	$rescount=mysql_query($sql);
+	$row = mysql_fetch_object($rescount);
+	if($row->Name==""){
+		return "Fleet ".$FleetID;
+	}else{
+		return $row->Name;
+	}
+}
+
+function GetDefaultFleetName($PlayerID){
+	$total_count = 0;
+	$sql= "SELECT COUNT(*) AS count FROM fleets WHERE(PlayerID = '".$PlayerID."')";
+	$rescount=mysql_query($sql);
+	if ($rescount)
+		if ($rowcount = mysql_fetch_object($rescount))
+			$total_count = $rowcount->count;
+	$total_count++;
+	return "Fleet ".$total_count;
+}
+
+function ListPlayerFleets($PlayerID){
+	$Fleets = array();
+	$sql= "SELECT * FROM fleets WHERE(PlayerID = '$PlayerID')";
+	$rescount=mysql_query($sql);
+	while($row = mysql_fetch_object($rescount)){
+		$Fleet = GetFleet($row->FleetID);
+		$Fleets[$Fleet->FleetID] = $Fleet;
+	}
+	return $Fleets;
+}
+function GetFleetLocationString($FleetID){
+	$sql= "SELECT Location,Destination,TTF,Strategy FROM fleets WHERE(FleetID = '$FleetID')";
+	$rescount=mysql_query($sql);
+	$row = mysql_fetch_object($rescount);
+	$return = "";
+	$TTF = $row->TTF;
+	$eta = "";
+	$hours = 0;
+	$days = 0;
+	$minutes = 0;
+	if($TTF>=60){
+		$hours = floor($TTF/60);
+		$minutes = $TTF-($hours*60);
+		if($hours>24){
+			$days = floor($hours/24);
+			$hours = $hours-($days*24);
+		}
+		if($days>0){
+			if($days>1){$s = "s";}else{$s = "";}
+			$eta .= $days." day$s ";
+		}
+		if($hours>0){
+			if($hours>1){$s = "s";}else{$s = "";}
+			$eta .= $hours." hour$s ";
+		}
+		if($minutes>0){
+			if($minutes>1){$s = "s";}else{$s = "";}
+			$eta .= $minutes." minute$s";
+		}
+	}else{
+		if($TTF>1){$s = "s";}else{$s = "";}
+		$eta .= $TTF." minute$s";
+	}
+	if($row->Location!=""){
+		switch(substr($row->Location,0,1)){
+			// Passed in format:- S:1, P:13, X:9-G:1
+			case "S": // System
+				$return = "In <a href=\"system.php?id=".substr($row->Location,2,strlen($row->Location))."\">".GetSystemNameFromID(substr($row->Location,2,strlen($row->Location)))."</a> System";
+				break;
+			case "P": // Planet
+				$return = "Orbiting <a href=\"planet.php?id=".substr($row->Location,2,strlen($row->Location))."\">".GetPlanetNameFromID(substr($row->Location,2,strlen($row->Location)))."</a>";
+				break;
+			case "X": // Sector
+				$return = "In Sector <a href=\"sector.php?id=".substr($row->Location,2,strlen($row->Location))."\">".substr($row->Location,2,strlen($row->Location))."</a>";
+				break;
+		}
+	}else{
+		$pre = "";
+		$post = "";
+		switch($row->Strategy){
+			case "0":
+				$post = "";
+				break;
+			case "1":
+				$post = " for colonisation";
+				break;
+			case "2":
+				$post = " to attack";
+				break;
+			case "3":
+				$post = " to invade";
+				break;
+		}
+		$return = "Moving to <a href=\"planet.php?id=".substr($row->Destination,2,strlen($row->Destination))."\">".GetPlanetNameFromID(substr($row->Destination,2,strlen($row->Destination)))."</a>".$post." - ETA: ".$eta;
+	}
+	return $return;
+}
+function FleetsInOrbit($PlanetID){
+	$total_count = 0;
+
+	//echo $filterdate." ";
+	$sql= "SELECT COUNT(*) AS count FROM fleets WHERE(Location = 'P:$PlanetID')";
+	$rescount=mysql_query($sql);
+	if ($rescount)
+		if ($rowcount = mysql_fetch_object($rescount))
+			$total_count = $rowcount->count;
+	return $total_count;
+}
+function YourFleetsInOrbit($PlanetID){
+	global $username;
+	$total_count = 0;
+
+	//echo $filterdate." ";
+	$sql= "SELECT COUNT(*) AS count FROM fleets WHERE(Location = 'P:$PlanetID' AND PlayerID = '".GetPlayerIDFromName($username)."')";
+	$rescount=mysql_query($sql);
+	if ($rescount)
+		if ($rowcount = mysql_fetch_object($rescount))
+			$total_count = $rowcount->count;
+	return $total_count;
+}
+function ListYourFleetsInOrbit($PlanetID){
+	global $username;
+	$Fleets = array();
+	//echo $filterdate." ";
+	$sql= "SELECT * FROM fleets WHERE(Location = 'P:$PlanetID' AND PlayerID = '".GetPlayerIDFromName($username)."')";
+	$rescount=mysql_query($sql);
+	while($row = mysql_fetch_object($rescount)){
+		$Fleets[] = GetFleet($row->FleetID);	
+	}
+	return $Fleets;
+}
+function GetYourOrbitingFleet($PlanetID){
+	global $username;
+	$sql= "SELECT * FROM fleets WHERE(Location = 'P:$PlanetID' AND PlayerID = '".GetPlayerIDFromName($username)."')";
+	$rescount=mysql_query($sql);
+	$row = mysql_fetch_object($rescount);
+	
+	return GetFleet($row->FleetID);
+	
+}
+
+function DeleteFleet($FleetID){
+	$sql= "SELECT * FROM fleets WHERE(FleetID = '$FleetID')";
+	$rescount=mysql_query($sql);
+	$row = mysql_fetch_object($rescount);
+	if(substr($row->Location,0,2)=="P:"){
+		$PlanetID = substr($row->Location,2,strlen($row->Location)-2);
+		if(OwnsPlanet(GetPlayerNameFromID(GetFleetOwner($FleetID)),$PlanetID)){
+			$sqlship = "UPDATE ships SET PlanetID = '$PlanetID', FleetID = '0' WHERE(FleetID = '$FleetID')";
+			$resship = mysql_query($sqlship);
+			$sql= "DELETE FROM fleets WHERE(FleetID = '".$FleetID."')";
+			$rescount=mysql_query($sql);
+			return true;
+		}
+	}	
+	return false;
+}
+
+function CanColonise($PlanetID,$FleetID = 0){
+	$sql= "SELECT PlayerID FROM planets WHERE(PlanetID = '$PlanetID')";
+	$rescount=mysql_query($sql);
+	$row = mysql_fetch_object($rescount);
+	if($row->PlayerID>0){
+		return false;
+	}
+	
+	if($FleetID == 0){
+		$Fleet = GetYourOrbitingFleet($PlanetID);
+	}else{
+		$Fleet = GetFleet($FleetID);
+	}
+	if(sizeof($Fleet->Ships->Colonisers)){
+		return true;
+	}
+	return false;
+}
+
+function Colonise($PlanetID){
+	global $username;
+	$PlayerID = GetPlayerIDFromName($username);
+	$sql= "UPDATE planets SET PlayerID = '".$PlayerID."' WHERE(PlanetID = '$PlanetID')";
+	$rescount=mysql_query($sql);
+	
+	// Eventually code to remove one coloniser
+	
+	$Fleet = GetYourOrbitingFleet($PlanetID);
+	DestroyShip(GetRandomShipOfType($Fleet->FleetID,3),3);
+}
+
+function Invade($PlanetID,$PlayerID){
+	$sql= "UPDATE planets SET PlayerID = '".$PlayerID."' WHERE(PlanetID = '$PlanetID')";
+	$rescount=mysql_query($sql);
+	ClaimUnfinishedShips($PlanetID,$PlayerID);
+}
+
+function CanInvade($PlanetID){
+
+}
+
+function FleetsInSystem($SystemID){
+	$total_count = 0;
+
+	//echo $filterdate." ";
+	$sql= "SELECT COUNT(*) AS count FROM fleets WHERE(Location = 'S:$SystemID')";
+	$rescount=mysql_query($sql);
+	if ($rescount)
+		if ($rowcount = mysql_fetch_object($rescount))
+			$total_count = $rowcount->count;
+	return $total_count;
+}
+
+class Fleet{
+	var $FleetID;
+	var $PlayerID;
+	var $Location;
+	var $Destination;
+	var $Ships;
+	var $Size;
+	var $Strategy;
+	var $TTF;
+	var $Name;
+}
+
+class Ship{
+	var $ShipID;
+	var $FleetID;
+	var $PlayerID;
+	var $Type;
+	var $Name;
+	var $HP;
+	var $AP;
+}
+
+function GetShip($ShipID){
+	$sql= "SELECT * FROM ships WHERE(ShipID = '$ShipID')";
+	$rescount=mysql_query($sql);
+	$row = mysql_fetch_object($rescount);
+	
+	$ship = new Ship();
+	$ship->ShipID = $row->ShipID;
+	$ship->FleetID = $row->FleetID;
+	$ship->PlayerID = $row->PlayerID;
+	$ship->Type = $row->Type;
+	$ship->Name = $row->Name;
+	$ship->HP = $row->HP;
+	$ship->AP = GetShipTypeDefaultAP($row->Type);
+	
+	return $ship;
+}
+
+function GetShipArray($FleetID){
+	//echo "Getting Ships<br/>"
+	$ships = array();
+	$sql= "SELECT ShipID FROM ships WHERE(FleetID = '$FleetID')";
+	$res=mysql_query($sql);
+	while($row = mysql_fetch_object($res)){
+		//echo "Getting Ship<br/>"
+		$ships[] = GetShip($row->ShipID);
+	}
+	return $ships;
+}
+
+function GetShips($FleetID){
+	$Ships = array();
+	$total_count = 0;
+	$bundle = new ShipBundle();
+
+	
+	// Check for Transports
+	$sql= "SELECT * FROM ships WHERE(FleetID = '$FleetID')";
+	$res=mysql_query($sql);
+	while($row = mysql_fetch_object($res)){
+		switch($row->Type){
+			case "2":
+				$bundle->Add(GetShip($row->ShipID));
+				break;
+			case "3":
+				$bundle->Add(GetShip($row->ShipID));
+				break;
+			case "4":
+				$bundle->Add(GetShip($row->ShipID));
+				break;
+			case "5":
+				$bundle->Add(GetShip($row->ShipID));
+				break;
+			case "6":
+				$bundle->Add(GetShip($row->ShipID));
+				break;
+			case "7":
+				$bundle->Add(GetShip($row->ShipID));
+				break;
+			case "8":
+				$bundle->Add(GetShip($row->ShipID));
+				break;
+		}
+	}
+
+		
+	return $bundle;
+}
+
+class ShipBundle{
+	var $Transports = array();
+	var $Colonisers = array();
+	var $Frigates = array();
+	var $Cruisers = array();
+	var $Warships = array();
+	var $Motherships = array();
+	var $Fighters = array();
+	
+	function Total(){
+		$total = 0;
+		$total += sizeof($this->Transports);
+		$total += sizeof($this->Colonisers);
+		$total += sizeof($this->Frigates);
+		$total += sizeof($this->Cruisers);
+		$total += sizeof($this->Warships);
+		$total += sizeof($this->Motherships);
+		$total += sizeof($this->Fighters);
+		return $total;
+	}
+	
+	function Add($Ship){
+		//echo "Adding Ship ".$Ship->Type;
+		switch($Ship->Type){
+			case "2":
+				$this->Transports[] = $Ship;
+				break;
+			case "3":
+				$this->Colonisers[] = $Ship;
+				break;
+			case "4":
+				$this->Frigates[] = $Ship;
+				break;
+			case "5":
+				$this->Cruisers[] = $Ship;
+				break;
+			case "6":
+				$this->Warships[] = $Ship;
+				break;
+			case "7":
+				$this->Motherships[] = $Ship;
+				break;
+			case "8":
+				$this->Fighters[] = $Ship;
+				break;
+		}
+	}
+}
+
+function GetUnassignedShips($PlanetID){
+	$total_count = 0;
+	$Ships = array();
+	
+	// Check for Transports
+	$sql= "SELECT COUNT(*) AS count FROM ships WHERE(PlanetID = '$PlanetID' AND Type = '2')";
+	$rescount=mysql_query($sql);
+	if ($rescount){
+		if ($rowcount = mysql_fetch_object($rescount)){
+			$total_count += $rowcount->count;
+			$Ships["Transports"] = $rowcount->count;
+		}
+	}
+	
+	// Check for Colonisers
+	$sql= "SELECT COUNT(*) AS count FROM ships WHERE(PlanetID = '$PlanetID' AND Type = '3')";
+	$rescount=mysql_query($sql);
+	if ($rescount){
+		if ($rowcount = mysql_fetch_object($rescount)){
+			$total_count += $rowcount->count;
+			$Ships["Colonisers"] = $rowcount->count;
+		}
+	}
+	
+	// Check for Frigates
+	$sql= "SELECT COUNT(*) AS count FROM ships WHERE(PlanetID = '$PlanetID' AND Type = '4')";
+	$rescount=mysql_query($sql);
+	if ($rescount){
+		if ($rowcount = mysql_fetch_object($rescount)){
+			$total_count += $rowcount->count;
+			$Ships["Frigates"] = $rowcount->count;
+		}
+	}
+	
+	// Check for Cruisers
+	$sql= "SELECT COUNT(*) AS count FROM ships WHERE(PlanetID = '$PlanetID' AND Type = '5')";
+	$rescount=mysql_query($sql);
+	if ($rescount){
+		if ($rowcount = mysql_fetch_object($rescount)){
+			$total_count += $rowcount->count;
+			$Ships["Cruisers"] = $rowcount->count;
+		}
+	}
+	
+	// Check for Warships
+	$sql= "SELECT COUNT(*) AS count FROM ships WHERE(PlanetID = '$PlanetID' AND Type = '6')";
+	$rescount=mysql_query($sql);
+	if ($rescount){
+		if ($rowcount = mysql_fetch_object($rescount)){
+			$total_count += $rowcount->count;
+			$Ships["Warships"] = $rowcount->count;
+		}
+	}
+	
+	// Check for Motherships
+	$sql= "SELECT COUNT(*) AS count FROM ships WHERE(PlanetID = '$PlanetID' AND Type = '7')";
+	$rescount=mysql_query($sql);
+	if ($rescount){
+		if ($rowcount = mysql_fetch_object($rescount)){
+			$total_count += $rowcount->count;
+			$Ships["Motherships"] = $rowcount->count;
+		}
+	}
+	
+	// Check for Fighters
+	$sql= "SELECT COUNT(*) AS count FROM ships WHERE(PlanetID = '$PlanetID' AND Type = '8')";
+	$rescount=mysql_query($sql);
+	if ($rescount){
+		if ($rowcount = mysql_fetch_object($rescount)){
+			$total_count += $rowcount->count;
+			$Ships["Fighters"] = $rowcount->count;
+		}
+	}
+	$Ships["Total"] = $total_count;
+	
+	return $Ships;
+}
+
+function GetFleet($FleetID){
+	$Fleet = new Fleet();
+	
+	$sql= "SELECT * FROM fleets WHERE(FleetID = '$FleetID')";
+	$rescount=mysql_query($sql);
+	$row = mysql_fetch_object($rescount);
+	
+	$Fleet->FleetID = $row->FleetID;
+	$Fleet->PlayerID = $row->PlayerID;
+	$Fleet->Location = $row->Location;
+	$Fleet->Destination = $row->Destination;
+	$Fleet->MovingFrom = $row->MovingFrom;
+	$Fleet->Strategy = $row->Strategy;
+	$Fleet->TTF = $row->TTF;
+	$Fleet->Name = GetFleetName($FleetID);
+
+	$Fleet->Ships = GetShips($FleetID);
+	$Fleet->Size = $Fleet->Ships->Total();
+	
+	return $Fleet;
+}
+function CreateFleet($PlanetID,$Name,$AllShips){
+	global $username;
+	$sql= "INSERT INTO fleets(PlayerID,Location,Name) VALUES('".GetPlayerIDFromName($username)."','P:".$PlanetID."','$Name')";
+	$rescount=mysql_query($sql);
+	$FleetID = mysql_insert_id();
+	if($AllShips){
+		$sql= "UPDATE ships SET FleetID = '".$FleetID."', PlanetID = '0' WHERE(PlayerID = '".GetPlayerIDFromName($username)."' AND PlanetID = '$PlanetID')";
+		$rescount=mysql_query($sql);
+	}
+	return $FleetID;
+}
+
+function MoveFleet($FleetID,$Target,$Strategy = 0){
+//Pass target in format:- S:1,P:3,X:9-G:1
+	$sql = "SELECT * FROM fleets WHERE(FleetID = '$FleetID')";
+	$res = mysql_query($sql);
+	$row = mysql_fetch_object($res);
+	$TTF = 0;
+	if($row->Destination!=""){
+		$GalLoc = GetGalacticLocation($FleetID);
+		$TTF = CalcTTF($GalLoc,$Target);
+	}else{
+		if(SameSystem($row->Location,$Target)){
+			$TTF = 10;
+		}else{
+			$TTF = CalcTTF($row->Location,$Target);
+		}
+	}
+	if($GalLoc==""){
+		$Location = $row->Location;
+	}else{
+		$Location = $GalLoc;
+	}
+	$sql= "UPDATE fleets SET MovingFrom = '".$Location."', Location = '', Strategy = '$Strategy', Destination = '".$Target."', TTF = '".$TTF."' WHERE(FleetID = '$FleetID')";
+	$rescount=mysql_query($sql);
+}
+
+function SameSystem($Planet1,$Planet2){
+	$Planet1 = substr($Planet1,2,strlen($Planet1)-2);
+	$Planet2 = substr($Planet2,2,strlen($Planet2)-2);
+	
+	$sql = "SELECT System FROM planets WHERE(PlanetID = '$Planet1')";
+	$res = mysql_query($sql);
+	$row = mysql_fetch_object($res);
+	$one = $row->System;
+	
+	$sql = "SELECT System FROM planets WHERE(PlanetID = '$Planet2')";
+	$res = mysql_query($sql);
+	$row = mysql_fetch_object($res);
+	$two = $row->System;
+	
+	if($one==$two){
+		return true;
+	}
+	return false;
+}
+
+function GetSystemCoords($SystemID){
+	$sql = "SELECT Coords,SectorID FROM Systems WHERE(SystemID = '".$SystemID."')";
+	$res = mysql_query($sql);
+	$row = mysql_fetch_object($res);
+	
+	$location_sector_coords = GetSectorCoords($row->SectorID);
+	$location_system_coords = split("/",$row->Coords);
+	$location_system_coords[0] *= 50; // Get x value into units
+	$location_system_coords[1] *= 50; // Get y value into units
+	
+//	echo "Location Sector x: ".$location_sector_coords[0]."<br/>";
+//	echo "Location Sector y: ".$location_sector_coords[1]."<br/>";
+	
+	$location_sector_offset_coords_x = ($location_sector_coords[0]-1)*500;
+	$location_sector_offset_coords_y = ($location_sector_coords[1]-1)*500;
+	
+//	echo "Location Offset x: ".$location_sector_offset_coords_x."<br/>";
+//	echo "Location Offset y: ".$location_sector_offset_coords_y."<br/>";
+	$location_absolute = array();
+	$location_absolute["x"] = $location_sector_offset_coords_x + $location_system_coords[0];
+	$location_absolute["y"] = $location_sector_offset_coords_y + $location_system_coords[1];
+	return $location_absolute;
+}
+
+function CalcTTF($Location,$Destination){
+	$Destination = substr($Destination,2,strlen($Destination)-2);
+	if(substr($Location,0,2)=="X:"){
+		$coords = substr($Location,2,strlen($Location)-2);
+		$carr = split("/",$coords);
+		$location_x_absolute = $carr[0];
+		$location_y_absolute = $carr[1];
+	}else{
+		$Location = substr($Location,2,strlen($Location)-2);
+		
+		$sql = "SELECT System FROM planets WHERE(PlanetID = '$Location')";
+		$res = mysql_query($sql);
+		$row = mysql_fetch_object($res);
+		$sql = "SELECT Coords,SectorID FROM Systems WHERE(SystemID = '".$row->System."')";
+		$res = mysql_query($sql);
+		$row = mysql_fetch_object($res);
+		
+		$location_sector_coords = GetSectorCoords($row->SectorID);
+		$location_system_coords = split("/",$row->Coords);
+		$location_system_coords[0] *= 50; // Get x value into units
+		$location_system_coords[1] *= 50; // Get y value into units
+		
+		$location_sector_offset_coords_x = ($location_sector_coords[0]-1)*500;
+		$location_sector_offset_coords_y = ($location_sector_coords[1]-1)*500;
+
+		$location_x_absolute = $location_sector_offset_coords_x + $location_system_coords[0];
+		$location_y_absolute = $location_sector_offset_coords_y + $location_system_coords[1];
+	}
+
+	$sql = "SELECT System FROM planets WHERE(PlanetID = '$Destination')";
+	$res = mysql_query($sql);
+	$row = mysql_fetch_object($res);
+	$dest_coords = GetSystemCoords($row->System);
+		
+	$destination_x_absolute = $dest_coords["x"];
+	$destination_y_absolute = $dest_coords["y"];
+	
+//	echo "Destination Abs x: ".$destination_x_absolute."<br/>";
+//	echo "Destination Abs y: ".$destination_y_absolute."<br/>";
+	
+	$sum_square = pow(($location_x_absolute-$destination_x_absolute),2)+pow(($location_y_absolute-$destination_y_absolute),2);
+	$units = round(sqrt($sum_square),0);
+	$units_per_turn = 50;
+	$minutes_per_unit = 30/$units_per_turn;
+	$TTF = round(($minutes_per_unit*$units),0);
+	return $TTF;
+}
+
+function GetSectorCoords($SectorID){
+	$sql = "SELECT GridCoords FROM sectors WHERE(SectorID = '".$SectorID."')";
+	$res = mysql_query($sql);
+	$row = mysql_fetch_object($res);
+	$return = split("\.",$row->GridCoords);
+//	echo "Return: ".$return[0].":".$return[1]." - ".$row->GridCoords."<br/>";
+	return $return;
+}
+
+function GetGalacticLocation($FleetID){
+	$sql= "SELECT * FROM fleets WHERE(FleetID = '$FleetID')";
+	$rescount=mysql_query($sql);
+	$row = mysql_fetch_object($rescount);
+	
+	$Orig_TTF = CalcTTF($row->MovingFrom,$row->Destination);
+	$cent = (($Orig_TTF-$row->TTF)/$Orig_TTF)*100;
+	
+	$Location = substr($row->MovingFrom,2,strlen($row->MovingFrom)-2);
+	$Destination = substr($row->Destination,2,strlen($row->Destination)-2);
+	if(substr($row->MovingFrom,0,2)=="X:"){
+		$carr = split("/",$Location);
+		$loc_system_coords = array();
+		$loc_system_coords["x"] = $carr[0];
+		$loc_system_coords["y"] = $carr[1];
+	}else{
+		$sql = "SELECT System FROM planets WHERE(PlanetID = '$Location')";
+		$res = mysql_query($sql);
+		$row = mysql_fetch_object($res);
+		$loc_system_coords = GetSystemCoords($row->System);
+	}
+	$sql = "SELECT System FROM planets WHERE(PlanetID = '$Destination')";
+	$res = mysql_query($sql);
+	$row = mysql_fetch_object($res);
+	$dest_system_coords = GetSystemCoords($row->System);
+	
+	$Ax = $loc_system_coords["x"];
+	$Ay = $loc_system_coords["y"];
+	$Bx = $dest_system_coords["x"];
+	$By = $dest_system_coords["y"];
+	$AA1_Length = (($By-$Ay)/100)*$cent;
+	$A1F_Length = (($Bx-$Ax)/100)*$cent;
+	
+	$new_point_x = round($Ax+$A1F_Length,0);
+	$new_point_y = round($Ay+$AA1_Length,0);
+
+	return "X:".$new_point_x."/".$new_point_y;
+}
+
+function AddShipToFleet($ShipID,$FleetID){
+	$sql= "UPDATE ships SET FleetID = '$FleetID' WHERE(ShipID = '$ShipID')";
+	$rescount=mysql_query($sql);
+	
+	$sql= "UPDATE ships SET PlanetID = '0' WHERE(ShipID = '$ShipID')";
+	$rescount=mysql_query($sql);
+}
+
+function RemoveShipFromFleet($ShipID,$FleetID){
+	// Add code to Check the ship is in orbit of a planet.
+	$sql= "UPDATE ships SET FleetID = '0' WHERE(ShipID = '$ShipID')";
+	$rescount=mysql_query($sql);
+}
+function FleetIsInOrbit($FleetID,$PlanetID){
+
+	$sql= "SELECT Location FROM fleets WHERE(FleetID = '".$FleetID."')";
+	$rescount=mysql_query($sql);
+	$row = mysql_fetch_object($rescount);
+	if($row->Location=="P:".$PlanetID){
+		return true;
+	}
+	return false;
+}
+
+function ShipFleetIsInOrbit($ShipID,$PlanetID){
+	$sql= "SELECT FleetID FROM ships WHERE(ShipID = '$ShipID')";
+	$rescount=mysql_query($sql);
+	$row = mysql_fetch_object($rescount);
+	
+	return FleetIsInOrbit($row->FleetID,$PlanetID);
+}
+
+function GetNextShipInQueue($PlanetID,$Grid){
+	$query = "SELECT * FROM qships WHERE(Yard = '$PlanetID:$Grid') ORDER BY QueuePosition ASC LIMIT 0,1";
+	$notresult = mysql_query($query) or die(mysql_error());
+	$row = mysql_fetch_object($notresult);
+	return $row->ShipID;
+}
+
+function ShiftQueue($PlanetID,$Grid){
+	$query = "UPDATE qships SET QueuePosition = QueuePosition-1 WHERE(Yard = '$PlanetID:$Grid')";
+	$notresult = mysql_query($query) or die(mysql_error());
+}
+
+function AddToQueue($PlanetID,$Grid,$Type,$Name){
+	$query = "SELECT QueuePosition FROM qships WHERE(Yard = '$PlanetID:$Grid') ORDER BY QueuePosition DESC LIMIT 0,1";
+	$notresult = mysql_query($query) or die(mysql_error());
+	$row = mysql_fetch_object($notresult);
+	$newqueue = $row->QueuePosition+1;
+	$query = "INSERT INTO qships(Type,Name,Yard,QueuePosition) VALUES('$Type','$Name','$PlanetID:$Grid','$newqueue')";
+	$notresult = mysql_query($query) or die(mysql_error());
+}
+function GetQueueSize($PlanetID,$Grid){
+	$total_count = 0;
+	$sql= "SELECT COUNT(*) AS count FROM qships WHERE(Yard = '$PlanetID:$Grid')";
+	$rescount=mysql_query($sql);
+	if ($rescount){
+		if ($rowcount = mysql_fetch_object($rescount)){
+			$total_count = $rowcount->count;
+		}
+	}
+	return $total_count;
+}
+
+function ShipsInQueue($PlanetID,$Grid){
+	$total_count = 0;
+	$sql= "SELECT COUNT(*) AS count FROM qships WHERE(Yard = '$PlanetID:$Grid')";
+	$rescount=mysql_query($sql);
+	if ($rescount){
+		if ($rowcount = mysql_fetch_object($rescount)){
+			$total_count = $rowcount->count;
+		}
+	}
+	if($total_count>0){
+		return true;
+	}
+	return false;
+}
+function CalculateShipBuildTime($PlanetID,$Type){
+	$query = "SELECT Turns FROM ship_types WHERE(Type = '$Type')";
+	$notresult = mysql_query($query) or die(mysql_error());
+	$row = mysql_fetch_object($notresult);
+	$turns = $row->Turns*30;
+	$ten_cent = $turns/10;
+	// Factories remove 5% of build time.
+	$total_count = 0;
+	$sql= "SELECT COUNT(*) AS count FROM buildings WHERE(PlanetID = '$PlanetID' AND Type = 1)";
+	$rescount=mysql_query($sql);
+	if ($rescount){
+		if ($rowcount = mysql_fetch_object($rescount)){
+			$total_count = $rowcount->count;
+		}
+	}
+	//echo "Factories: ".$total_count;
+	$five_cent = $ten_cent/2;
+	$turns_off = round($five_cent*$total_count,0);
+	//echo "Turns Off: ".$turns_off;
+	if($turns_off<($turns-$ten_cent)){
+		$turns = $turns-$turns_off;
+	}else{
+		$turns = $ten_cent;
+		//echo "Setting 10% build time";
+	}
+	return $turns;
+}
+function CreateShip($Type,$PlanetID,$Grid,$Name,$PlayerID = 0){
+	global $username;
+	if($PlayerID==0){
+		$PlayerID = GetPlayerIDFromName($username);
+	}
+	$costmetal = 0;
+	$costmineral = 0;
+	$costastrium = 0;
+	
+	$query = "SELECT * FROM ship_types WHERE(Type = '$Type')";
+	$notresult = mysql_query($query) or die(mysql_error());
+	$row = mysql_fetch_object($notresult);
+	$costmetal = $row->Metal;
+	$costmineral = $row->Mineral;
+	$costastrium = $row->Astrium;
+	$turns = CalculateShipBuildTime($PlanetID,$Type);
+	$yard = $PlanetID.":".$Grid;
+	
+	if(HasSufficientResources($PlayerID,1,$costmetal)&&HasSufficientResources($PlayerID,2,$costmineral)&&HasSufficientResources($PlayerID,3,$costastrium)){
+		DeductResources($PlayerID,1,$costmetal);
+		DeductResources($PlayerID,2,$costmineral);
+		DeductResources($PlayerID,3,$costastrium);
+		
+		$sql= "INSERT INTO cships(PlayerID,Type,Yard,TTF,Name) VALUES('".$PlayerID."','$Type','$yard','$turns','$Name')";
+		$rescount=mysql_query($sql);
+		return mysql_insert_id();
+	}else{
+		//echo "Insufficient Resources";
+		return 0;
+	}
+}
+
+function ShipUnderConstruction($PlanetID,$Grid){
+	$ship = array();
+	$yard = $PlanetID.":".$Grid;
+	$sql= "SELECT * FROM cships WHERE(Yard = '$yard')";
+	$rescount=mysql_query($sql);
+	$row = mysql_fetch_object($rescount);
+	$ship["ID"] = $row->ID;
+	$ship["Name"] = $row->Name;
+	$ship["Type"] = $row->Type;
+	$ship["Planet"] = $PlanetID;
+	$ship["Grid"] = $Grid;
+	$ship["TTF"] = $row->TTF;
+	
+	return $ship;
+}
+
+function ConstructingShip($PlanetID,$Grid){
+	$total_count = 0;
+	$yard = $PlanetID.":".$Grid;
+	$sql= "SELECT COUNT(*) AS count FROM cships WHERE(Yard = '$yard')";
+	$rescount=mysql_query($sql);
+	if ($rescount){
+		if ($rowcount = mysql_fetch_object($rescount)){
+			$total_count = $rowcount->count;
+		}
+	}
+	if($total_count>0){
+		return true;
+	}
+	return false;
+}
+
+function DestroyShip($ShipID,$Reason){
+// Reasons: 1=Combat, 2=Self-Destruct, 3=Used
+	$sql= "SELECT * FROM ships WHERE(ShipID = '$ShipID')";
+	$rescount=mysql_query($sql);
+	$row = mysql_fetch_object($res);
+	
+	$sql= "DELETE FROM ships WHERE(ShipID = '$ShipID')";
+	$rescount=mysql_query($sql);
+	if(!HasShipsLeft($row->FleetID)){
+		$sql= "DELETE FROM fleets WHERE(FleetID = '".$row->FleetID."')";
+		$rescount=mysql_query($sql);
+	}
+}
+
+function GetShipsInOrbit($PlanetID){
+	global $username;
+	$total_count = 0;
+	$sql= "SELECT COUNT(*) AS count FROM ships WHERE(PlanetID = '$PlanetID' AND PlayerID = '".GetPlayerIDFromName($username)."')";
+	$rescount=mysql_query($sql);
+	if ($rescount){
+		if ($rowcount = mysql_fetch_object($rescount)){
+			$total_count = $rowcount->count;
+		}
+	}
+	return $total_count;
+}
+
+function GetRandomShipOfType($FleetID,$Type){
+	if(($Type>0)&&($Type<9)){
+		$sql= "SELECT ShipID FROM ships WHERE(FleetID = '$FleetID' AND Type = '$Type')";
+		$rescount=mysql_query($sql);
+		$row = mysql_fetch_object($rescount);
+		return $row->ShipID;
+	}
+}
+
+function GetRandomShip($FleetID){
+	$ships = array();
+	$sql= "SELECT ShipID FROM ships WHERE(FleetID = '$FleetID')";
+	$rescount=mysql_query($sql);
+	while($row = mysql_fetch_object($rescount)){
+		$ships[] = $row->ShipID;
+	}
+	$rand = rand(0,sizeof($ships)-1);
+	return $ships[$rand];
+}
+
+function GetRandomUnassignedShipOfType($PlanetID,$Type){
+	global $username;
+	if(($Type>0)&&($Type<9)){
+		$sql= "SELECT ShipID FROM ships WHERE(PlanetID = '$PlanetID' AND Type = '$Type' AND PlayerID = '".GetPlayerIDFromName($username)."')";
+		$rescount=mysql_query($sql);
+		$row = mysql_fetch_object($rescount);
+		return $row->ShipID;
+	}
+}
+function GetShipTypeString($Type){
+	$query = "SELECT Name FROM ship_types WHERE(Type = '$Type')";
+	$notresult = mysql_query($query) or die(mysql_error());
+	$row = mysql_fetch_object($notresult);
+	return $row->Name;
+}
+
+function GetShipName($ShipID){
+$query = "SELECT Name FROM ships WHERE(ShipID = '$ShipID')";
+	$notresult = mysql_query($query) or die(mysql_error());
+	$row = mysql_fetch_object($notresult);
+	return $row->Name;
+}
+
+class ShipBundleSingleType{
+	var $Type = 0;
+	var $Ships = array();
+	function ShipBundleSingleType($Type){
+		$this->Type = $Type;
+	}
+	function Add($Ship){
+		$this->Ships[] = $Ship;
+	}
+}
+function GetLowestRankVesselTypeInFleet($FleetID){
+	// returns array with type, HP and number.
+}
+
+function FleetHP($FleetID){
+	$hp = 0;
+	$query = "SELECT HP FROM ships WHERE(FleetID = '$FleetID')";
+	$notresult = mysql_query($query) or die(mysql_error());
+	while($row = mysql_fetch_object($notresult)){
+		$hp += $row->HP;
+	}
+	return $hp;
+}
+
+function FleetAP($FleetID){
+	$ap = 0;
+	$query = "SELECT Type FROM ships WHERE(FleetID = '$FleetID')";
+	$notresult = mysql_query($query) or die(mysql_error());
+	while($row = mysql_fetch_object($notresult)){
+		$ap += GetShipTypeDefaultAP($row->Type);
+	}
+	return $ap;
+}
+
+class Battle{
+	var $Winner;
+	var $Attacker;
+	var $Defender;
+	var $PlanetID;
+	var $BattleID;
+}
+
+function GetBattle($BattleID){
+	$sql = "SELECT * FROM battles WHERE(BattleID = '".$BattleID."')";
+	$res = mysql_query($sql) or die(mysql_error());
+	$row = mysql_fetch_object($res);
+	$battle = new Battle();
+	$battle->Attacker = $row->Attacker;
+	$battle->BattleID = $row->BattleID;
+	$battle->Defender = $row->Defender;
+	$battle->Winner = $row->Winner;
+	$battle->PlanetID = $row->PlanetID;
+	return $battle;
+}
+
+function AttackPlanet($FleetID,$PlanetID,$Invade = false){
+	global $echo;
+	$echo = "";
+	$attacker = GetFleetOwner($FleetID);
+	$Planet = GetPlanet($PlanetID);
+	$defender = $Planet->PlayerID;
+	// This function executes a sequence of functions to attack a planet untill either
+	// the attacking fleet is destroyed or the planet is rendered defenceless.
+	$echo .= "Beginning Battle<br/>";
+	
+/*	if(EnemyFleetsInOrbit($attacker,$PlanetID){ //Planet has orbiting fleets
+		$enemy_fleets = GetEnemyFleetsInOrbit($attacker,$PlanetID);
+		foreach($enemy_fleets as $k=>$fleet){
+			Fleetbattle($FleetID,$fleet->FleetID);
+			if(!HasShipsLeft($FleetID))
+				break;
+		}
+	}
+	*/
+	while(HasShipsLeft($FleetID)&&HasDefencesLeft($PlanetID)){
+		if(PlanetFires($PlanetID,$FleetID)){
+			FleetFires($FleetID,$PlanetID);
+		}
+	}
+	$echo .= "Battle over<br/>";
+	$winner = "";
+	if(HasShipsLeft($FleetID)){
+		$echo .= "Attacker Wins";
+		$winner = $attacker;
+		if($Invade){
+			Invade($PlanetID,$attacker);
+			$echo .= "<br/>Planet Invaded";
+			Report($attacker,5,$PlanetID);
+			Report($defender,6,$PlanetID);
+		}
+	}else{
+		$echo .= "Defender Wins";
+		$winner = $defender;
+	}
+	
+	$sql = "INSERT INTO battles(PlanetID,Defender,Attacker,Winner,Date) VALUES('$PlanetID','".$defender."','".$attacker."','$winner',NOW())";
+	$res=mysql_query($sql);
+	$id = mysql_insert_id();
+	$fp = fopen("userdata/battles/".$id.".txt","w") or die("Error writing file");
+	fwrite($fp,$echo,strlen($echo));
+	fclose($fp);
+	
+	$sql = "UPDATE battles SET LogFile = '".$id.".txt' WHERE(BattleID = '".$id."')";
+	$res=mysql_query($sql);
+	
+	Report($attacker,4,$id);
+	Report($defender,4,$id);
+}
+
+function PlanetFires($PlanetID,$FleetID){	
+	global $echo;
+
+	$rhit = rand(1,3); // 1 in 3 chance of hitting the fleet
+	if($rhit==1){
+		$echo .= "Planet Fires!<br/>";
+		$weapons = GetWeapons($PlanetID);
+		foreach($weapons as $k=>$weapon){
+		///	echo "Grabbing Weapon";
+			if(HasShipsLeft($FleetID)){
+				$ship = GetRandomShip($FleetID);
+				$query = "SELECT HP,Name FROM ships WHERE(ShipID = '$ship')";
+				$notresult = mysql_query($query) or die(mysql_error());
+				$row = mysql_fetch_object($notresult);
+				if($weapon->HP>=$row->HP){
+					DestroyShip($ship,1);
+					$echo .= "The ship '".$row->Name."' was destroyed<br/>";
+				}else{
+					$new_hp = $row->HP - $weapon->HP;
+					$nquery = "UPDATE ships SET HP = '$new_hp' WHERE(ShipID = '".$ship."')";
+					$nresult = mysql_query($nquery) or die(mysql_error());
+					$echo .= "The ship '".$row->Name."' was damaged - HP: ".$new_hp."<br/>";
+				}
+			}else{
+				break;
+			}
+		}
+	}else{
+		$echo .= "Planet missed target.<br/>";
+	}
+	return HasShipsLeft($FleetID);
+}
+
+function FleetFires($FleetID,$PlanetID){
+	global $echo;
+	$echo .= "Fleet Firing<br/>";
+	if(HasShields($PlanetID)){
+		//echo "Has Shields, Firing....<br/>";
+		$ships = GetShipArray($FleetID);
+		foreach($ships as $k=>$ship){
+			//echo "Ship Firing<br/>";
+			if(HasShields($PlanetID)){
+				$shield = GetRandomShield($PlanetID);
+				$sql= "SELECT * FROM buildings WHERE(BuildingID = '$shield')";
+				$rescount=mysql_query($sql);
+				$row = mysql_fetch_object($rescount);
+				$typestring = GetGridContentString($row->Type);
+				if($ship->AP>=$row->HP){
+					$sql= "DELETE FROM buildings WHERE(BuildingID = '$shield')";
+					$rescount=mysql_query($sql);
+					$echo .= $typestring." in grid ".$row->GridSquare." was Destroyed<br/>";
+				}else{
+					$new_hp = $row->HP - $ship->AP;
+					$diff  = $row->HP - $new_hp;
+					$nquery = "UPDATE buildings SET HP = '$new_hp' WHERE(BuildingID = '".$shield."')";
+					$nresult = mysql_query($nquery) or die(mysql_error());
+					$echo .= $typestring." in grid ".$row->GridSquare." was Damaged - HP: ".$new_hp."<br/>";
+					Collateral($PlanetID,$diff,$shield);
+				}
+			}else{
+				break;
+			}			
+		}
+	}else{
+		//echo "Has weapons, Firing....<br/>";
+		$ships = GetShipArray($FleetID);
+		foreach($ships as $k=>$ship){
+			//echo "Ship Firing<br/>";
+			if(HasWeapons($PlanetID)){
+				$shield = GetRandomWeapon($PlanetID);
+				$sql= "SELECT * FROM buildings WHERE(BuildingID = '$shield')";
+				$rescount=mysql_query($sql);
+				$row = mysql_fetch_object($rescount);
+				$typestring = GetGridContentString($row->Type);
+				if($ship->AP>=$row->HP){
+					$sql= "DELETE FROM buildings WHERE(BuildingID = '$shield')";
+					$rescount=mysql_query($sql);
+					$echo .= $typestring." in grid ".$row->GridSquare." was Destroyed<br/>";
+				}else{
+					$new_hp = $row->HP - $ship->AP;
+					$nquery = "UPDATE buildings SET HP = '$new_hp' WHERE(BuildingID = '".$shield."')";
+					$nresult = mysql_query($nquery) or die(mysql_error());
+					$echo .= $typestring." in grid ".$row->GridSquare." was Damaged<br/>";
+				}
+			}else{
+				break;
+			}			
+		}
+	}
+}
+
+function Collateral($PlanetID,$Damage,$Exclude){
+	global $echo;
+	$total_count = 0;
+	$sql= "SELECT COUNT(*) AS count FROM buildings WHERE(PlanetID = '$PlanetID')";
+	$rescount=mysql_query($sql);
+	if ($rescount){
+		if ($rowcount = mysql_fetch_object($rescount)){
+			$total_count = $rowcount->count;
+		}
+	}
+	$t_damage = round($Damage/$total_count,0);
+	
+	$sql= "SELECT * FROM buildings WHERE(PlanetID = '$PlanetID')";
+	$rescount=mysql_query($sql);
+	$row = mysql_fetch_object($rescount);
+	if(($row->BuildingID != $Exclude) && ($t_damage>0)){
+		$typestring = GetGridContentString($row->Type);
+		if($t_damage>=$row->HP){
+			$sql= "DELETE FROM buildings WHERE(BuildingID = '".$row->BuildingID."')";
+			$rescount=mysql_query($sql);
+			$echo .= $typestring." in grid ".$row->GridSquare." was Destroyed by collateral<br/>";
+		}else{
+			$new_hp = $row->HP - $t_damage;
+			$nquery = "UPDATE buildings SET HP = '$new_hp' WHERE(BuildingID = '".$row->BuildingID."')";
+			$nresult = mysql_query($nquery) or die(mysql_error());
+			$echo .= $typestring." in grid ".$row->GridSquare." was Damaged by collateral<br/>";
+		}
+	}
+}
+
+function FleetBattle($Fleet1, $Fleet2){
+	global $echo;
+	$echo .= "Battle beginning between fleets '".GetFleetName($Fleet1)."' and '".GetFleetName($Fleet2)."'<br/>";
+	$next = $Fleet1;
+	$other = $Fleet2;
+	while(HasShipsLeft($Fleet1)&&HasShipsLeft($Fleet2)){	
+		$ships = GetShips($next);
+		foreach($ships as $k=>$ship){	
+			$tid = GetRandomShip($other);
+			if($tid==""){
+				break;
+			}
+			$target = GetShip($tid);
+			$typestring = GetShipTypeString($target->ShipID);
+			if($ship->AP>=$target->HP){
+				$sql= "DELETE FROM ships WHERE(ShipID = '".$target->ShipID."')";
+				$rescount=mysql_query($sql);
+				$echo .= "The ".$typestring." ".$target->Name." was Destroyed<br/>";
+			}else{
+				$new_hp = $target->HP - $ship->AP;
+				$nquery = "UPDATE ships SET HP = '$new_hp' WHERE(ShipID = '".$target->ShipID."')";
+				$nresult = mysql_query($nquery) or die(mysql_error());
+				$echo .= "The ".$typestring." ".$target->Name." was Damaged<br/>";
+			}
+		}
+		$temp = $next;
+		$next = $other;
+		$other = $temp;
+	}
+}
+
+function HasShipsLeft($FleetID){
+
+	$total_count = 0;
+	$sql= "SELECT COUNT(*) AS count FROM ships WHERE(FleetID = '$FleetID')";
+	$rescount=mysql_query($sql);
+	if ($rescount){
+		if ($rowcount = mysql_fetch_object($rescount)){
+		//echo "a<br/>";
+			$total_count = $rowcount->count;
+		}
+	}
+	//echo $total_count." ships remaining [$FleetID]<br/>";
+	if($total_count>0){
+		return true;
+	}
+	return false;
+}
+
+function DropFleetHPByPercentage($FleetID,$Cent){
+	global $echo;
+	$query = "SELECT ShipID,HP,Type FROM ships WHERE(FleetID = '$FleetID')";
+	$notresult = mysql_query($query) or die(mysql_error());
+	while($row = mysql_fetch_object($notresult)){
+		$s_cent = (GetShipTypeDefaultHP($row->Type)/100)*$Cent;
+		if($s_cent>=$row->HP){
+			$name = GetShipName($row->ShipID);
+			DestroyShip($row->ShipID,1);
+			$echo .= "The ship '".$name."' was destroyed<br/>";
+		}else{
+			$new_hp = $row->HP - $s_cent;
+			$nquery = "UPDATE ships SET HP = '$new_hp' WHERE(ShipID = '".$row->ShipID."')";
+			$nresult = mysql_query($nquery) or die(mysql_error());
+			$echo .= "The ship '".GetShipName($row->ShipID)."' was damaged<br/>";
+		}
+	}
+	if(!HasShipsLeft($FleetID)){
+		$sql= "DELETE FROM fleets WHERE(FleetID = '$FleetID')";
+		$rescount=mysql_query($sql);
+		$echo .= "Attacking fleet destroyed!<br/>";
+	}
+}
+
+function GetShipTypeDefaultHP($Type){
+	$query = "SELECT HP FROM ship_types WHERE(Type = '$Type')";
+	$notresult = mysql_query($query) or die(mysql_error());
+	$row = mysql_fetch_object($notresult);
+	return $row->HP;
+}
+
+function GetShipTypeDefaultAP($Type){
+	$query = "SELECT AP FROM ship_types WHERE(Type = '$Type')";
+	$notresult = mysql_query($query) or die(mysql_error());
+	$row = mysql_fetch_object($notresult);
+	return $row->AP;
+}
+
+function EnemyFleetsInOrbit($PlayerID,$PlanetID){
+	$total_count = 0;
+	$sql= "SELECT COUNT(*) AS count FROM fleets WHERE(PlayerID <> '$PlayerID' AND PlanetID = '$PlanetID')";
+	$rescount=mysql_query($sql);
+	if ($rescount){
+		if ($rowcount = mysql_fetch_object($rescount)){
+			$total_count = $rowcount->count;
+		}
+	}
+	if($total_count>0){
+		return true;
+	}
+	return false;
+}
+
+function GetEnemyFleetsInOrbit($PlayerID,$PlanetID){
+	$fleets = array();
+	$query = "SELECT FleetID,Destination,PlayerID FROM fleets WHERE (PlayerID <> '$PlayerID')";
+	$notresult = mysql_query($query) or die(mysql_error());
+	while($row = mysql_fetch_object($notresult)){
+		if($row->Location=="P:".$PlanetID){
+			$fleets[] = GetFleet($row->FleetID);
+		}
+	}
+	return $fleets;
+}
+
+function GetIncomingEnemyFleets($PlayerID){
+	global $username;
+	$fleets = array();
+	$query = "SELECT FleetID,Destination,PlayerID FROM fleets WHERE (PlayerID <> '$PlayerID')";
+	$notresult = mysql_query($query) or die(mysql_error());
+	while($row = mysql_fetch_object($notresult)){
+		if($row->Destination!=""){
+			$target = substr($row->Destination,2,strlen($row->Destination)-2);
+			if(OwnsPlanet($username,$target)){
+				$fleets[] = GetFleet($row->FleetID);
+			}
+		}
+	}
+	return $fleets;
+}
+
+?>
