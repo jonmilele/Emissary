@@ -36,7 +36,7 @@ if(!IsPlanet(($_GET['id'] ?? ""))){
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
-<title>Planet: <?php echo GetPlanetNameFromID($PlanetID); ?></title>
+<title>Planet: <?php echo h(GetPlanetNameFromID($PlanetID)); ?></title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <link href="style.css" rel="stylesheet" type="text/css">
 <?php if(isset($_GET['dorefresh'])){
@@ -51,7 +51,7 @@ if(!IsPlanet(($_GET['id'] ?? ""))){
 include("header.inc.php");
 ?>
 
-<h2>Planet: <?php echo GetPlanetNameFromID($PlanetID); ?>
+<h2>Planet: <?php echo h(GetPlanetNameFromID($PlanetID)); ?>
 <?php if($edit && IsHomePlanet(GetPlayerIDFromName($username), $PlanetID)): ?>
  <strong style="color:#FFFF00;">[Home World]</strong>
 <?php endif; ?>
@@ -59,7 +59,7 @@ include("header.inc.php");
 <div class="side"> 
   <div class="panel" style="width:250px;"> 
     <h3>Basic Stats</h3>
-    System: <a href="system.php?id=<?php echo $Planet->System; ?>"><?php echo GetSystemNameFromID($Planet->System); ?></a><br/>
+    System: <a href="system.php?id=<?php echo $Planet->System; ?>"><?php echo h(GetSystemNameFromID($Planet->System)); ?></a><br/>
     Size: <?php echo $Planet->Size; ?><br/>
     Owner: <?php echo PlayerProfileLink($Planet->PlayerID); ?><br/>
   </div>
@@ -110,7 +110,7 @@ if($edit){?>
   <div class="panel" style="width:250px;">
     <h3>Under Construction</h3>
     <?php while($crow = mysqli_fetch_object($cres)){ ?>
-    <p><a href="building.php?planet=<?php echo $PlanetID; ?>&id=<?php echo $crow->Grid; ?>">Grid <?php echo $crow->Grid; ?>: <?php echo GetGridContentString($crow->Type); ?></a><br/>
+    <p><a href="building.php?planet=<?php echo $PlanetID; ?>&id=<?php echo $crow->Grid; ?>">Grid <?php echo $crow->Grid; ?>: <?php echo h(GetGridContentString($crow->Type)); ?></a><br/>
       <small>Time left: <?php echo $crow->TTF; ?> min</small></p>
     <?php } ?>
   </div>
@@ -126,7 +126,7 @@ if(YourFleetsInOrbit($PlanetID)>0){
   $Fleets = ListYourFleetsInOrbit($PlanetID);
   foreach($Fleets as $k=>$Fleet){
   ?>
-      <li> <a href="fleet.php?id=<?php echo $Fleet->FleetID; ?>"><?php echo GetFleetName($Fleet->FleetID); ?></a><br/>
+      <li> <a href="fleet.php?id=<?php echo $Fleet->FleetID; ?>"><?php echo h(GetFleetName($Fleet->FleetID)); ?></a><br/>
         Actions:<br/>
         <?php if(CanColonise($PlanetID,$Fleet->FleetID)){ ?>
         <form method="post" action="planet.php" style="display:inline;">
@@ -156,7 +156,7 @@ if(YourFleetsInOrbit($PlanetID)>0){
         <?php
 	foreach($Fleets as $k=>$Fleet){
 	?>
-        <option value="<?php echo $Fleet->FleetID ?>" selected><?php echo GetFleetName($Fleet->FleetID); ?></option>
+        <option value="<?php echo $Fleet->FleetID ?>" selected><?php echo h(GetFleetName($Fleet->FleetID)); ?></option>
         <?php } //fleet foreach ?>
       </select>
       <select name="strat" id="strat">

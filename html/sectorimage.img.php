@@ -1,7 +1,7 @@
 <?php
-include("authenticate.inc.php");
-include("connect.inc.php");
-include_once("userfunctions.inc.php");
+include(__DIR__ . "/authenticate.inc.php");
+include(__DIR__ . "/connect.inc.php");
+include_once(__DIR__ . "/userfunctions.inc.php");
 $SectorID = ($_GET['id'] ?? "");
 $Systems = GetSystemsInSector($SectorID);
 

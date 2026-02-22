@@ -114,7 +114,7 @@ Some hardening has been done, but significant work remains — this is 2004 code
 
 **Still needed:**
 - **SQL injection everywhere** — every query uses string interpolation instead of prepared statements
-- **XSS** — user-supplied values (messages, fleet names, ship names) are echoed without escaping
+- ~~**XSS** — user-supplied values (messages, fleet names, ship names) are echoed without escaping~~ *(fixed — added `h()` helper wrapping `htmlspecialchars()` across all page files, include files, and HTML-building functions)*
 - **Unauthenticated dev tools** — `giveplanetships.php` and `simulatebattle.php` have no login check and are publicly accessible
 - ~~**Missing ownership checks** — fleet actions don't verify the logged-in player owns the fleet; any player can move, rename, or delete any fleet~~ *(fixed — fleet ownership checks added)*
 - **Dangerous DELETE queries** — building demolish/cancel queries are missing a planet ID filter and can affect buildings on other planets
@@ -126,10 +126,10 @@ Some hardening has been done, but significant work remains — this is 2004 code
 
 - ~~`DestroyShip()` references the wrong variable (`$res` instead of `$rescount`) — always fails~~ *(fixed)*
 - Fleet AP display calls the HP function instead — shows HP for both stats
-- Building ownership check uses a bare word `(edit)` instead of the variable `($edit)` — always passes
+- ~~Building ownership check uses a bare word `(edit)` instead of the variable `($edit)` — always passes~~ *(fixed)*
 - Building demolish/cancel queries are missing `AND PlanetID` in the WHERE clause
 - The cron colonise branch references undefined `$PlanetID` and `$PlayerID` variables
-- `HasShipyard()` uses `$username` without a `global` declaration
+- ~~`HasShipyard()` uses `$username` without a `global` declaration~~ *(fixed)*
 - ~~Trade page has a missing `$` on `Mineral` — evaluates as a string constant instead of a variable~~ *(fixed)*
 - `FleetBattle()` tries to iterate a `ShipBundle` object as a flat array
 - `chooserace.php` calls `StageTwo()` without the required `$username` argument
@@ -187,7 +187,7 @@ All building and ship stat values are estimates — the originals were not recov
 - ~~Some game data (known systems, battle logs) stored as flat files instead of in the database~~ *(fixed — all migrated to DB: `battles.Log` TEXT column, `known_systems` table, `game_settings` key-value table)*
 - Zero automated tests — debug scripts (`simulatebattle.php`, `fleettest.php`) used instead
 - No CI/CD pipeline
-- Some image generators still use relative paths (`planetimage.img.php`, `shieldcount.img.php`)
+- ~~Some image generators still use relative paths (`planetimage.img.php`, `shieldcount.img.php`)~~ *(fixed — all six `.img.php` generators now use `__DIR__` for includes and image file paths)*
 
 ## Quick Start
 

@@ -77,14 +77,14 @@ $CurrentPlanet = 0;
 ?><!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
-<title>Fleet: <?php echo GetFleetName($FleetID); ?></title>
+<title>Fleet: <?php echo h(GetFleetName($FleetID)); ?></title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <link href="style.css" rel="stylesheet" type="text/css">
 </head>
 
 <body>
 <?php include("header.inc.php");?>
-<h2>Fleet: <?php echo GetFleetName($FleetID); ?></h2>
+<h2>Fleet: <?php echo h(GetFleetName($FleetID)); ?></h2>
 <div class="side"><div class="panel" style="width:250;">
 <p> Fleet Size: <?php echo $Fleet->Size; ?> </p>
     <p>Location: <?php echo GetFleetLocationString($FleetID); ?></p>
@@ -129,7 +129,7 @@ $CurrentPlanet = 0;
   if(sizeof($Fleet->Ships->Transports)>0){
  	 foreach($Fleet->Ships->Transports as $k=>$Ship){ 
 	  ?>
-	  - <?php echo $Ship->Name; ?>
+	  - <?php echo h($Ship->Name); ?>
 	  <?php
 	  }
   }
@@ -140,7 +140,7 @@ $CurrentPlanet = 0;
   if(sizeof($Fleet->Ships->Colonisers)>0){
  	 foreach($Fleet->Ships->Colonisers as $k=>$Ship){ 
 	  ?>
-	  - <?php echo $Ship->Name; ?><br/>
+	  - <?php echo h($Ship->Name); ?><br/>
 	  <?php
 	  }
   }
@@ -150,7 +150,7 @@ $CurrentPlanet = 0;
   if(sizeof($Fleet->Ships->Frigates)>0){
  	 foreach($Fleet->Ships->Frigates as $k=>$Ship){ 
 	  ?>
-	  - <?php echo $Ship->Name; ?><br/>
+	  - <?php echo h($Ship->Name); ?><br/>
 	  <?php
 	  }
   }
@@ -160,7 +160,7 @@ $CurrentPlanet = 0;
   if(sizeof($Fleet->Ships->Cruisers)>0){
  	 foreach($Fleet->Ships->Cruisers as $k=>$Ship){ 
 	  ?>
-	  - <?php echo $Ship->Name; ?><br/>
+	  - <?php echo h($Ship->Name); ?><br/>
 	  <?php
 	  }
   }
@@ -170,7 +170,7 @@ $CurrentPlanet = 0;
   if(sizeof($Fleet->Ships->Warships)>0){
  	 foreach($Fleet->Ships->Warships as $k=>$Ship){ 
 	  ?>
-	  - <?php echo $Ship->Name; ?><br/>
+	  - <?php echo h($Ship->Name); ?><br/>
 	  <?php
 	  }
   }
@@ -180,7 +180,7 @@ $CurrentPlanet = 0;
   if(sizeof($Fleet->Ships->Motherships)>0){
  	 foreach($Fleet->Ships->Motherships as $k=>$Ship){ 
 	  ?>
-	  - <?php echo $Ship->Name; ?><br/>
+	  - <?php echo h($Ship->Name); ?><br/>
 	  <?php
 	  }
   }
@@ -190,7 +190,7 @@ $CurrentPlanet = 0;
   if(sizeof($Fleet->Ships->Fighters)>0){
  	 foreach($Fleet->Ships->Fighters as $k=>$Ship){ 
 	  ?>
-	  - <?php echo $Ship->Name; ?><br/>
+	  - <?php echo h($Ship->Name); ?><br/>
 	  <?php
 	  }
   }

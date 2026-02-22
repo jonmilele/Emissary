@@ -52,11 +52,11 @@ switch($Auction->Code){
 }
 ?>
 <p>Lot: <?php echo $lot; ?><br>
-  Seller: <?php echo GetPlayerNameFromID($Auction->Seller); ?><br>
+  Seller: <?php echo h(GetPlayerNameFromID($Auction->Seller)); ?><br>
   Start Time: <?php echo date("F j, H:i",$Auction->StartTime); ?><br>
   Ends: <?php echo date("F j, H:i",$end); ?><br>
   Start Bid: <?php echo $Auction->StartBid; ?><br>
-  Highest Bid: <?php echo $Auction->CurrentBid; ?> by <?php echo GetPlayerNameFromID($Auction->HighBidder); ?></p>
+  Highest Bid: <?php echo $Auction->CurrentBid; ?> by <?php echo h(GetPlayerNameFromID($Auction->HighBidder)); ?></p>
 <form name="form1" method="post">
   Bid:
 <input name="bid" type="text" value="<?php echo $Auction->CurrentBid*1.1; ?>" size="7">

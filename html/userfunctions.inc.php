@@ -1,5 +1,8 @@
 <?php
 
+// HTML escaping shorthand
+function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+
 include_once("fleetfunctions.inc.php");
 include_once("planetfunctions.inc.php");
 include_once("buildingfunctions.inc.php");
@@ -571,17 +574,17 @@ function ClearHomePage(){
 
 function PlayerProfileLink($PlayerID){
 	if($PlayerID>0){
-		return "<a href=\"player.php?id=".$PlayerID."\">".GetPlayerNameFromID($PlayerID)."</a>";
+		return "<a href=\"player.php?id=".(int)$PlayerID."\">".h(GetPlayerNameFromID($PlayerID))."</a>";
 	}
 	else{
-		return GetPlayerNameFromID($PlayerID);
+		return h(GetPlayerNameFromID($PlayerID));
 	}
 }
 
 function PrintMessage($msg){
 	if(!empty($msg)){
 		echo "<div class=\"message\">";
-		echo $msg;
+		echo h($msg);
 		echo "</div>";
 	}
 }

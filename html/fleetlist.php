@@ -49,14 +49,14 @@ foreach($_fleets as $fl){
 	$locStr = '';
 	if($loc !== ''){
 		$id = (int)substr($loc,2);
-		if(substr($loc,0,2)==='P:') $locStr = 'Orbiting <a href="planet.php?id='.$id.'">' . ($_pNames[$id] ?? 'Unknown') . '</a>';
-		elseif(substr($loc,0,2)==='S:') $locStr = 'In <a href="system.php?id='.$id.'">' . ($_sNames[$id] ?? 'Unknown') . '</a> System';
+		if(substr($loc,0,2)==='P:') $locStr = 'Orbiting <a href="planet.php?id='.$id.'">' . h($_pNames[$id] ?? 'Unknown') . '</a>';
+		elseif(substr($loc,0,2)==='S:') $locStr = 'In <a href="system.php?id='.$id.'">' . h($_sNames[$id] ?? 'Unknown') . '</a> System';
 		elseif(substr($loc,0,2)==='X:') $locStr = 'In Sector <a href="sector.php?id='.$id.'">'.$id.'</a>';
 	} elseif($dest !== ''){
 		$did = (int)substr($dest,2);
-		$dname = $_pNames[$did] ?? 'Unknown';
+		$dname = h($_pNames[$did] ?? 'Unknown');
 		$strat = ['','for colonisation','to attack','to invade'][$fl->Strategy] ?? '';
-		$locStr = 'Moving to <a href="planet.php?id='.$did.'">'.$dname.'</a>' . ($strat ? ' '.$strat : '') . ' - ETA: '.$fl->TTF.' min';
+		$locStr = 'Moving to <a href="planet.php?id='.$did.'">'.$dname.'</a>'
 	}
 ?>
 <p><a href="fleet.php?id=<?php echo $fl->FleetID; ?>"><?php echo htmlspecialchars($name); ?></a> - <?php echo $locStr; ?></p>

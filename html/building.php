@@ -195,21 +195,21 @@ if(!IsPlanet(($_GET['planet'] ?? ""))){
 ?><!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
-<title><?php echo GetPlanetNameFromID($PlanetID); ?> - Grid: <?php echo $Grid; ?></title>
+<title><?php echo h(GetPlanetNameFromID($PlanetID)); ?> - Grid: <?php echo $Grid; ?></title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <link href="style.css" rel="stylesheet" type="text/css">
 </head>
 
 <body>
 <?php include("header.inc.php");?>
-<p>Return to: <a href="planet.php?id=<?php echo $PlanetID; ?>"><?php echo GetPlanetNameFromID($PlanetID); ?></a></p>
+<p>Return to: <a href="planet.php?id=<?php echo $PlanetID; ?>"><?php echo h(GetPlanetNameFromID($PlanetID)); ?></a></p>
 <h2>Grid: <?php echo $Grid; ?> </h2>
 <?php if(ConstructingBuilding($PlanetID,$Grid))
 {
 $bldg = BuildingUnderConstruction($PlanetID,$Grid);
 ?>
 <div class="panel" style="width:400px;">
-  <p>Constructing: <?php echo GetGridContentString($bldg["Type"]); ?><br>
+  <p>Constructing: <?php echo h(GetGridContentString($bldg["Type"])); ?><br>
     Time Left: <?php echo $bldg["TTF"]; ?> minutes </p>
   <?php
   $cq = "SELECT Metal, Mineral, Astrium, Turns FROM building_types WHERE(Type = '".$bldg["Type"]."')";
@@ -233,7 +233,7 @@ $bldg = BuildingUnderConstruction($PlanetID,$Grid);
   </form></p>
 </div>
 <?php }else{ ?>
-<p>This grid contains: <?php echo GetGridContentString($GridContents); ?></p>
+<p>This grid contains: <?php echo h(GetGridContentString($GridContents)); ?></p>
 <?php if(($GridContents>0)&&($edit)){?>
 <p>HP: <?php echo $hp."/".$default_hp; ?>
   [<form method="post" action="building.php" style="display:inline;">
@@ -282,7 +282,7 @@ $bldg = BuildingUnderConstruction($PlanetID,$Grid);
     <input type="hidden" name="grid" value="<?php echo $Grid; ?>">
     <input type="hidden" name="building_type" value="<?php echo $row->Type; ?>">
     <?php echo csrf_token(); ?>
-    <p style="margin:2px 0;"><button type="submit" onclick="return confirm('Build <?php echo $row->Name; ?> for <?php echo $cost; ?>?');" style="background:none;border:none;color:inherit;cursor:pointer;padding:0;font:inherit;text-decoration:underline;"><strong><?php echo $row->Name; ?></strong></button>
+    <p style="margin:2px 0;"><button type="submit" onclick="return confirm('Build <?php echo h($row->Name); ?> for <?php echo $cost; ?>?');" style="background:none;border:none;color:inherit;cursor:pointer;padding:0;font:inherit;text-decoration:underline;"><strong><?php echo h($row->Name); ?></strong></button>
     — <?php echo $cost; ?> — <?php echo $row->Turns; ?> turn(s)<br/>
     <small><?php echo $stats; ?><?php if($desc){ echo ' — ' . $desc; } ?></small></p>
   </form>

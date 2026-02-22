@@ -90,11 +90,11 @@ function GetFleetLocationString($FleetID){
 	if($row->Location!=""){
 		switch(substr($row->Location,0,1)){
 			// Passed in format:- S:1, P:13, X:9-G:1
-			case "S": // System
-				$return = "In <a href=\"system.php?id=".substr($row->Location,2,strlen($row->Location))."\">".GetSystemNameFromID(substr($row->Location,2,strlen($row->Location)))."</a> System";
+		case "S": // System
+				$return = "In <a href=\"system.php?id=".substr($row->Location,2,strlen($row->Location))."\">".h(GetSystemNameFromID(substr($row->Location,2,strlen($row->Location))))."</a> System";
 				break;
 			case "P": // Planet
-				$return = "Orbiting <a href=\"planet.php?id=".substr($row->Location,2,strlen($row->Location))."\">".GetPlanetNameFromID(substr($row->Location,2,strlen($row->Location)))."</a>";
+				$return = "Orbiting <a href=\"planet.php?id=".substr($row->Location,2,strlen($row->Location))."\">".h(GetPlanetNameFromID(substr($row->Location,2,strlen($row->Location))))."</a>";
 				break;
 			case "X": // Sector
 				$return = "In Sector <a href=\"sector.php?id=".substr($row->Location,2,strlen($row->Location))."\">".substr($row->Location,2,strlen($row->Location))."</a>";
@@ -117,7 +117,7 @@ function GetFleetLocationString($FleetID){
 				$post = " to invade";
 				break;
 		}
-		$return = "Moving to <a href=\"planet.php?id=".substr($row->Destination,2,strlen($row->Destination))."\">".GetPlanetNameFromID(substr($row->Destination,2,strlen($row->Destination)))."</a>".$post." - ETA: ".$eta;
+		$return = "Moving to <a href=\"planet.php?id=".substr($row->Destination,2,strlen($row->Destination))."\">".h(GetPlanetNameFromID(substr($row->Destination,2,strlen($row->Destination))))."</a>".$post." - ETA: ".$eta;
 	}
 	return $return;
 }
@@ -1032,12 +1032,12 @@ function PlanetFires($PlanetID,$FleetID){
 				$row = mysqli_fetch_object($notresult);
 				if($weapon->HP>=$row->HP){
 					DestroyShip($ship,1);
-					$echo .= "The ship '".$row->Name."' was destroyed<br/>";
+					$echo .= "The ship '".h($row->Name)."' was destroyed<br/>";
 				}else{
 					$new_hp = $row->HP - $weapon->HP;
 					$nquery = "UPDATE ships SET HP = '$new_hp' WHERE(ShipID = '".$ship."')";
 					$nresult = mysqli_query($GLOBALS["conn"], $nquery) or die(mysqli_error($GLOBALS["conn"]));
-					$echo .= "The ship '".$row->Name."' was damaged - HP: ".$new_hp."<br/>";
+					$echo .= "The ship '".h($row->Name)."' was damaged - HP: ".$new_hp."<br/>";
 				}
 			}else{
 				break;
@@ -1141,7 +1141,7 @@ function Collateral($PlanetID,$Damage,$Exclude){
 
 function FleetBattle($Fleet1, $Fleet2){
 	global $echo;
-	$echo .= "Battle beginning between fleets '".GetFleetName($Fleet1)."' and '".GetFleetName($Fleet2)."'<br/>";
+	$echo .= "Battle beginning between fleets '".h(GetFleetName($Fleet1))."' and '".h(GetFleetName($Fleet2))."'<br/>";
 	$next = $Fleet1;
 	$other = $Fleet2;
 	while(HasShipsLeft($Fleet1)&&HasShipsLeft($Fleet2)){	
@@ -1156,12 +1156,12 @@ function FleetBattle($Fleet1, $Fleet2){
 			if($ship->AP>=$target->HP){
 				$sql= "DELETE FROM ships WHERE(ShipID = '".$target->ShipID."')";
 				$rescount=mysqli_query($GLOBALS["conn"], $sql);
-				$echo .= "The ".$typestring." ".$target->Name." was Destroyed<br/>";
+				$echo .= "The ".h($typestring)." ".h($target->Name)." was Destroyed<br/>";
 			}else{
-				$new_hp = $target->HP - $ship->AP;
+				$new_hp = $target->HP - $attacker->AP;
 				$nquery = "UPDATE ships SET HP = '$new_hp' WHERE(ShipID = '".$target->ShipID."')";
 				$nresult = mysqli_query($GLOBALS["conn"], $nquery) or die(mysqli_error($GLOBALS["conn"]));
-				$echo .= "The ".$typestring." ".$target->Name." was Damaged<br/>";
+				$echo .= "The ".h($typestring)." ".h($target->Name)." was Damaged<br/>";
 			}
 		}
 		$temp = $next;
@@ -1202,7 +1202,7 @@ function DropFleetHPByPercentage($FleetID,$Cent){
 			$new_hp = $row->HP - $s_cent;
 			$nquery = "UPDATE ships SET HP = '$new_hp' WHERE(ShipID = '".$row->ShipID."')";
 			$nresult = mysqli_query($GLOBALS["conn"], $nquery) or die(mysqli_error($GLOBALS["conn"]));
-			$echo .= "The ship '".GetShipName($row->ShipID)."' was damaged<br/>";
+			$echo .= "The ship '".h(GetShipName($row->ShipID))."' was damaged<br/>";
 		}
 	}
 	if(!HasShipsLeft($FleetID)){

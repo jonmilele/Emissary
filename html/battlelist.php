@@ -19,7 +19,7 @@ $sql = "SELECT * FROM battles WHERE(Attacker = '".$PlayerID."' OR Defender = '".
 $res = mysqli_query($GLOBALS["conn"], $sql);
 while($row = mysqli_fetch_object($res)){
 ?>
-<p><a href="battle.php?id=<?php echo $row->BattleID; ?>">The battle of <?php echo GetPlanetNameFromID($row->PlanetID); ?></a></p>
+<p><a href="battle.php?id=<?php echo $row->BattleID; ?>">The battle of <?php echo h(GetPlanetNameFromID($row->PlanetID)); ?></a></p>
 <?php
 }
 ?>

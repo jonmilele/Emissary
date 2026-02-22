@@ -36,7 +36,7 @@ include("header.inc.php");
 		if($stake["Count"]>1){
 			$s = "s";
 		}
-		echo "<li>".$stake["Name"]." [".$stake["Count"]." planet".$s."]</li>";
+		echo "<li>".h($stake["Name"])." [".$stake["Count"]." planet".$s."]</li>";
 	}
 	?></ul>
     <?php
@@ -44,13 +44,13 @@ $owner = CalcMajOwner($SectorID);
 if($owner ==0){
 	$strowner = "None";
 }else{
-	$strowner = "<a href=\"player.php?id=".$owner."\">".GetPlayerNameFromID($owner)."</a>";
+	$strowner = "<a href=\"player.php?id=".$owner."\">".h(GetPlayerNameFromID($owner))."</a>";
 }
 ?>
     Majority Owner: <?php echo $strowner; ?><br/>
 	<?php if($TeamID>0){?>
     Team Controlling:<br/>
-    <a href="team.php?id=<?php echo $TeamID; ?>"><?php echo TeamNameFromID($TeamID); ?></a></p>
+    <a href="team.php?id=<?php echo $TeamID; ?>"><?php echo h(TeamNameFromID($TeamID)); ?></a></p>
   <p><img src="teamcolour.img.php?id=<?php echo $TeamID; ?>"><br/>
   </p><?php }?>
 </div>

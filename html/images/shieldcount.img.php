@@ -1,10 +1,10 @@
 <?php 
-include("../connect.inc.php");
-include("../userfunctions.inc.php");
+include(__DIR__ . "/../connect.inc.php");
+include_once(__DIR__ . "/../userfunctions.inc.php");
 
 $PlanetID = ($_GET["id"] ?? "");
 
-$image = imagecreatefromjpeg('shield.jpg') or die("booboo");
+$image = imagecreatefromjpeg(__DIR__ . '/shield.jpg') or die("booboo");
 $bg = imagecolorallocate($image,255,255,255);
 $shields = CountShields($PlanetID);
 

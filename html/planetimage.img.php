@@ -1,13 +1,13 @@
 <?php
-include("authenticate.inc.php");
-include("connect.inc.php");
-include_once("userfunctions.inc.php");
+include(__DIR__ . "/authenticate.inc.php");
+include(__DIR__ . "/connect.inc.php");
+include_once(__DIR__ . "/userfunctions.inc.php");
 //$SectorID = ($_GET['id'] ?? "");
 //$Systems = GetSystemsInSector($SectorID);
 $PlanetID = ($_GET['id'] ?? "");
 $Planet = GetPlanet($PlanetID);
 
-$image = imagecreatefromjpeg("images/planets/".$Planet->Size.".jpg") or die("booboo");
+$image = imagecreatefromjpeg(__DIR__ . "/images/planets/".$Planet->Size.".jpg") or die("booboo");
 $width = imagesx($image);
 $height = imagesy($image);
 

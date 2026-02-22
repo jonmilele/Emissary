@@ -97,6 +97,7 @@ function CalculateBuildTime($PlanetID,$Type){
 }
 
 function HasShipyard($PlanetID){
+	global $username;
 	$total_count = 0;
 	$sql= "SELECT COUNT(*) AS count FROM buildings WHERE(PlanetID = '$PlanetID' AND PlayerID = '".GetPlayerIDFromName($username)."' AND Type = '4')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);

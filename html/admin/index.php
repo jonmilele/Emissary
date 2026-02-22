@@ -260,9 +260,9 @@ $players_result = mysqli_query($conn, "SELECT PlayerID, UserName, Email, TeamID,
 		<?php while($p = mysqli_fetch_object($players_result)): ?>
 		<tr>
 			<td><?php echo $p->PlayerID; ?></td>
-			<td><?php echo $p->UserName; ?></td>
+			<td><?php echo h($p->UserName); ?></td>
 			<td><?php echo $p->Email; ?></td>
-			<td><?php echo $p->TeamID > 0 ? TeamNameFromID($p->TeamID) : "-"; ?></td>
+			<td><?php echo $p->TeamID > 0 ? h(TeamNameFromID($p->TeamID)) : "-"; ?></td>
 			<td><?php echo $p->Metal; ?></td>
 			<td><?php echo $p->Mineral; ?></td>
 			<td><?php echo $p->Astrium; ?></td>

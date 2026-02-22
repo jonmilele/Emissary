@@ -45,7 +45,7 @@ if($Ships["Total"]>0){
 	 $Fleets = ListYourFleetsInOrbit($PlanetID);
 	 foreach($Fleets as $k=>$Fleet){
 	  ?>
-        <option value="<?php echo $Fleet->FleetID; ?>"><?php echo GetFleetName($Fleet->FleetID); ?></option>
+        <option value="<?php echo $Fleet->FleetID; ?>"><?php echo h(GetFleetName($Fleet->FleetID)); ?></option>
         <?php } ?>
       </select>
     </p>

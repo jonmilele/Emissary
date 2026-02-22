@@ -16,14 +16,14 @@ $Battle = GetBattle($BattleID);
 <body>
 <?php include("header.inc.php");?>
 <h1>Battle Report</h1>
-<h2>Planet: <?php echo GetPlanetNameFromID($Battle->PlanetID); ?></h2>
+<h2>Planet: <?php echo h(GetPlanetNameFromID($Battle->PlanetID)); ?></h2>
 <div class="side">
 <div class="panel">
     <h3>Battle Report</h3>
-    <p>Planet: <?php echo GetPlanetNameFromID($Battle->PlanetID); ?><br>
-      Attacker: <?php echo GetPlayerNameFromID($Battle->Attacker); ?><br>
-      Defender: <?php echo GetPlayerNameFromID($Battle->Defender); ?><br>
-      Winner: <?php echo GetPlayerNameFromID($Battle->Winner); ?></p>
+    <p>Planet: <?php echo h(GetPlanetNameFromID($Battle->PlanetID)); ?><br>
+      Attacker: <?php echo h(GetPlayerNameFromID($Battle->Attacker)); ?><br>
+      Defender: <?php echo h(GetPlayerNameFromID($Battle->Defender)); ?><br>
+      Winner: <?php echo h(GetPlayerNameFromID($Battle->Winner)); ?></p>
   </div>
 </div>
 <div class="planet">

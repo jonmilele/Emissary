@@ -17,7 +17,7 @@ include_once("userfunctions.inc.php");
 include("header.inc.php");
 ?>
 <p>Home</p>
-<p>Welcome <?php echo $username; ?>. [<a href="logout.back.php">Logout</a>]</p>
+<p>Welcome <?php echo h($username); ?>. [<a href="logout.back.php">Logout</a>]</p>
 <p>You control <?php echo GetNumberOfPlanets(GetPlayerIDFromName($username)); ?> 
   planet(s).</p>
   <div class="side">
@@ -45,7 +45,7 @@ if(sizeof($Fleets)>0){
 				$post = " to invade";
 				break;
 		}
-		echo GetFleetName($Fleet->FleetID)." sent by ".GetPlayerNameFromID($Fleet->PlayerID)." to ".GetPlanetNameFromID(substr($Fleet->Destination,2,strlen($Fleet->Destination)-2)).$post." - ETA: ".$Fleet->TTF." minute(s)<br/>";
+		echo h(GetFleetName($Fleet->FleetID))." sent by ".h(GetPlayerNameFromID($Fleet->PlayerID))." to ".h(GetPlanetNameFromID(substr($Fleet->Destination,2,strlen($Fleet->Destination)-2))).$post." - ETA: ".$Fleet->TTF." minute(s)<br/>";
 	}
 }
 

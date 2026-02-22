@@ -6,7 +6,7 @@ include_once("userfunctions.inc.php");
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
-<title><?php echo $username;?>'s Planets</title>
+<title><?php echo h($username);?>'s Planets</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <link href="style.css" rel="stylesheet" type="text/css">
 </head>
@@ -15,7 +15,7 @@ include_once("userfunctions.inc.php");
 <?php
 include("header.inc.php");
 ?>
-<h2><?php echo $username;?>'s Planets</h2>
+<h2><?php echo h($username);?>'s Planets</h2>
 <?php
 $myPID = GetPlayerIDFromName($username);
 $Planets = GetPlanetList($myPID);
@@ -68,7 +68,7 @@ foreach($Planets as $key=>$Planet){
 	$idleYards = $shipyards - $busyYards;
 ?>
 <div class="ship">
-<p><a href="planet.php?id=<?php echo $pid; ?>"><?php echo $Planet->Name; ?></a><?php if($_homePID == $pid): ?> <strong style="color:#FFFF00;">[Home]</strong><?php endif; ?><?php if($hasFleet){?>&nbsp;<img title="Has Fleets" align="absmiddle" src="images/ship.gif"><?php }?><?php if($shields > 0){?>&nbsp;<img title="Has Shields" align="absmiddle" src="images/shieldcount.img.php?id=<?php echo $pid; ?>"><?php }?><?php if($weapons > 0){?>&nbsp;<img align="absmiddle" src="images/weapon.gif"><?php } ?><br>
+<p><a href="planet.php?id=<?php echo $pid; ?>"><?php echo h($Planet->Name); ?></a><?php if($_homePID == $pid): ?> <strong style="color:#FFFF00;">[Home]</strong><?php endif; ?><?php if($hasFleet){?>&nbsp;<img title="Has Fleets" align="absmiddle" src="images/ship.gif"><?php }?><?php if($shields > 0){?>&nbsp;<img title="Has Shields" align="absmiddle" src="images/shieldcount.img.php?id=<?php echo $pid; ?>"><?php }?><?php if($weapons > 0){?>&nbsp;<img align="absmiddle" src="images/weapon.gif"><?php } ?><br>
 <?php if($uTotal > 0){ echo $uTotal." Unassigned Ship(s)<br/>"; } ?>
 <?php if($weapons > 0){ echo $weapons; ?> weapon(s) - <?php echo $_bldCounts[$pid][7] ?? 0; ?> Pulse Cannons, <?php echo $_bldCounts[$pid][9] ?? 0; ?> Missile Silos<br/><?php }?>
 <?php if($shipyards > 0){ echo $shipyards; ?> shipyard(s) - <?php if($idleYards > 0){ echo $idleYards."/".$shipyards; ?> idle<?php }else{?><span style="color: #FF0000;">All Busy</span><?php }?><br/><?php }?>
