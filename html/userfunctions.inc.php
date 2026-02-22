@@ -232,7 +232,7 @@ function GetSystem($SystemID){
 
 function CheckSystemMajOwner($SystemID){
 	$Players = array();
-	$query = "SELECT * FROM planets WHERE(System='$SystemID')";
+	$query = "SELECT * FROM planets WHERE(`System`='$SystemID')";
 
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	while($row = mysqli_fetch_object($notresult)){
@@ -270,7 +270,7 @@ function PlanetsInSystem($SystemID){
 	$total_count = 0;
 
 	//echo $filterdate." ";
-	$sql= "SELECT COUNT(*) AS count FROM planets WHERE(System = '$SystemID')";
+	$sql= "SELECT COUNT(*) AS count FROM planets WHERE(`System` = '$SystemID')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	if ($rescount)
 		if ($rowcount = mysqli_fetch_object($rescount))
@@ -281,7 +281,7 @@ function PlanetsInSystem($SystemID){
 function ListPlanetsInSystem($SystemID){
 $Planets = array();
 	
-	$query = "SELECT * FROM planets WHERE(System='$SystemID') ORDER BY Orbit ASC";
+	$query = "SELECT * FROM planets WHERE(`System`='$SystemID') ORDER BY Orbit ASC";
 
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	while($row = mysqli_fetch_object($notresult)){
@@ -510,7 +510,7 @@ function GetSectorStakeHolders($SectorID){
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	while($row = mysqli_fetch_object($rescount)){
 		//echo "s,";
-		$sql= "SELECT * FROM planets WHERE(System = '".$row->SystemID."')";
+		$sql= "SELECT * FROM planets WHERE(`System` = '".$row->SystemID."')";
 		$res=mysqli_query($GLOBALS["conn"], $sql);
 		while($row2 = mysqli_fetch_object($res)){
 			if($row2->PlayerID!=0){
@@ -530,7 +530,7 @@ function ListSectorStakeHolders($SectorID){
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	while($row = mysqli_fetch_object($rescount)){
 		//echo "s,";
-		$sql= "SELECT * FROM planets WHERE(System = '".$row->SystemID."')";
+		$sql= "SELECT * FROM planets WHERE(`System` = '".$row->SystemID."')";
 		$res=mysqli_query($GLOBALS["conn"], $sql);
 		while($row2 = mysqli_fetch_object($res)){
 			if($row2->PlayerID!=0){

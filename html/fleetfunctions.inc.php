@@ -510,12 +510,12 @@ function SameSystem($Planet1,$Planet2){
 	$Planet1 = substr($Planet1,2,strlen($Planet1)-2);
 	$Planet2 = substr($Planet2,2,strlen($Planet2)-2);
 	
-	$sql = "SELECT System FROM planets WHERE(PlanetID = '$Planet1')";
+	$sql = "SELECT `System` FROM planets WHERE(PlanetID = '$Planet1')";
 	$res = mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($res);
 	$one = $row->System;
 	
-	$sql = "SELECT System FROM planets WHERE(PlanetID = '$Planet2')";
+	$sql = "SELECT `System` FROM planets WHERE(PlanetID = '$Planet2')";
 	$res = mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($res);
 	$two = $row->System;
@@ -560,7 +560,7 @@ function CalcTTF($Location,$Destination){
 	}else{
 		$Location = substr($Location,2,strlen($Location)-2);
 		
-		$sql = "SELECT System FROM planets WHERE(PlanetID = '$Location')";
+		$sql = "SELECT `System` FROM planets WHERE(PlanetID = '$Location')";
 		$res = mysqli_query($GLOBALS["conn"], $sql);
 		$row = mysqli_fetch_object($res);
 		$sql = "SELECT Coords,SectorID FROM Systems WHERE(SystemID = '".$row->System."')";
@@ -579,7 +579,7 @@ function CalcTTF($Location,$Destination){
 		$location_y_absolute = $location_sector_offset_coords_y + $location_system_coords[1];
 	}
 
-	$sql = "SELECT System FROM planets WHERE(PlanetID = '$Destination')";
+	$sql = "SELECT `System` FROM planets WHERE(PlanetID = '$Destination')";
 	$res = mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($res);
 	$dest_coords = GetSystemCoords($row->System);
@@ -623,12 +623,12 @@ function GetGalacticLocation($FleetID){
 		$loc_system_coords["x"] = $carr[0];
 		$loc_system_coords["y"] = $carr[1];
 	}else{
-		$sql = "SELECT System FROM planets WHERE(PlanetID = '$Location')";
+		$sql = "SELECT `System` FROM planets WHERE(PlanetID = '$Location')";
 		$res = mysqli_query($GLOBALS["conn"], $sql);
 		$row = mysqli_fetch_object($res);
 		$loc_system_coords = GetSystemCoords($row->System);
 	}
-	$sql = "SELECT System FROM planets WHERE(PlanetID = '$Destination')";
+	$sql = "SELECT `System` FROM planets WHERE(PlanetID = '$Destination')";
 	$res = mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($res);
 	$dest_system_coords = GetSystemCoords($row->System);

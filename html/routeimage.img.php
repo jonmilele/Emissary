@@ -18,7 +18,7 @@ function DrawRoute($image,$colour,$textcolour,$FleetID){
 	}else{
 		$Location = substr($Location,2,strlen($Location)-2);
 		
-		$sql = "SELECT System FROM planets WHERE(PlanetID = '$Location')";
+		$sql = "SELECT `System` FROM planets WHERE(PlanetID = '$Location')";
 		$res = mysqli_query($GLOBALS["conn"], $sql);
 		$row = mysqli_fetch_object($res);
 		$sql = "SELECT Coords,SectorID,Name FROM Systems WHERE(SystemID = '".$row->System."')";
@@ -38,7 +38,7 @@ function DrawRoute($image,$colour,$textcolour,$FleetID){
 		imagestring($image,2,$location_x_absolute+10,$location_y_absolute+10,$row->Name,$textcolour);
 	}
 
-	$sql = "SELECT System FROM planets WHERE(PlanetID = '$Destination')";
+	$sql = "SELECT `System` FROM planets WHERE(PlanetID = '$Destination')";
 	$res = mysqli_query($GLOBALS["conn"], $sql);
 	$row = mysqli_fetch_object($res);
 	$sql = "SELECT Coords,SectorID, Name FROM Systems WHERE(SystemID = '".$row->System."')";
