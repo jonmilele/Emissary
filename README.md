@@ -4,6 +4,8 @@ A browser-based strategy game originally developed in 2004 by a much younger ver
 
 After finding the source code on an old hard drive in the attic, I decided to try getting it up and running again on a modern LAMP stack.
 
+I will post the initial version of it as a full development project to this repo once I have fixed all the legacy PHP code (lots of MySQL changes!).
+
 ## Archive
 
 The `archive/` folder contains the original game code, preserved as-is for reference. It is not intended to be modified.
