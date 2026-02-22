@@ -21,6 +21,13 @@ function AssignStartingPlanet($PlayerID){
 		$planetID = $row->PlanetID;
 		$sql = "UPDATE planets SET PlayerID = '$PlayerID' WHERE PlanetID = '$planetID'";
 		mysqli_query($GLOBALS["conn"], $sql);
+		// Recalculate system and sector ownership
+		$planet = GetPlanet($planetID);
+		if($planet){
+			CheckSystemMajOwner($planet->System);
+			$sys = GetSystem($planet->System);
+			if($sys) CalcMajOwner($sys->SectorID);
+		}
 		return $planetID;
 	}
 	
