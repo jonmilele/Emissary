@@ -56,7 +56,7 @@ foreach($_fleets as $fl){
 		$did = (int)substr($dest,2);
 		$dname = h($_pNames[$did] ?? 'Unknown');
 		$strat = ['','for colonisation','to attack','to invade'][$fl->Strategy] ?? '';
-		$locStr = 'Moving to <a href="planet.php?id='.$did.'">'.$dname.'</a>'
+		$locStr = 'Moving to <a href="planet.php?id='.$did.'">'.$dname.'</a>' . ($strat ? ' '.$strat : '');
 	}
 ?>
 <p><a href="fleet.php?id=<?php echo $fl->FleetID; ?>"><?php echo htmlspecialchars($name); ?></a> - <?php echo $locStr; ?></p>

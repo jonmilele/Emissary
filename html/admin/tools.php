@@ -38,7 +38,7 @@ function CheckClashes($SectorID,$x,$y){
 }
 
 function AddPlanet($SystemID,$SystemName,$Orbit){
-	$size = rand(1,2);
+	$size = rand(1,3);
 	$name = $SystemName." ".$Orbit;
 	$query = "INSERT INTO planets(DefaultName,Orbit,`System`,Size) VALUES('$name','$Orbit','$SystemID','$size')";
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
@@ -121,12 +121,9 @@ function ResetPassword($PlayerID,$NewPass){
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 }
 
+// Ownership is now calculated on-the-fly. This function is retained for admin use only.
 function CalcOwners(){
-	$query = "SELECT SectorID FROM sectors";
-	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
-	while($row = mysqli_fetch_object($notresult)){
-		CalcMajOwner($row->SectorID);
-	}
+	echo "Ownership is now computed on-the-fly from planet data. No stored values to update.";
 }
 
 ?>

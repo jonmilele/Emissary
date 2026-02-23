@@ -23,7 +23,13 @@ $homePlanetID = GetHomePlanet($PlayerID);
 ?>
 <?php
 $playerTeamID = PlayerTeam($PlayerID);
+$_ranking = GetPlayerRanking($PlayerID);
 ?>
+<p>Rank: <strong>#<?php echo $_ranking['rank']; ?></strong> of <?php echo $_ranking['totalPlayers']; ?>
+&mdash; Net Worth: <strong><?php echo number_format($_ranking['totalValue']); ?>C</strong>
+<small style="color:#888;">(Planets: <?php echo number_format($_ranking['planetValue']); ?>C | Resources: <?php echo number_format($_ranking['resourceValue']); ?>C)</small>
+<br/><small><a href="leaderboard.php">View Leaderboard</a></small>
+</p>
 <p>Team: <?php
 if($playerTeamID > 0){
 	echo '<a href="team.php?id=' . $playerTeamID . '">' . htmlspecialchars(TeamNameFromID($playerTeamID)) . '</a>';
@@ -39,18 +45,27 @@ if($homePlanetID > 0){
 	echo 'None';
 }
 ?></p>
-<p>Score: 0 </p>
+<?php
+$Planets = GetPlanetList($PlayerID);
+$_totalPlanetValue = 0;
+if($Planets){
+	foreach($Planets as $_tp) $_totalPlanetValue += GetPlanetValue($_tp->PlanetID);
+}
+?>
 <p>Planets Owned: <?php echo GetNumberOfPlanets($PlayerID); ?></p>
-<p>Sectors Owned: 0</p>
-<p>Fleets Owned: 0</p></div>
+<p>Total Planet Value: <strong><?php echo number_format($_totalPlanetValue); ?>C</strong></p>
+</div>
 <div class="planet">
 <h3>Planets</h3>
 <?php
-$Planets = GetPlanetList($PlayerID);
+if($Planets){
 foreach($Planets as $key=>$Planet){
+	$_pv = GetPlanetValue($Planet->PlanetID);
+	$_pvTip = PlanetValueTooltip($Planet->PlanetID);
 ?>
-<p><a href="planet.php?id=<?php echo $Planet->PlanetID; ?>"><?php echo h($Planet->Name); ?></a></p>
+<p><a href="planet.php?id=<?php echo $Planet->PlanetID; ?>"><?php echo h($Planet->Name); ?></a> <small style="color:#888; cursor:help; border-bottom:1px dotted #666;" title="<?php echo htmlspecialchars($_pvTip); ?>">(<?php echo number_format($_pv); ?>C)</small></p>
 <?php
+}
 }
 ?></div>
 </body>

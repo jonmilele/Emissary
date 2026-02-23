@@ -27,13 +27,6 @@ function AssignStartingPlanet($PlayerID){
 		$sAstrium = (int)GetGameSetting('starting_astrium', 50);
 		$sql = "UPDATE players SET Metal = '$sMetal', Mineral = '$sMineral', Astrium = '$sAstrium', HomePlanetID = '$planetID' WHERE PlayerID = '$PlayerID'";
 		mysqli_query($GLOBALS["conn"], $sql);
-		// Recalculate system and sector ownership
-		$planet = GetPlanet($planetID);
-		if($planet){
-			CheckSystemMajOwner($planet->System);
-			$sys = GetSystem($planet->System);
-			if($sys) CalcMajOwner($sys->SectorID);
-		}
 		return $planetID;
 	}
 	
@@ -472,6 +465,64 @@ function CountWeapons($PlanetID){
 		}
 	}
 	return $total_count;
+}
+
+function GetPlanetValueBreakdown($PlanetID){
+	$pid = (int)$PlanetID;
+	$bd = ['land' => 0, 'buildings' => 0, 'income' => 0, 'military' => 0, 'total' => 0];
+
+	// Resource credit conversion rates from game settings
+	$mcv = (int)GetGameSetting('metal_credit_value', 1);
+	$ncv = (int)GetGameSetting('mineral_credit_value', 10);
+	$acv = (int)GetGameSetting('astrium_credit_value', 100);
+
+	// 1. Land value: grid squares * 10C
+	$sql = "SELECT Size FROM planets WHERE PlanetID='$pid'";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	$row = mysqli_fetch_object($res);
+	if(!$row) return $bd;
+	$grids = GetGridSquares($row->Size);
+	$bd['land'] = $grids * 10;
+
+	// 2. Building value: salvage rate of build cost (converted to credits)
+	$salvageRate = (float)GetGameSetting('building_salvage_rate', 0.5);
+	$sql = "SELECT b.HP AS CurrentHP, bt.Metal, bt.Mineral, bt.Astrium, bt.HP AS MaxHP, bt.AP
+	        FROM buildings b JOIN building_types bt ON b.Type = bt.Type
+	        WHERE b.PlanetID='$pid'";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	$totalHP = 0;
+	$totalAP = 0;
+	while($bld = mysqli_fetch_object($res)){
+		$buildCost = ((int)$bld->Metal * $mcv) + ((int)$bld->Mineral * $ncv) + ((int)$bld->Astrium * $acv);
+		$hpRatio = ((int)$bld->MaxHP > 0) ? (int)$bld->CurrentHP / (int)$bld->MaxHP : 1;
+		$bd['buildings'] += (int)round($buildCost * $salvageRate * $hpRatio);
+		$totalHP += (int)$bld->CurrentHP;
+		$totalAP += (int)$bld->AP;
+	}
+
+	// 3. Income value: per-turn income in credits * 10 (represents 10 turns)
+	$income = GetPlanetIncome($pid);
+	$incomeCredits = ((int)$income->Metal * $mcv) + ((int)$income->Mineral * $ncv) + ((int)$income->Astrium * $acv);
+	$bd['income'] = $incomeCredits * 10;
+
+	// 4. Military value: HP/10 + AP/10
+	$bd['military'] = (int)round($totalHP / 10) + (int)round($totalAP / 10);
+
+	$bd['total'] = max(1, $bd['land'] + $bd['buildings'] + $bd['income'] + $bd['military']);
+	return $bd;
+}
+
+function GetPlanetValue($PlanetID){
+	$bd = GetPlanetValueBreakdown($PlanetID);
+	return $bd['total'];
+}
+
+function PlanetValueTooltip($PlanetID){
+	$bd = GetPlanetValueBreakdown($PlanetID);
+	return 'Land: ' . number_format($bd['land']) . 'C | '
+	     . 'Buildings: ' . number_format($bd['buildings']) . 'C | '
+	     . 'Income (10t): ' . number_format($bd['income']) . 'C | '
+	     . 'Military: ' . number_format($bd['military']) . 'C';
 }
 
 function ClaimUnfinishedShips($PlanetID,$PlayerID){

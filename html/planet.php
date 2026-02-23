@@ -16,9 +16,7 @@ if(isset($_POST['action']) && csrf_validate()){
 	}
 	if(($_POST['action'] ?? "")=="colonise"){
 		$PlanetID = ($_POST["id"] ?? "");
-		$Planet = GetPlanet($PlanetID);
 		Colonise($PlanetID);
-		CheckSystemMajOwner($Planet->System);
 		header("Location: planet.php?id=".$PlanetID);
 		exit;
 	}
@@ -171,6 +169,7 @@ if($edit || $teamView){?>
     <p>Defence HP: <?php echo GetPlanetDefenceStrength($PlanetID); ?>
       <?php if(IsHomePlanet(GetPlayerIDFromName($username), $PlanetID)): ?><strong style="color:#FFFF00;">(+50% HP)</strong><?php endif; ?><br>
       Attack HP: <?php echo GetPlanetAttackStrength($PlanetID); ?></p>
+    <p>Planet Value: <span title="<?php echo htmlspecialchars(PlanetValueTooltip($PlanetID)); ?>" style="cursor:help; border-bottom:1px dotted #888;"><strong><?php echo number_format(GetPlanetValue($PlanetID)); ?>C</strong></span></p>
     <?php if($edit && !IsHomePlanet(GetPlayerIDFromName($username), $PlanetID)): ?>
     <form method="POST" action="planet.php" onsubmit="return confirm('Set this planet as your home world?');">
     <input type="hidden" name="action" value="sethome">
@@ -179,6 +178,36 @@ if($edit || $teamView){?>
     <input type="submit" value="Set as Home World">
     </form>
     <?php endif; ?>
+    <?php
+    // Auction Planet button: owner only, in a team, not already auctioned, not on cooldown
+    if($edit){
+      $_auctionPid = GetPlayerIDFromName($username);
+      $_auctionTeam = (int)PlayerTeam($_auctionPid);
+      $_isHomePlanet = IsHomePlanet($_auctionPid, $PlanetID);
+      $_alreadyAuctioned = false;
+      $_achk = mysqli_query($GLOBALS["conn"], "SELECT AuctionID FROM auctions WHERE Code='3' AND Data='".(int)$PlanetID."'");
+      if($_achk && mysqli_num_rows($_achk) > 0) $_alreadyAuctioned = true;
+      $_onCooldown = HasAuctionCooldown(3, $PlanetID);
+      if($_auctionTeam > 0 && !$_alreadyAuctioned && !$_onCooldown):
+    ?>
+    <form method="GET" action="trade.php" style="margin-top:8px;">
+      <input type="hidden" name="auction_planet" value="<?php echo $PlanetID; ?>">
+      <?php if($_isHomePlanet): ?>
+      <input type="submit" value="&#9888; Auction Home World" style="color:#FF0000;" onclick="return confirm('WARNING: This is your Home World! If sold, you must select a new home world. Proceed to auction page?');">
+      <?php else: ?>
+      <input type="submit" value="Auction Planet">
+      <?php endif; ?>
+    </form>
+    <?php
+      elseif($_alreadyAuctioned): ?>
+      <p style="color:#FF9900;"><small>This planet is currently on auction.</small></p>
+    <?php elseif($_onCooldown): ?>
+      <p style="color:#FF9900;"><small>Auction cooldown active (24h after cancellation).</small></p>
+    <?php elseif($_auctionTeam < 1): ?>
+      <p style="color:#888;"><small>Join a team to auction planets.</small></p>
+    <?php endif;
+    } // $edit auction button
+    ?>
   </div>
   <div class="panel" style="width:250px"> 
     <h3>Key</h3>
@@ -191,6 +220,30 @@ if($edit || $teamView){?>
       <font color="#CC00FF">Pulse Cannon</font><br>
       <font color="#FF99FF">Gigashield</font> <br>
       <font color="#999999">Missile Silo</font></p>
+  </div>
+  <div class="panel" style="width:250px;">
+    <h3>System: <?php echo h(GetSystemNameFromID($Planet->System)); ?></h3>
+    <?php
+    $_sysPlanets = ListPlanetsInSystem($Planet->System);
+    foreach($_sysPlanets as $_sp):
+      $_isCurrent = ((int)$_sp->PlanetID == (int)$PlanetID);
+      $_spOwner = (int)$_sp->PlayerID;
+      // Size labels: 1=Small, 2=Medium, 3=Large, 4=Huge
+      $_szLabel = ['1'=>'S','2'=>'M','3'=>'L','4'=>'H'][$_sp->Size] ?? '?';
+    ?>
+    <p style="margin:2px 0;<?php if($_isCurrent) echo 'font-weight:bold;'; ?>">
+      <?php if($_isCurrent): ?>
+        &#9658; <?php echo h($_sp->Name); ?> <small style="color:#888;">(<?php echo $_szLabel; ?>)</small>
+      <?php else: ?>
+        <a href="planet.php?id=<?php echo $_sp->PlanetID; ?>"><?php echo h($_sp->Name); ?></a> <small style="color:#888;">(<?php echo $_szLabel; ?>)</small>
+      <?php endif; ?>
+      <?php if($_spOwner > 0): ?>
+        <small>— <?php echo h(GetPlayerNameFromID($_spOwner)); ?></small>
+      <?php else: ?>
+        <small style="color:#666;">— Uncolonised</small>
+      <?php endif; ?>
+    </p>
+    <?php endforeach; ?>
   </div>
   <?php
   $cres = mysqli_query($GLOBALS["conn"], "SELECT Grid, Type, TTF FROM cbuildings WHERE PlanetID = '$PlanetID' ORDER BY Grid ASC");

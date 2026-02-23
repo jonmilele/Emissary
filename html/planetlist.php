@@ -68,7 +68,8 @@ foreach($Planets as $key=>$Planet){
 	$idleYards = $shipyards - $busyYards;
 ?>
 <div class="ship">
-<p><a href="planet.php?id=<?php echo $pid; ?>"><?php echo h($Planet->Name); ?></a><?php if($_homePID == $pid): ?> <strong style="color:#FFFF00;">[Home]</strong><?php endif; ?><?php if($hasFleet){?>&nbsp;<img title="Has Fleets" align="absmiddle" src="images/ship.gif"><?php }?><?php if($shields > 0){?>&nbsp;<img title="Has Shields" align="absmiddle" src="images/shieldcount.img.php?id=<?php echo $pid; ?>"><?php }?><?php if($weapons > 0){?>&nbsp;<img align="absmiddle" src="images/weapon.gif"><?php } ?><br>
+<?php $_pVal = GetPlanetValue($pid); $_pTip = PlanetValueTooltip($pid); ?>
+<p><a href="planet.php?id=<?php echo $pid; ?>"><?php echo h($Planet->Name); ?></a><?php if($_homePID == $pid): ?> <strong style="color:#FFFF00;">[Home]</strong><?php endif; ?> <small style="color:#888; cursor:help; border-bottom:1px dotted #666;" title="<?php echo htmlspecialchars($_pTip); ?>">(<?php echo number_format($_pVal); ?>C)</small><?php if($hasFleet){?>&nbsp;<img title="Has Fleets" align="absmiddle" src="images/ship.gif"><?php }?><?php if($shields > 0){?>&nbsp;<img title="Has Shields" align="absmiddle" src="images/shieldcount.img.php?id=<?php echo $pid; ?>"><?php }?><?php if($weapons > 0){?>&nbsp;<img align="absmiddle" src="images/weapon.gif"><?php } ?><br>
 <?php if($uTotal > 0){ echo $uTotal." Unassigned Ship(s)<br/>"; } ?>
 <?php if($weapons > 0){ echo $weapons; ?> weapon(s) - <?php echo $_bldCounts[$pid][7] ?? 0; ?> Pulse Cannons, <?php echo $_bldCounts[$pid][9] ?? 0; ?> Missile Silos<br/><?php }?>
 <?php if($shipyards > 0){ echo $shipyards; ?> shipyard(s) - <?php if($idleYards > 0){ echo $idleYards."/".$shipyards; ?> idle<?php }else{?><span style="color: #FF0000;">All Busy</span><?php }?><br/><?php }?>

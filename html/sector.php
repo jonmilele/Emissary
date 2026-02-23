@@ -21,10 +21,11 @@ if(!IsSector(($_GET['id'] ?? ""))){
 	echo "Not a valid sector ID";
 }else{
 	$SectorID = ($_GET['id'] ?? "");
-	$_secRow = mysqli_fetch_object(mysqli_query($GLOBALS["conn"], "SELECT Name, MajOwner, MajTeamID FROM sectors WHERE SectorID='" . (int)$SectorID . "'"));
-	$TeamID = $_secRow ? (int)$_secRow->MajTeamID : 0;
+	$_secRow = mysqli_fetch_object(mysqli_query($GLOBALS["conn"], "SELECT Name FROM sectors WHERE SectorID='" . (int)$SectorID . "'"));
 	$_sectorName = $_secRow && $_secRow->Name ? $_secRow->Name : "Sector $SectorID";
-	$_secMajOwner = $_secRow ? (int)$_secRow->MajOwner : 0;
+	$_secOwnership = CalcSectorOwnership($SectorID);
+	$TeamID = $_secOwnership['TeamID'];
+	$_secMajOwner = $_secOwnership['PlayerID'];
 	$_myPID = GetPlayerIDFromName($username);
 	$_canRename = ($_secMajOwner > 0 && $_secMajOwner == $_myPID);
 ?>
@@ -61,7 +62,7 @@ include("header.inc.php");
 	}
 	?></ul>
     <?php
-$owner = CalcMajOwner($SectorID);
+$owner = $_secMajOwner;
 if($owner ==0){
 	$strowner = "None";
 }else{

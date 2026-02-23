@@ -5,38 +5,44 @@ include_once("userfunctions.inc.php");
 include_once("session.inc.php");
 include_once("alertfunctions.inc.php");
 
+// Resource credit exchange rates from game settings
+$_mcv = (int)GetGameSetting('metal_credit_value', 1);
+$_ncv = (int)GetGameSetting('mineral_credit_value', 10);
+$_acv = (int)GetGameSetting('astrium_credit_value', 100);
+
 if(isset($_POST['action']) && csrf_validate()){
 	if(($_POST['action'] ?? "")=="cash"){
-		$Metal = ($_POST['metal'] ?? "");
-		$Mineral = ($_POST['mineral'] ?? "");
-		$Astrium = ($_POST['astrium'] ?? "");
+		$Metal = (int)($_POST['metal'] ?? 0);
+		$Mineral = (int)($_POST['mineral'] ?? 0);
+		$Astrium = (int)($_POST['astrium'] ?? 0);
 		if(($Metal>0)||($Mineral>0)||($Astrium>0)){
 			if(HasSufficientResources(GetPlayerIDFromName($username),1,$Metal)&&HasSufficientResources(GetPlayerIDFromName($username),2,$Mineral)&&HasSufficientResources(GetPlayerIDFromName($username),3,$Astrium)){
-				AddUserCredits(GetPlayerIDFromName($username),$Metal);
+				AddUserCredits(GetPlayerIDFromName($username),$Metal*$_mcv);
 				DeductResources(GetPlayerIDFromName($username),1,$Metal);
 				
-				AddUserCredits(GetPlayerIDFromName($username),$Mineral*10);
+				AddUserCredits(GetPlayerIDFromName($username),$Mineral*$_ncv);
 				DeductResources(GetPlayerIDFromName($username),2,$Mineral);
 				
-				AddUserCredits(GetPlayerIDFromName($username),$Astrium*100);
+				AddUserCredits(GetPlayerIDFromName($username),$Astrium*$_acv);
 				DeductResources(GetPlayerIDFromName($username),3,$Astrium);
 			}
 		}
 		header("Location: trade.php");
 	}
 	if(($_POST['action'] ?? "")=="buy"){
-		$Metal = ($_POST['metal'] ?? "");
-		$Mineral = ($_POST['mineral'] ?? "");
-		$Astrium = ($_POST['astrium'] ?? "");
+		$Metal = (int)($_POST['metal'] ?? 0);
+		$Mineral = (int)($_POST['mineral'] ?? 0);
+		$Astrium = (int)($_POST['astrium'] ?? 0);
 		if(($Metal>0)||($Mineral>0)||($Astrium>0)){
-if(GetUserCredits(GetPlayerIDFromName($username))>=(($Astrium*100)+$Metal+($Mineral*10))){
-				DeductUserCredits(GetPlayerIDFromName($username),$Metal);
+			$_totalCost = ($Astrium*$_acv) + ($Metal*$_mcv) + ($Mineral*$_ncv);
+			if(GetUserCredits(GetPlayerIDFromName($username)) >= $_totalCost){
+				DeductUserCredits(GetPlayerIDFromName($username),$Metal*$_mcv);
 				AddResources(GetPlayerIDFromName($username),1,$Metal);
 				
-				DeductUserCredits(GetPlayerIDFromName($username),$Mineral*10);
+				DeductUserCredits(GetPlayerIDFromName($username),$Mineral*$_ncv);
 				AddResources(GetPlayerIDFromName($username),2,$Mineral);
 				
-				DeductUserCredits(GetPlayerIDFromName($username),$Astrium*100);
+				DeductUserCredits(GetPlayerIDFromName($username),$Astrium*$_acv);
 				AddResources(GetPlayerIDFromName($username),3,$Astrium);
 			}
 		}
@@ -52,7 +58,7 @@ if(GetUserCredits(GetPlayerIDFromName($username))>=(($Astrium*100)+$Metal+($Mine
 		$turns = max(1, (int)($_POST['turns'] ?? $defaultTurns));
 		if($teamID < 1){
 			SetFlash("You must be in a team to create auctions.");
-		} elseif($planetID > 0 && OwnsPlanet($username, $planetID) && !IsHomePlanet($pid, $planetID)){
+	} elseif($planetID > 0 && OwnsPlanet($username, $planetID)){
 			// Check cooldown (24h after cancel)
 			if(HasAuctionCooldown(3, $planetID)){
 				SetFlash("That planet is on a 24-hour auction cooldown.");
@@ -62,7 +68,11 @@ if(GetUserCredits(GetPlayerIDFromName($username))>=(($Astrium*100)+$Metal+($Mine
 				if(mysqli_num_rows($chk) == 0){
 					$sql = "INSERT INTO auctions(OpenTo, Code, Data, Seller, StartTime, Turns, StartBid, CurrentBid, HighBidder) VALUES('$teamID','3','$planetID','$pid','".time()."','$turns','$startBid','0','0')";
 					mysqli_query($GLOBALS["conn"], $sql);
-					SetFlash("Planet auction created (visible to your team).");
+					$_flashMsg = "Planet auction created (visible to your team).";
+					if(IsHomePlanet($pid, $planetID)){
+						$_flashMsg .= " WARNING: This is your Home World!";
+					}
+					SetFlash($_flashMsg);
 				} else {
 					SetFlash("That planet is already on auction.");
 				}
@@ -109,12 +119,12 @@ You have <?php echo GetUserCredits(GetPlayerIDFromName($username)); ?> Credit(s)
 	  <input type="hidden" name="action" value="cash">
 	  <?php echo csrf_token(); ?>
 	  <p><input name="metal" type="text" id="metal" value="0" size="4">
-		Metal @ 1C per Metal</p>
+		Metal @ <?php echo $_mcv; ?>C per Metal</p>
 	  <p><input name="mineral" type="text" id="mineral" value="0" size="4">
-		Mineral @ 10C per Mineral</p>
+		Mineral @ <?php echo $_ncv; ?>C per Mineral</p>
 		<p>
 		  <input name="astrium" type="text" id="astrium" value="0" size="4">
-		  Astrium @ 100C per Astrium</p>
+		  Astrium @ <?php echo $_acv; ?>C per Astrium</p>
 		<p>
 		  <input type="submit" name="Submit" value="Cash">
 		</p>
@@ -126,14 +136,14 @@ You have <?php echo GetUserCredits(GetPlayerIDFromName($username)); ?> Credit(s)
 	  <input type="hidden" name="action" value="buy">
 	  <?php echo csrf_token(); ?>
 	  <p><input name="metal" type="text" id="metal" value="0" size="4">
-        Metal @ 1C</p>
+        Metal @ <?php echo $_mcv; ?>C</p>
 	  <p><input name="mineral" type="text" id="mineral" value="0" size="4">
-        Mineral @ 10C</p>
+        Mineral @ <?php echo $_ncv; ?>C</p>
 		<p>
 		  <input name="astrium" type="text" id="astrium" value="0" size="4">
-        Astrium @ 100C</p>
+        Astrium @ <?php echo $_acv; ?>C</p>
 		<p>
-		  <input type="submit" name="Submit" value="Cash">
+		  <input type="submit" name="Submit" value="Buy">
 		</p>
 	</form>
 	</div>
@@ -188,34 +198,46 @@ if(count($myAuctions) > 0):
 $myPlanets = GetPlanetList($myPID);
 $homePlanet = GetHomePlanet($myPID);
 $defaultTurns = (int)GetGameSetting('default_auction_turns', 5);
-// Filter out home planet, planets already on auction, and planets on cooldown
+// Filter out planets already on auction and planets on cooldown
 $auctioned = [];
 $ares = mysqli_query($GLOBALS["conn"], "SELECT Data FROM auctions WHERE Code='3'");
 while($ar = mysqli_fetch_object($ares)) $auctioned[(int)$ar->Data] = true;
 $available = [];
+$planetValues = [];
 if($myPlanets){
 	foreach($myPlanets as $p){
-		if($p->PlanetID != $homePlanet && !isset($auctioned[$p->PlanetID]) && !HasAuctionCooldown(3, $p->PlanetID)){
+		if(!isset($auctioned[$p->PlanetID]) && !HasAuctionCooldown(3, $p->PlanetID)){
+			$planetValues[$p->PlanetID] = GetPlanetValue($p->PlanetID);
 			$available[] = $p;
 		}
 	}
 }
 if(count($available) > 0):
+$firstValue = $planetValues[$available[0]->PlanetID];
+$preselect = isset($_GET['auction_planet']) ? (int)$_GET['auction_planet'] : 0;
+// If a planet was pre-selected, use its value as default bid
+if($preselect > 0 && isset($planetValues[$preselect])){
+	$firstValue = $planetValues[$preselect];
+}
 ?>
-  <form method="post" action="trade.php">
+  <form method="post" action="trade.php" id="auction_planet_form">
 	<input type="hidden" name="action" value="auction_planet">
 	<?php echo csrf_token(); ?>
-	<p>Planet: <select name="planet_id">
+	<p>Planet: <select name="planet_id" id="auction_planet_sel" onchange="document.getElementById('auction_start_bid').value=this.options[this.selectedIndex].dataset.value">
 	<?php foreach($available as $p): ?>
-		<option value="<?php echo $p->PlanetID; ?>"><?php echo h($p->Name); ?></option>
+		<?php $_tTip = PlanetValueTooltip($p->PlanetID); ?>
+		<option value="<?php echo $p->PlanetID; ?>" data-value="<?php echo $planetValues[$p->PlanetID]; ?>" title="<?php echo htmlspecialchars($_tTip); ?>"<?php if($preselect == $p->PlanetID) echo ' selected'; ?>><?php echo h($p->Name); ?><?php if($p->PlanetID == $homePlanet) echo ' [HOME WORLD]'; ?> (value: <?php echo number_format($planetValues[$p->PlanetID]); ?>C)</option>
 	<?php endforeach; ?>
 	</select></p>
-	<p>Starting Bid (Credits): <input type="text" name="start_bid" value="100" size="6"></p>
+	<p>Starting Bid (Credits): <input type="text" name="start_bid" id="auction_start_bid" value="<?php echo $firstValue; ?>" size="8"></p>
 	<p>Duration (turns): <input type="text" name="turns" value="<?php echo $defaultTurns; ?>" size="4"></p>
-	<p><input type="submit" value="Create Auction"></p>
+	<p><input type="submit" value="Create Auction" onclick="var sel=document.getElementById('auction_planet_sel');var opt=sel.options[sel.selectedIndex];var isHome=opt.text.indexOf('[HOME WORLD]')>=0;var msg=isHome?'WARNING: You are auctioning your HOME WORLD! If sold you will need to select a new home world. Proceed?':'Create auction for this planet? Your team will be able to bid.';return confirm(msg);"></p>
   </form>
+<?php if($preselect > 0): ?>
+<script>document.getElementById('auction_planet_form').scrollIntoView({behavior:'smooth'});</script>
+<?php endif; ?>
 <?php else: ?>
-  <p>No planets available to auction (home planet and recently cancelled items excluded).</p>
+  <p>No planets available to auction (recently cancelled items excluded).</p>
 <?php endif; ?>
 <?php endif; ?>
 </div>

@@ -59,21 +59,23 @@ function ResolveExpiredAuctions(){
 					break;
 				case 3: // Planet — transfer ownership
 					$planetID = (int)$auc->Data;
+					// Check if this was the seller's home world before transfer
+					$wasHome = IsHomePlanet($seller, $planetID);
 					mysqli_query($GLOBALS["conn"], "UPDATE planets SET PlayerID='$winner' WHERE PlanetID='$planetID'");
 					// Reassign buildings on the planet to the new owner
 					mysqli_query($GLOBALS["conn"], "UPDATE buildings SET PlayerID='$winner' WHERE PlanetID='$planetID'");
 					// Cancel any in-progress construction by old owner
 					mysqli_query($GLOBALS["conn"], "DELETE FROM cbuildings WHERE PlanetID='$planetID' AND PlayerID='$seller'");
-					// Recalculate system and sector ownership
-					$planet = GetPlanet($planetID);
-					if($planet){
-						CheckSystemMajOwner($planet->System);
-						$sys = GetSystem($planet->System);
-						if($sys) CalcMajOwner($sys->SectorID);
+					// If seller lost their home world, clear it so they must pick a new one
+					if($wasHome){
+						mysqli_query($GLOBALS["conn"], "UPDATE players SET HomePlanetID=0 WHERE PlayerID='$seller'");
 					}
 					$pName = GetPlanetNameFromID($planetID);
 					AddAlert($winner, 'trade', 'You won planet '.$pName.' at auction for '.$bid.'C.', 'planet.php?id='.$planetID);
 					AddAlert($seller, 'trade', 'Your planet '.$pName.' sold at auction for '.$bid.'C.');
+					if($wasHome){
+						AddAlert($seller, 'system', 'Your home world was sold! You must set a new home world.', 'planetlist.php');
+					}
 					break;
 			}
 		} else {

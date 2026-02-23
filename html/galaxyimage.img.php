@@ -34,9 +34,9 @@ while($row = mysqli_fetch_object($res)){
 	}
 }
 
-// Bulk: sectors where current player owns systems
+// Bulk: sectors where current player owns planets
 $_mySecHighlight = [];
-$res = mysqli_query($GLOBALS["conn"], "SELECT SectorID FROM Systems WHERE PlayerID='$myPID' GROUP BY SectorID");
+$res = mysqli_query($GLOBALS["conn"], "SELECT DISTINCT s.SectorID FROM Systems s JOIN planets p ON p.`System`=s.SystemID WHERE p.PlayerID='$myPID'");
 while($row = mysqli_fetch_object($res)) $_mySecHighlight[(int)$row->SectorID] = true;
 
 $secid = 1;

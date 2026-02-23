@@ -83,6 +83,17 @@ if($action != ""){
 			ResetTurnTimer();
 			echo "Turn timer reset to now. Next income turn in 30 minutes.";
 			break;
+	case "save_email":
+			$_ePid = (int)($_POST['player_id'] ?? 0);
+			$_eEmail = trim($_POST['email'] ?? '');
+			if($_ePid > 0 && $_eEmail !== ''){
+				$_eEmailSafe = mysqli_real_escape_string($GLOBALS["conn"], $_eEmail);
+				mysqli_query($GLOBALS["conn"], "UPDATE players SET Email='$_eEmailSafe' WHERE PlayerID='$_ePid'");
+				echo "Email updated for player #$_ePid";
+			} else {
+				echo "Invalid player ID or email";
+			}
+			break;
 		case "save_settings":
 			include_once(__DIR__ . "/../turnfunctions.inc.php");
 			$setting_keys = [
@@ -92,7 +103,8 @@ if($action != ""){
 				'election_auto_interval','election_motion_threshold',
 				'starting_metal','starting_mineral','starting_astrium',
 				'planet_weapon_hit_chance','base_construction_slots',
-				'default_auction_turns'
+				'default_auction_turns','building_salvage_rate',
+				'metal_credit_value','mineral_credit_value','astrium_credit_value'
 			];
 			$updated = 0;
 			foreach($setting_keys as $sk){
@@ -117,6 +129,24 @@ if($action != ""){
 			} else {
 				echo "Valid System ID and name (2-100 chars) required";
 			}
+			break;
+		case "save_planet_types":
+			$_ptTypes = $_POST['pt_type'] ?? [];
+			$_ptUpdated = 0;
+			foreach($_ptTypes as $_ptId){
+				$_ptId = (int)$_ptId;
+				if($_ptId < 1) continue;
+				$_ptGrids = (int)($_POST['pt_grids'][$_ptId] ?? 0);
+				$_ptRows = (int)($_POST['pt_rowsquares'][$_ptId] ?? 0);
+				$_ptMetal = (int)($_POST['pt_metal'][$_ptId] ?? 0);
+				$_ptMineral = (int)($_POST['pt_mineral'][$_ptId] ?? 0);
+				$_ptAstrium = (int)($_POST['pt_astrium'][$_ptId] ?? 0);
+				$_ptIncome = $_ptMetal . ':' . $_ptMineral . ':' . $_ptAstrium;
+				$sql = "UPDATE planet_types SET Grids='$_ptGrids', rowsquares='$_ptRows', income='$_ptIncome' WHERE Type='$_ptId'";
+				mysqli_query($GLOBALS["conn"], $sql);
+				$_ptUpdated++;
+			}
+			echo "$_ptUpdated planet type(s) updated.";
 			break;
 		case "save_forbidden_words":
 			$content = $_POST['forbidden_words'] ?? '';
@@ -218,17 +248,43 @@ $players_result = mysqli_query($conn, "SELECT PlayerID, UserName, Email, TeamID,
 	input[type=submit]:hover { background: #555; }
 	input[type=submit].danger-btn { background: #660000; border-color: #aa0000; }
 	input[type=submit].danger-btn:hover { background: #880000; }
+	/* Tab navigation */
+	.admin-tabs { display: flex; gap: 0; border-bottom: 2px solid #ff9900; margin: 10px 0 0 0; }
+	.admin-tabs a { display: block; padding: 8px 16px; color: #aaa; text-decoration: none; background: #1a1a2e; border: 1px solid #444; border-bottom: none; margin-right: 2px; border-radius: 4px 4px 0 0; }
+	.admin-tabs a:hover { color: #fff; background: #2a2a4e; }
+	.admin-tabs a.active { color: #ff9900; background: #0d0d1a; border-color: #ff9900; font-weight: bold; }
+	.tab-panel { display: none; }
+	.tab-panel.active { display: block; }
 </style>
 </head>
 <body>
-<?php include("../header.inc.php"); ?>
+<?php
+include("../header.inc.php");
+$_tab = $_GET['tab'] ?? ($_POST['_tab'] ?? 'overview');
+$_tabs = [
+	'overview' => 'Overview',
+	'settings' => 'Settings',
+	'players'  => 'Players',
+	'world'    => 'World',
+	'turns'    => 'Turns',
+	'moderation' => 'Moderation',
+	'danger'   => 'Danger Zone',
+];
+?>
 <h2>Admin Panel</h2>
 
 <?php if($result_msg != ""): ?>
 <div class="result"><?php echo $result_msg; ?></div>
 <?php endif; ?>
 
-<!-- Database Stats -->
+<div class="admin-tabs">
+<?php foreach($_tabs as $_tk => $_tl): ?>
+	<a href="?tab=<?php echo $_tk; ?>" class="<?php echo $_tab == $_tk ? 'active' : ''; ?>"><?php echo $_tl; ?></a>
+<?php endforeach; ?>
+</div>
+
+<!-- ==================== OVERVIEW TAB ==================== -->
+<div class="tab-panel<?php echo $_tab == 'overview' ? ' active' : ''; ?>">
 <div class="admin-section">
 	<h3>Database Stats</h3>
 	<div class="stats-grid">
@@ -237,7 +293,10 @@ $players_result = mysqli_query($conn, "SELECT PlayerID, UserName, Email, TeamID,
 	<?php endforeach; ?>
 	</div>
 </div>
+</div><!-- /overview -->
 
+<!-- ==================== SETTINGS TAB ==================== -->
+<div class="tab-panel<?php echo $_tab == 'settings' ? ' active' : ''; ?>">
 <!-- Game Settings -->
 <?php
 	include_once(__DIR__ . "/../turnfunctions.inc.php");
@@ -257,11 +316,16 @@ $players_result = mysqli_query($conn, "SELECT PlayerID, UserName, Email, TeamID,
 		'planet_weapon_hit_chance' => ['label' => 'Planet Weapon Hit Chance (1-in-N)', 'default' => '3', 'hint' => 'Planet weapons fire with 1-in-N chance per round (higher = less accurate)'],
 		'base_construction_slots'  => ['label' => 'Base Construction Slots',            'default' => '1',  'hint' => 'Construction queue slots per planet before factories (each factory adds +1)'],
 		'default_auction_turns'    => ['label' => 'Default Auction Duration (turns)',    'default' => '5',  'hint' => 'Default number of income turns an auction lasts (each turn = 30 min)'],
+		'building_salvage_rate'    => ['label' => 'Building Salvage Rate',                'default' => '0.5','hint' => 'Fraction of building cost counted toward planet auction value (0.5 = 50%)'],
+		'metal_credit_value'       => ['label' => 'Metal Credit Value',                    'default' => '1',  'hint' => 'Credit value of 1 Metal (used for planet valuation and leaderboard)'],
+		'mineral_credit_value'     => ['label' => 'Mineral Credit Value',                  'default' => '10', 'hint' => 'Credit value of 1 Mineral (used for planet valuation and leaderboard)'],
+		'astrium_credit_value'     => ['label' => 'Astrium Credit Value',                  'default' => '100','hint' => 'Credit value of 1 Astrium (used for planet valuation and leaderboard)'],
 	];
 ?>
 <div class="admin-section">
 	<h3>Game Settings</h3>
 	<form method="post">
+		<input type="hidden" name="_tab" value="settings">
 		<input type="hidden" name="action" value="save_settings">
 		<table>
 			<tr><th>Setting</th><th>Value</th><th>Hint</th></tr>
@@ -278,6 +342,51 @@ $players_result = mysqli_query($conn, "SELECT PlayerID, UserName, Email, TeamID,
 	</form>
 </div>
 
+<!-- Planet Types -->
+<?php
+	$_ptSizeLabels = [1 => 'Small', 2 => 'Medium', 3 => 'Large', 4 => 'Huge'];
+	$_ptRes = mysqli_query($GLOBALS["conn"], "SELECT * FROM planet_types ORDER BY Type ASC");
+	$_ptRows = [];
+	while($_ptr = mysqli_fetch_object($_ptRes)) $_ptRows[] = $_ptr;
+
+	// Count existing planets per type
+	$_ptCounts = [];
+	$_pcRes = mysqli_query($GLOBALS["conn"], "SELECT Size, COUNT(*) AS cnt FROM planets GROUP BY Size");
+	while($_pcr = mysqli_fetch_object($_pcRes)) $_ptCounts[(int)$_pcr->Size] = (int)$_pcr->cnt;
+?>
+<div class="admin-section">
+	<h3>Planet Types</h3>
+	<p><small>Edit base resource generation and grid slots per planet size. Income is per turn before harvesters/home world bonuses.</small></p>
+	<form method="post">
+		<input type="hidden" name="_tab" value="settings">
+		<input type="hidden" name="action" value="save_planet_types">
+		<table>
+			<tr><th>Type</th><th>Size</th><th>Grids</th><th>Row Squares</th><th>Metal/turn</th><th>Mineral/turn</th><th>Astrium/turn</th><th>Existing</th></tr>
+			<?php foreach($_ptRows as $_pt):
+				$_ptInc = explode(':', $_pt->income);
+				$_ptLabel = $_ptSizeLabels[(int)$_pt->Type] ?? 'Type '.$_pt->Type;
+				$_ptCount = $_ptCounts[(int)$_pt->Type] ?? 0;
+			?>
+			<tr>
+				<td><?php echo $_pt->Type; ?><input type="hidden" name="pt_type[]" value="<?php echo $_pt->Type; ?>"></td>
+				<td><?php echo $_ptLabel; ?></td>
+				<td><input type="number" name="pt_grids[<?php echo $_pt->Type; ?>]" value="<?php echo $_pt->Grids; ?>" size="5" min="1"></td>
+				<td><input type="number" name="pt_rowsquares[<?php echo $_pt->Type; ?>]" value="<?php echo $_pt->rowsquares; ?>" size="5" min="1"></td>
+				<td><input type="number" name="pt_metal[<?php echo $_pt->Type; ?>]" value="<?php echo (int)($_ptInc[0] ?? 0); ?>" size="5" min="0"></td>
+				<td><input type="number" name="pt_mineral[<?php echo $_pt->Type; ?>]" value="<?php echo (int)($_ptInc[1] ?? 0); ?>" size="5" min="0"></td>
+				<td><input type="number" name="pt_astrium[<?php echo $_pt->Type; ?>]" value="<?php echo (int)($_ptInc[2] ?? 0); ?>" size="5" min="0"></td>
+				<td style="color:#888;"><?php echo number_format($_ptCount); ?> planet<?php echo $_ptCount != 1 ? 's' : ''; ?></td>
+			</tr>
+			<?php endforeach; ?>
+		</table>
+		<br>
+		<input type="submit" value="Save Planet Types">
+	</form>
+</div>
+</div><!-- /settings -->
+
+<!-- ==================== PLAYERS TAB ==================== -->
+<div class="tab-panel<?php echo $_tab == 'players' ? ' active' : ''; ?>">
 <!-- Player List -->
 <div class="admin-section">
 	<h3>Players</h3>
@@ -287,7 +396,15 @@ $players_result = mysqli_query($conn, "SELECT PlayerID, UserName, Email, TeamID,
 		<tr>
 			<td><?php echo $p->PlayerID; ?></td>
 			<td><?php echo h($p->UserName); ?></td>
-			<td><?php echo $p->Email; ?></td>
+			<td>
+				<form method="post" style="display:inline; white-space:nowrap;">
+					<input type="hidden" name="_tab" value="players">
+					<input type="hidden" name="action" value="save_email">
+					<input type="hidden" name="player_id" value="<?php echo $p->PlayerID; ?>">
+					<input type="text" name="email" value="<?php echo htmlspecialchars($p->Email); ?>" size="20">
+					<input type="submit" value="&#10003;" title="Save email" style="padding:1px 5px;">
+				</form>
+			</td>
 			<td><?php echo $p->TeamID > 0 ? h(TeamNameFromID($p->TeamID)) : "-"; ?></td>
 			<td><?php echo $p->Metal; ?></td>
 			<td><?php echo $p->Mineral; ?></td>
@@ -298,10 +415,26 @@ $players_result = mysqli_query($conn, "SELECT PlayerID, UserName, Email, TeamID,
 	</table>
 </div>
 
+<!-- Player Management -->
+<div class="admin-section">
+	<h3>Reset Player Password</h3>
+	<form method="post">
+		<input type="hidden" name="_tab" value="players">
+		<input type="hidden" name="action" value="reset_password">
+		Player ID: <input type="number" name="player_id" min="1" size="4" required>
+		New Password: <input type="password" name="new_password" required>
+		<input type="submit" value="Reset Password">
+	</form>
+</div>
+</div><!-- /players -->
+
+<!-- ==================== WORLD TAB ==================== -->
+<div class="tab-panel<?php echo $_tab == 'world' ? ' active' : ''; ?>">
 <!-- System Management -->
 <div class="admin-section">
 	<h3>System Management</h3>
 	<form method="post" style="display:inline-block;">
+		<input type="hidden" name="_tab" value="world">
 		<input type="hidden" name="action" value="rename_system_default">
 		System ID: <input type="number" name="system_id" min="1" size="4" required>
 		New Default Name: <input type="text" name="default_name" maxlength="100" size="20" required>
@@ -313,53 +446,55 @@ $players_result = mysqli_query($conn, "SELECT PlayerID, UserName, Email, TeamID,
 <div class="admin-section">
 	<h3>World Generation</h3>
 	<form method="post" style="display:inline-block; margin-right: 20px;">
+		<input type="hidden" name="_tab" value="world">
 		<input type="hidden" name="action" value="populate_sector">
 		Sector ID: <input type="number" name="sector_id" min="1" max="100" size="4" required>
 		<input type="submit" value="Populate Sector">
 	</form>
 	<form method="post" style="display:inline-block;">
+		<input type="hidden" name="_tab" value="world">
 		<input type="hidden" name="action" value="calc_owners">
 		<input type="submit" value="Recalculate Sector Owners">
 	</form>
 	<form method="post" style="display:inline-block; margin-left: 20px;" onsubmit="return confirm('Populate all empty sectors? This may take a moment.');">
+		<input type="hidden" name="_tab" value="world">
 		<input type="hidden" name="action" value="populate_all">
 		<input type="submit" value="Populate All Empty Sectors">
 	</form>
 </div>
+</div><!-- /world -->
 
+<!-- ==================== TURNS TAB ==================== -->
+<div class="tab-panel<?php echo $_tab == 'turns' ? ' active' : ''; ?>">
 <!-- Turn Processing -->
 <div class="admin-section">
 	<h3>Turn Processing</h3>
 	<form method="post" style="display:inline-block; margin-right: 20px;">
+		<input type="hidden" name="_tab" value="turns">
 		<input type="hidden" name="action" value="run_turn">
 		<input type="submit" value="Run Mini-Turn (Construction/Movement)">
 	</form>
 	<form method="post" style="display:inline-block;">
+		<input type="hidden" name="_tab" value="turns">
 		<input type="hidden" name="action" value="run_income">
 		<input type="submit" value="Run Income Turn">
 	</form>
 	<form method="post" style="display:inline-block; margin-left: 20px;">
+		<input type="hidden" name="_tab" value="turns">
 		<input type="hidden" name="action" value="reset_timer">
 		<input type="submit" value="Reset Turn Timer">
 	</form>
 </div>
+</div><!-- /turns -->
 
-<!-- Player Management -->
-<div class="admin-section">
-	<h3>Reset Player Password</h3>
-	<form method="post">
-		<input type="hidden" name="action" value="reset_password">
-		Player ID: <input type="number" name="player_id" min="1" size="4" required>
-		New Password: <input type="password" name="new_password" required>
-		<input type="submit" value="Reset Password">
-	</form>
-</div>
-
+<!-- ==================== MODERATION TAB ==================== -->
+<div class="tab-panel<?php echo $_tab == 'moderation' ? ' active' : ''; ?>">
 <!-- Forbidden Words -->
 <div class="admin-section">
 	<h3>Forbidden Words (Name Filter)</h3>
 	<p><small>One word per line. Lines starting with # are comments. Matching is case-insensitive substring.</small></p>
 	<form method="post">
+		<input type="hidden" name="_tab" value="moderation">
 		<input type="hidden" name="action" value="save_forbidden_words">
 		<textarea name="forbidden_words" rows="12" cols="40" style="background:#222;color:#fff;border:1px solid #555;font-family:monospace;"><?php
 			$_fwFile = __DIR__ . '/../data/forbidden_words.txt';
@@ -368,16 +503,21 @@ $players_result = mysqli_query($conn, "SELECT PlayerID, UserName, Email, TeamID,
 		<input type="submit" value="Save Forbidden Words">
 	</form>
 </div>
+</div><!-- /moderation -->
 
+<!-- ==================== DANGER TAB ==================== -->
+<div class="tab-panel<?php echo $_tab == 'danger' ? ' active' : ''; ?>">
 <!-- Dangerous Actions -->
 <div class="admin-section danger">
 	<h3>&#9888; Destructive Actions</h3>
 	<form method="post" style="display:inline-block; margin-right: 20px;" onsubmit="return confirm('Clear all systems from this sector?');">
+		<input type="hidden" name="_tab" value="danger">
 		<input type="hidden" name="action" value="clear_sector">
 		Sector ID: <input type="number" name="sector_id" min="1" max="100" size="4" required>
 		<input type="submit" value="Clear Sector" class="danger-btn">
 	</form>
 	<form method="post" style="display:inline-block;" onsubmit="return confirm('Delete ALL planets with ID > 6? This cannot be undone!');">
+		<input type="hidden" name="_tab" value="danger">
 		<input type="hidden" name="action" value="clear_planets">
 		<input type="submit" value="Clear All Planets" class="danger-btn">
 	</form>
@@ -389,10 +529,12 @@ $players_result = mysqli_query($conn, "SELECT PlayerID, UserName, Email, TeamID,
 	<h3>&#9760; The Burn - Galaxy Reset</h3>
 	<p style="color:#ff6666;">This will wipe the entire galaxy: all planets, systems, ships, fleets, buildings, battles, auctions, and teams. Player accounts are preserved but all resources and progress are reset to zero. The galaxy will be repopulated fresh.</p>
 	<form method="post" onsubmit="return confirm('INITIATE THE BURN?\n\nThis will destroy the entire galaxy and reset all player progress.\n\nType BURN to confirm.') && prompt('Type BURN to confirm:') === 'BURN';">
+		<input type="hidden" name="_tab" value="danger">
 		<input type="hidden" name="action" value="the_burn">
 		<input type="submit" value="&#9760; INITIATE THE BURN" class="danger-btn" style="font-size: 16px; padding: 10px 30px;">
 	</form>
 </div>
+</div><!-- /danger -->
 
 </body>
 </html>

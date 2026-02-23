@@ -36,7 +36,7 @@ if(!IsSystem(($_GET['id'] ?? ""))){
 	echo "Not a valid system ID";
 }else{
 	$SystemID = ($_GET['id'] ?? "");
-	CheckSystemMajOwner($SystemID);
+	$_sysOwnership = CalcSystemOwnership($SystemID);
 	$System = GetSystem($SystemID);
 ?>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
@@ -106,11 +106,11 @@ foreach($Planets as $key=>$Planet){
 }
 ?>
   </ol>
-  <?php if ($System->PlayerID>0){?>
-      Owner: <?php echo h($_playerNames[$System->PlayerID] ?? GetPlayerNameFromID($System->PlayerID)); ?><br/>
+	  <?php if ($_sysOwnership['PlayerID']>0){?>
+      Owner: <?php echo h($_playerNames[$_sysOwnership['PlayerID']] ?? GetPlayerNameFromID($_sysOwnership['PlayerID'])); ?><br/>
 	  <?php } ?>
-	  <?php if ($System->TeamID>0){?>
-      Controlling Team: <a href="team.php?id=<?php echo $System->TeamID; ?>"><?php echo h(TeamNameFromID($System->TeamID)); ?></a><br/>
+	  <?php if ($_sysOwnership['TeamID']>0){?>
+      Controlling Team: <a href="team.php?id=<?php echo $_sysOwnership['TeamID']; ?>"><?php echo h(TeamNameFromID($_sysOwnership['TeamID'])); ?></a><br/>
 	  <?php }?>
 	  <?php
 	  $_myPID = GetPlayerIDFromName($username);

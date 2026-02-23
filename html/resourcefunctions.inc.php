@@ -313,4 +313,41 @@ function GetAuction($AuctionID){
 	return mysqli_fetch_object($res);
 }
 
+// Returns ranking info for a player: ['rank' => N, 'totalValue' => X, 'totalPlayers' => Y]
+// Or if no TargetPlayerID given, returns full sorted array of all players.
+function GetPlayerRanking($TargetPlayerID = 0){
+	$mcv = (int)GetGameSetting('metal_credit_value', 1);
+	$ncv = (int)GetGameSetting('mineral_credit_value', 10);
+	$acv = (int)GetGameSetting('astrium_credit_value', 100);
+
+	$players = [];
+	$res = mysqli_query($GLOBALS["conn"], "SELECT PlayerID, Metal, Mineral, Astrium, Credits FROM players WHERE PlayerID > 0");
+	while($row = mysqli_fetch_object($res)){
+		$pid = (int)$row->PlayerID;
+		$resourceValue = ((int)$row->Metal * $mcv) + ((int)$row->Mineral * $ncv) + ((int)$row->Astrium * $acv) + (int)$row->Credits;
+		$planetValue = 0;
+		$pRes = mysqli_query($GLOBALS["conn"], "SELECT PlanetID FROM planets WHERE PlayerID='$pid'");
+		while($pRow = mysqli_fetch_object($pRes)){
+			$planetValue += GetPlanetValue((int)$pRow->PlanetID);
+		}
+		$players[] = ['pid' => $pid, 'totalValue' => $resourceValue + $planetValue, 'resourceValue' => $resourceValue, 'planetValue' => $planetValue];
+	}
+	usort($players, function($a, $b){ return $b['totalValue'] - $a['totalValue']; });
+
+	if($TargetPlayerID > 0){
+		$rank = 0;
+		$lastVal = -1;
+		$displayRank = 0;
+		foreach($players as $p){
+			$rank++;
+			if($p['totalValue'] !== $lastVal){ $displayRank = $rank; $lastVal = $p['totalValue']; }
+			if($p['pid'] == (int)$TargetPlayerID){
+				return ['rank' => $displayRank, 'totalValue' => $p['totalValue'], 'resourceValue' => $p['resourceValue'], 'planetValue' => $p['planetValue'], 'totalPlayers' => count($players)];
+			}
+		}
+		return ['rank' => 0, 'totalValue' => 0, 'resourceValue' => 0, 'planetValue' => 0, 'totalPlayers' => count($players)];
+	}
+	return $players;
+}
+
 ?>

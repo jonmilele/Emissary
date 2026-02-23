@@ -334,11 +334,16 @@ CREATE TABLE `known_systems` (
 -- ============================================
 
 -- Planet types (4 sizes found in planet.php)
+-- Each size has a distinct resource specialty:
+--   Small  = Metal-rich (high metal, low rare resources)
+--   Medium = Balanced (best mineral, moderate across the board)
+--   Large  = Mineral-rich (high mineral and astrium)
+--   Huge   = Astrium-rich (low base, very high astrium)
 INSERT INTO `planet_types` (`Type`, `Grids`, `xstart`, `ystart`, `rowsquares`, `income`) VALUES
-(1, 100, 100, 50, 10, '100:50:10'),
-(2, 121, 75, 75, 11, '120:60:12'),
-(3, 81, 130, 85, 9, '80:40:8'),
-(4, 144, 75, 25, 12, '150:75:15');
+(1, 100, 100, 50, 10, '150:30:5'),
+(2, 121, 75, 75, 11, '80:60:10'),
+(3, 100, 130, 85, 10, '60:80:15'),
+(4, 144, 75, 25, 12, '50:40:25');
 
 -- Building types (inferred from code references)
 -- Types: 1=Factory, 2=Laboratory, 3=Harvester, 4=Shipyard,
@@ -394,4 +399,5 @@ INSERT INTO `game_settings` (`setting_key`, `setting_value`) VALUES
 ('starting_mineral', '250'),
 ('starting_astrium', '50'),
 ('planet_weapon_hit_chance', '3'),
-('default_auction_turns', '5');
+('default_auction_turns', '5'),
+('building_salvage_rate', '0.5');

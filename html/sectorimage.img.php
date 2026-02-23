@@ -22,17 +22,14 @@ for($j = 50;$j<500;$j+=50){
 	imageline($image,0,$j,500,$j,$bordergray);
 }
 
-$_secName = GetSectorName($SectorID);
-imagestring($image,2,5,5,$_secName . " (" . $SectorID . ")",$border);
-
-// Bulk: get team colours for all players in this sector's systems
+// Bulk: get team colours for all players who own planets in this sector
 $_teamColours = [];
-$res = mysqli_query($GLOBALS["conn"], "SELECT DISTINCT pl.PlayerID, t.Colour FROM Systems s JOIN players pl ON pl.PlayerID=s.PlayerID JOIN teams t ON t.TeamID=pl.TeamID WHERE s.SectorID='$SectorID' AND s.PlayerID>0 AND pl.TeamID>0");
+$res = mysqli_query($GLOBALS["conn"], "SELECT DISTINCT pl.PlayerID, t.Colour FROM planets p JOIN Systems s ON p.`System`=s.SystemID JOIN players pl ON pl.PlayerID=p.PlayerID JOIN teams t ON t.TeamID=pl.TeamID WHERE s.SectorID='$SectorID' AND p.PlayerID>0 AND pl.TeamID>0");
 while($row = mysqli_fetch_object($res)) $_teamColours[(int)$row->PlayerID] = $row->Colour;
 
-// Bulk: team colours by TeamID (for team-only majority)
+// Bulk: team colours by TeamID (derived from planet owners)
 $_teamColoursByID = [];
-$res = mysqli_query($GLOBALS["conn"], "SELECT DISTINCT t.TeamID, t.Colour FROM Systems s JOIN teams t ON t.TeamID=s.TeamID WHERE s.SectorID='$SectorID' AND s.TeamID>0");
+$res = mysqli_query($GLOBALS["conn"], "SELECT DISTINCT t.TeamID, t.Colour FROM planets p JOIN Systems s ON p.`System`=s.SystemID JOIN players pl ON pl.PlayerID=p.PlayerID JOIN teams t ON t.TeamID=pl.TeamID WHERE s.SectorID='$SectorID' AND p.PlayerID>0 AND pl.TeamID>0");
 while($row = mysqli_fetch_object($res)) $_teamColoursByID[(int)$row->TeamID] = $row->Colour;
 
 // Bulk: majority owner per system (by planet count)
@@ -47,17 +44,53 @@ while($row = mysqli_fetch_object($res)){
 	}
 }
 
+// Bulk: team majority per system (from planet ownership, not stored Systems.TeamID)
+$_sysTeamMaj = [];
+$res = mysqli_query($GLOBALS["conn"], "SELECT s.SystemID AS sid, pl.TeamID, COUNT(*) AS cnt FROM planets p JOIN Systems s ON p.`System`=s.SystemID JOIN players pl ON pl.PlayerID=p.PlayerID WHERE s.SectorID='$SectorID' AND p.PlayerID>0 AND pl.TeamID>0 GROUP BY s.SystemID, pl.TeamID ORDER BY s.SystemID, cnt DESC");
+while($row = mysqli_fetch_object($res)){
+	$sid = (int)$row->sid;
+	if(!isset($_sysTeamMaj[$sid])){
+		$_sysTeamMaj[$sid] = ['tid' => (int)$row->TeamID, 'cnt' => (int)$row->cnt];
+	} elseif(is_array($_sysTeamMaj[$sid]) && (int)$row->cnt == $_sysTeamMaj[$sid]['cnt']){
+		$_sysTeamMaj[$sid] = null; // tied
+	}
+}
+
+// --- Helper: check if two rectangles overlap (with padding) ---
+function _rectsOverlap($a, $b, $pad = 0){
+	return !($a[2] + $pad < $b[0] || $a[0] - $pad > $b[2] || $a[3] + $pad < $b[1] || $a[1] - $pad > $b[3]);
+}
+
 $myPID = GetPlayerIDFromName($username);
+$_fontW = imagefontwidth(2);
+$_fontH = imagefontheight(2);
+$_circleR = 17; // half of largest ring (32px) + 1px pad
+
+// Pre-compute system positions
+$_sysData = [];
 foreach($Systems as $k=>$System){
-	$tc = $_teamColours[$System->PlayerID] ?? '128,128,128';
+	$coordarray = explode("/",$System->Coords);
+	$xc = (int)($coordarray[0]*50);
+	$yc = (int)($coordarray[1]*50);
+	$_sysData[$k] = ['sys' => $System, 'x' => $xc, 'y' => $yc];
+}
+
+// Collect circle bounding boxes (for label clash detection)
+$_circleBoxes = [];
+foreach($_sysData as $sd){
+	$_circleBoxes[] = [$sd['x'] - $_circleR, $sd['y'] - $_circleR, $sd['x'] + $_circleR, $sd['y'] + $_circleR];
+}
+
+// Pass 1: Draw all circles
+foreach($_sysData as $sd){
+	$System = $sd['sys'];
+	$xcoord = $sd['x'];
+	$ycoord = $sd['y'];
+
+	$_majPid = (isset($_sysMajOwner[$System->SystemID]) && is_array($_sysMajOwner[$System->SystemID])) ? $_sysMajOwner[$System->SystemID]['pid'] : 0;
+	$tc = $_teamColours[$_majPid] ?? '128,128,128';
 	$col = explode(",",$tc);
 	$team = imagecolorallocate($image,(int)$col[0],(int)$col[1],(int)$col[2]);
-	
-	$coords = $System->Coords;
-	$coordarray = explode("/",$coords);
-	
-	$xcoord = (int)($coordarray[0]*50);
-	$ycoord = (int)($coordarray[1]*50);
 
 	imagerectangle($image,$xcoord,$ycoord,$xcoord+1,$ycoord+1,$border);
 	imagearc($image,$xcoord,$ycoord,20,20,0,360,$yellow);
@@ -68,19 +101,67 @@ foreach($Systems as $k=>$System){
 		}
 		imagearc($image,$xcoord,$ycoord,30,30,0,360,$team);
 		imagearc($image,$xcoord,$ycoord,32,32,0,360,$team);
-	} elseif(($System->TeamID ?? 0) > 0 && isset($_teamColoursByID[$System->TeamID])){
-		// No player majority but team controls system — draw dashed team ring
-		$tcol = explode(',', $_teamColoursByID[$System->TeamID]);
+	} elseif(isset($_sysTeamMaj[$System->SystemID]) && is_array($_sysTeamMaj[$System->SystemID]) && isset($_teamColoursByID[$_sysTeamMaj[$System->SystemID]['tid']])){
+		$tcol = explode(',', $_teamColoursByID[$_sysTeamMaj[$System->SystemID]['tid']]);
 		$teamRing = imagecolorallocate($image,(int)$tcol[0],(int)$tcol[1],(int)$tcol[2]);
 		imagearc($image,$xcoord,$ycoord,30,30,0,360,$teamRing);
 	}
-	
-	// Smart text placement: flip to left/top if text would overflow grid edge
-	$textWidth = imagefontwidth(2) * strlen($System->Name);
-	$textHeight = imagefontheight(2);
-	$textX = ($xcoord + 10 + $textWidth > 499) ? $xcoord - 10 - $textWidth : $xcoord + 10;
-	$textY = ($ycoord + 10 + $textHeight > 499) ? $ycoord - 10 - $textHeight : $ycoord + 10;
-	imagestring($image,2,$textX,$textY,$System->Name,$border);
+}
+
+// Pass 2: Place labels with clash detection
+$_placedLabels = [];
+$_gap = 18; // offset from circle center (just outside 32px ring)
+
+foreach($_sysData as $sd){
+	$System = $sd['sys'];
+	$xcoord = $sd['x'];
+	$ycoord = $sd['y'];
+	$tw = $_fontW * strlen($System->Name);
+	$th = $_fontH;
+
+	// 8 candidate positions around the circle
+	$candidates = [
+		[$xcoord + $_gap, $ycoord + 2],                          // right
+		[$xcoord + $_gap, $ycoord - $th - 2],                     // right-above
+		[$xcoord - $_gap - $tw, $ycoord + 2],                     // left
+		[$xcoord - $_gap - $tw, $ycoord - $th - 2],               // left-above
+		[$xcoord - (int)($tw/2), $ycoord + $_gap],                // below-center
+		[$xcoord - (int)($tw/2), $ycoord - $_gap - $th],          // above-center
+		[$xcoord + $_gap, $ycoord - (int)($th/2)],                // right-center
+		[$xcoord - $_gap - $tw, $ycoord - (int)($th/2)],          // left-center
+	];
+
+	$bestPos = null;
+	foreach($candidates as $c){
+		$tx = (int)$c[0];
+		$ty = (int)$c[1];
+		// Must stay within grid
+		if($tx < 1 || $ty < 1 || $tx + $tw > 498 || $ty + $th > 498) continue;
+		$labelBox = [$tx, $ty, $tx + $tw, $ty + $th];
+		$clash = false;
+		// Check against all circle bounding boxes (no extra pad — radius already has 1px margin)
+		foreach($_circleBoxes as $cb){
+			if(_rectsOverlap($labelBox, $cb, 0)){ $clash = true; break; }
+		}
+		if($clash) continue;
+		// Check against previously placed labels (6px pad for clear separation)
+		foreach($_placedLabels as $pl){
+			if(_rectsOverlap($labelBox, $pl, 6)){ $clash = true; break; }
+		}
+		if($clash) continue;
+		$bestPos = [$tx, $ty];
+		break;
+	}
+
+	// Fallback: use first candidate clamped to grid bounds
+	if(!$bestPos){
+		$tx = max(1, min((int)$candidates[0][0], 498 - $tw));
+		$ty = max(1, min((int)$candidates[0][1], 498 - $th));
+		$bestPos = [$tx, $ty];
+	}
+
+	imagestring($image, 2, $bestPos[0], $bestPos[1], $System->Name, $border);
+	$_placedLabels[] = [$bestPos[0], $bestPos[1], $bestPos[0] + $tw, $bestPos[1] + $th];
 }
 header("Content-type: image/jpg");
 imagejpeg($image);

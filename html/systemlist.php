@@ -10,7 +10,7 @@ $_myTeamID = (int)PlayerTeam($myPID);
 
 // All systems where player has at least one planet
 $_mySysRes = mysqli_query($GLOBALS["conn"],
-	"SELECT DISTINCT s.SystemID, COALESCE(s.Name, s.DefaultName) AS Name, s.SectorID, s.PlayerID AS SysOwner, s.TeamID AS SysTeamID
+	"SELECT DISTINCT s.SystemID, COALESCE(s.Name, s.DefaultName) AS Name, s.SectorID
 	 FROM Systems s JOIN planets p ON p.`System` = s.SystemID
 	 WHERE p.PlayerID = '$myPID' ORDER BY Name ASC");
 $_mySystems = [];
@@ -88,9 +88,10 @@ while($row = mysqli_fetch_object($_mySysRes)) $_mySystems[] = $row;
 		$_shipCount = $_shipRow ? (int)$_shipRow->cnt : 0;
 	}
 
-	$_sysOwnerName = $_sys->SysOwner > 0 ? GetPlayerNameFromID($_sys->SysOwner) : '';
-	$_isMajOwner = ((int)$_sys->SysOwner == $myPID);
-	$_sysTeamID = (int)($_sys->SysTeamID ?? 0);
+	$_sysOwn = CalcSystemOwnership($sysID);
+	$_sysOwnerName = $_sysOwn['PlayerID'] > 0 ? GetPlayerNameFromID($_sysOwn['PlayerID']) : '';
+	$_isMajOwner = ($_sysOwn['PlayerID'] == $myPID);
+	$_sysTeamID = (int)$_sysOwn['TeamID'];
 ?>
 <div class="panel" style="width:350px;">
 	<h3><a href="system.php?id=<?php echo $sysID; ?>"><?php echo h($_sys->Name); ?></a>
@@ -111,6 +112,22 @@ while($row = mysqli_fetch_object($_mySysRes)) $_mySystems[] = $row;
 	<?php if($rivalCount > 0): ?><small style="color:#ff4444;">(<?php echo $rivalCount; ?> rival)</small><?php endif; ?>
 	<br/>
 
+	<?php
+	$_sysValue = 0;
+	foreach($planets as $_vp){
+		if((int)$_vp->PlayerID == $myPID) $_sysValue += GetPlanetValue($_vp->PlanetID);
+	}
+	?>
+	<?php
+	$_svParts = [];
+	foreach($planets as $_vp2){
+		if((int)$_vp2->PlayerID == $myPID){
+			$_svParts[] = h($_vp2->Name) . ': ' . number_format(GetPlanetValue($_vp2->PlanetID)) . 'C';
+		}
+	}
+	$_svTip = implode(' | ', $_svParts);
+	?>
+	<strong>System Value:</strong> <span title="<?php echo htmlspecialchars($_svTip); ?>" style="cursor:help; border-bottom:1px dotted #888;"><?php echo number_format($_sysValue); ?>C</span><br/>
 	<strong>Income:</strong> <?php echo $totalMetal; ?> Metal / <?php echo $totalMineral; ?> Mineral / <?php echo $totalAstrium; ?> Astrium<br/>
 
 	<strong>Fleets:</strong> <?php echo $_myFleets; ?> yours<?php if($_totalFleets > $_myFleets): ?>, <?php echo $_totalFleets - $_myFleets; ?> other<?php endif; ?>

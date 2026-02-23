@@ -251,7 +251,8 @@ function GetSystem($SystemID){
 	return $Planet;	
 }
 
-function CheckSystemMajOwner($SystemID){
+// Calculates system majority owner on-the-fly from planet data (read-only, no DB writes)
+function CalcSystemOwnership($SystemID){
 	$Players = array();
 	$Teams = array();
 	$query = "SELECT p.PlayerID, pl.TeamID FROM planets p LEFT JOIN players pl ON p.PlayerID = pl.PlayerID WHERE(p.`System`='$SystemID')";
@@ -261,7 +262,6 @@ function CheckSystemMajOwner($SystemID){
 		if($row->PlayerID!=0){
 			$Players[$row->PlayerID]["Player"] = $row->PlayerID;
 			$Players[$row->PlayerID]["Count"] = ($Players[$row->PlayerID]["Count"] ?? 0) + 1;
-			// Track team ownership
 			$tid = (int)($row->TeamID ?? 0);
 			if($tid > 0){
 				$Teams[$tid] = ($Teams[$tid] ?? 0) + 1;
@@ -277,7 +277,6 @@ function CheckSystemMajOwner($SystemID){
 			$player = $Player["Player"];
 		}
 	}
-	//Check for joint majority
 	foreach($Players as $k=>$Player){
 		if($Player["Player"]!=$player){
 			if($Player["Count"]==$largestcount){
@@ -300,10 +299,13 @@ function CheckSystemMajOwner($SystemID){
 			break;
 		}
 	}
-	$query = "UPDATE Systems SET PlayerID = $player, TeamID = $majTeam WHERE(SystemID='$SystemID')";
-	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
-	
-	return $player;
+	return ['PlayerID' => $player, 'TeamID' => $majTeam];
+}
+
+// Deprecated wrapper — use CalcSystemOwnership() instead
+function CheckSystemMajOwner($SystemID){
+	$own = CalcSystemOwnership($SystemID);
+	return $own['PlayerID'];
 }
 
 function PlanetsInSystem($SystemID){
@@ -498,11 +500,9 @@ function RevertPlanetName($PlanetID){
 function RenameSector($SectorID, $NewName, $PlayerID){
 	$sid = (int)$SectorID;
 	$pid = (int)$PlayerID;
-	// Only the majority controller (by system count) can rename
-	$sql = "SELECT MajOwner FROM sectors WHERE SectorID='$sid'";
-	$res = mysqli_query($GLOBALS["conn"], $sql);
-	$row = mysqli_fetch_object($res);
-	if(!$row || (int)$row->MajOwner != $pid || $pid == 0) return false;
+	// Only the majority controller (by planet count) can rename
+	$own = CalcSectorOwnership($sid);
+	if($own['PlayerID'] != $pid || $pid == 0) return false;
 	$name = mysqli_real_escape_string($GLOBALS["conn"], trim($NewName));
 	if(strlen($name) < 1 || strlen($name) > 100) return false;
 	$sql = "UPDATE sectors SET Name='$name' WHERE SectorID='$sid'";
@@ -608,18 +608,17 @@ function TeamNameFromID($TeamID){
 	return $row ? $row->Name : "No Team";
 }
 
-function CalcMajOwner($SectorID){
+// Calculates sector majority owner on-the-fly from planet data (read-only, no DB writes)
+// Uses planet count across all systems in sector — no cascade dependency on system ownership
+function CalcSectorOwnership($SectorID){
 	$Players = array();
 	$Teams = array();
-	$query = "SELECT * FROM Systems WHERE(SectorID='$SectorID')";
+	$query = "SELECT p.PlayerID, pl.TeamID FROM planets p JOIN Systems s ON p.`System` = s.SystemID LEFT JOIN players pl ON p.PlayerID = pl.PlayerID WHERE s.SectorID = '$SectorID' AND p.PlayerID > 0";
 
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	while($row = mysqli_fetch_object($notresult)){
-		if($row->PlayerID!=0){
-			$Players[$row->PlayerID]["Player"] = $row->PlayerID;
-			$Players[$row->PlayerID]["Count"] = ($Players[$row->PlayerID]["Count"] ?? 0) + 1;
-		}
-		// Track team ownership from stored TeamID
+		$Players[$row->PlayerID]["Player"] = $row->PlayerID;
+		$Players[$row->PlayerID]["Count"] = ($Players[$row->PlayerID]["Count"] ?? 0) + 1;
 		$tid = (int)($row->TeamID ?? 0);
 		if($tid > 0){
 			$Teams[$tid] = ($Teams[$tid] ?? 0) + 1;
@@ -656,10 +655,13 @@ function CalcMajOwner($SectorID){
 			break;
 		}
 	}
-	$query = "UPDATE sectors SET MajOwner = $player, MajTeamID = $majTeam WHERE(SectorID='$SectorID')";
-	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
-	
-	return $player;
+	return ['PlayerID' => $player, 'TeamID' => $majTeam];
+}
+
+// Deprecated wrapper — use CalcSectorOwnership() instead
+function CalcMajOwner($SectorID){
+	$own = CalcSectorOwnership($SectorID);
+	return $own['PlayerID'];
 }
 function GetTeamColour($TeamID){
 	if(!$TeamID) return "128,128,128";
@@ -1136,13 +1138,6 @@ function BuyPlanet($PlayerID){
 	// Set as home planet
 	$sql = "UPDATE players SET HomePlanetID='$planetID' WHERE PlayerID='$pid'";
 	mysqli_query($GLOBALS["conn"], $sql);
-	// Recalculate ownership
-	$planet = GetPlanet($planetID);
-	if($planet){
-		CheckSystemMajOwner($planet->System);
-		$sys = GetSystem($planet->System);
-		if($sys) CalcMajOwner($sys->SectorID);
-	}
 	return $planetID;
 }
 
