@@ -1,4 +1,4 @@
-FROM php:8.2-apache
+FROM php:8.5-apache
 RUN docker-php-ext-install mysqli
 RUN apt-get update && apt-get install -y libpng-dev libjpeg-dev libfreetype6-dev cron \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \

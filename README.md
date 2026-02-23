@@ -2,7 +2,7 @@
   <img src="html/images/title.jpg" alt="Emissary" />
 </p>
 
-A browser-based space strategy game originally developed between 2003 and 2004, now being restored and modernized to run on a Docker LAMP stack with PHP 8.2 and MySQL 8.
+A browser-based space strategy game originally developed between 2003 and 2004, now being restored and modernized to run on a Docker LAMP stack with PHP 8.5 and MySQL 8.
 
 ## Table of Contents
 
@@ -42,7 +42,7 @@ This should be familiar with anyone (thinking millenials mainly!) who played PC 
 ### Technology
 
 - **Frontend**: PHP-generated HTML with dynamic GD image rendering (galaxy maps, planet surfaces, sector views)
-- **Backend**: PHP 8.2 on Apache
+- **Backend**: PHP 8.5 on Apache
 - **Database**: MySQL 8.1
 - **Infrastructure**: Docker Compose (web + database + phpMyAdmin)
 - **Turn System**: Cron-based with configurable mini-turn and income turn intervals
@@ -55,7 +55,7 @@ The [`archive/`](archive/) folder contains the original unmodified PHP source co
 
 ### `html/` — Modernized Game Code
 
-The [`html/`](html/) directory contains the working, modernized version of the game, updated to run on PHP 8.2 and MySQL 8. This is the code that the Docker stack serves.
+The [`html/`](html/) directory contains the working, modernized version of the game, updated to run on PHP 8.5 and MySQL 8. This is the code that the Docker stack serves.
 
 ### `pre-git/` — Pre-Git Change Documentation
 
@@ -74,7 +74,7 @@ A summarized changelog is also available in [`CHANGELOG.md`](CHANGELOG.md).
 
 ## ⚠️ Pre-Beta Status
 
-**This project is in a pre-beta state.** The original 2004 PHP source code has been partially modernized to run on PHP 8.2 / MySQL 8, but not all changes have been fully implemented or tested prior to this first git commit. Some game features may be broken or incomplete.
+**This project is in a pre-beta state.** The original 2004 PHP source code has been partially modernized to run on PHP 8.5 / MySQL 8, but not all changes have been fully implemented or tested prior to this first git commit. Some game features may be broken or incomplete.
 
 ### What has been done
 
@@ -160,6 +160,7 @@ Several features have UI or stubs but were never finished in the original code:
 - Monolithic files — `fleetfunctions.inc.php` is 1,200+ lines mixing fleet, ship, and battle logic
 - No transactions — multi-step operations (battles, trades) can leave the database inconsistent
 - Non-atomic resource updates (SELECT then UPDATE) are vulnerable to race conditions
+- No type declarations on function parameters or return types
 - Error handling is `or die()` everywhere
 - ~~N+1 query problem — a single page load can fire 50+ database queries~~ *(improved — galaxy map tooltips use bulk JOINed queries instead of per-sector loops)*
 
@@ -239,7 +240,7 @@ To reset everything and test the installer from scratch:
 
 ```
 Emissary/
-├── Dockerfile              # PHP 8.2 + Apache + GD + cron
+├── Dockerfile              # PHP 8.5 + Apache + GD + cron
 ├── entrypoint.sh           # Starts cron daemon + Apache
 ├── docker-compose.yml      # Web + MySQL 8.1 + phpMyAdmin
 ├── clean-wipe.sh           # Reset script for fresh install testing
