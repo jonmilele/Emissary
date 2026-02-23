@@ -28,6 +28,8 @@ Emissary is a multiplayer browser-based space strategy game where players compet
 
 This should be familiar with anyone (thinking millenials mainly!) who played PC games like Ascendancy or browser-based games like Planetarion back in the day. It was Planetarion that I was originally trying to recreate with this project while at high school.
 
+I fully intend for the UI to remain very 'retro' and simplistic, as well as limit use of 'detailed' graphics wherever possible. I'd hope the UI would closer resemble 1970's 'Alien' than Stellaris type games.
+
 ### Core Gameplay
 
 - **Galaxy** — A 10×10 grid of sectors, each containing up to 10 star systems with orbiting planets
