@@ -2,7 +2,7 @@
   <img src="html/images/title.jpg" alt="Emissary" />
 </p>
 
-A browser-based space strategy game originally developed in 2004, now restored and modernized to run on a Docker LAMP stack with PHP 8.2 and MySQL 8.
+A browser-based space strategy game originally developed between 2003 and 2004, now restored and modernized to run on a Docker LAMP stack with PHP 8.2 and MySQL 8.
 
 ## Table of Contents
 
@@ -25,7 +25,8 @@ A browser-based space strategy game originally developed in 2004, now restored a
 ## About the Game
 
 Emissary is a multiplayer browser-based space strategy game where players compete for control of a galaxy divided into 100 sectors. Players colonize planets, build structures, construct fleets, form teams, and wage war across star systems.
-This should be familiar with anyone (thinking millenials mainly!) who played DOS games like Ascendancy or browser-based games like Planetarion back in the day. It was Planetarion that I was originally trying to recreate with this project.
+
+This should be familiar with anyone (thinking millenials mainly!) who played PC games like Ascendancy or browser-based games like Planetarion back in the day. It was Planetarion that I was originally trying to recreate with this project while at high school.
 
 ### Core Gameplay
 
@@ -58,7 +59,7 @@ The [`html/`](html/) directory contains the working, modernized version of the g
 
 ### `pre-git/` — Pre-Git Change Documentation
 
-The [`pre-git/`](pre-git/) directory contains detailed technical documentation of every code change made to bring the original 2004 source to its current state, organized by phase:
+The [`pre-git/`](pre-git/) directory contains detailed technical documentation of every code change made to bring the original 2004 source to the point where I started this repo, organized by phase. Simply loading the old PHP files into a new LAMP stack was not enough, as when originally developing this game I was working on a web hosting service platform and did not save the original SQL schema. I stopped development when I went to college in 2004, and the original game database was (foolishly) lost when I cancelled the hosting package. The original game files were saved however and I found them last year when performing a recovery on an old hard drive I found in the attic.
 
 1. [Database Schema Reconstruction](pre-git/01-database-schema.md) — Reverse-engineered 17-table MySQL schema from PHP source
 2. [PHP 8.2 Migration](pre-git/02-php82-migration.md) — `mysql_*` → `mysqli_*`, `mcrypt` → `password_hash`, session fixes, 112 warning fixes
