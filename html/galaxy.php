@@ -15,6 +15,7 @@ include_once("userfunctions.inc.php");
 <?php
 include("header.inc.php");
 ?>
+<p><a href="galaxyzoom.php">Zoom In — Full Size Galaxy Map</a></p>
 <div class="galaxy"><img src="galaxyimage.img.php" border="0" usemap="#Map" style="margin:15px;"/>
 <map name="Map">
 <?php
@@ -23,6 +24,11 @@ $_secSystems = [];
 $_secPlanets = [];
 $_secTeamCtrl = [];
 $_secPlayers = [];
+$_secNames = [];
+
+// 0. Sector names
+$res = mysqli_query($GLOBALS["conn"], "SELECT SectorID, Name FROM sectors");
+while($row = mysqli_fetch_object($res)) $_secNames[(int)$row->SectorID] = $row->Name;
 
 // 1. Systems per sector
 $res = mysqli_query($GLOBALS["conn"], "SELECT SectorID, COUNT(*) AS cnt FROM Systems GROUP BY SectorID");
@@ -57,7 +63,8 @@ for($i = 0;$i<10;$i++){
 	for($j = 0;$j<10;$j++){
 		$ns = $_secSystems[$secid] ?? 0;
 		$np = $_secPlanets[$secid] ?? 0;
-		$tip = "Sector $secid | Systems: $ns | Planets: $np";
+		$sname = $_secNames[$secid] ?? '';
+		$tip = ($sname ? "$sname (Sector $secid)" : "Sector $secid") . " | Systems: $ns | Planets: $np";
 		if(!empty($_secTeamTop[$secid])){
 			$tip .= " | Controlled by: " . htmlspecialchars($_secTeamTop[$secid]['name']);
 		}

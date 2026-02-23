@@ -9,6 +9,7 @@ if(isset($_POST['action']) && csrf_validate()){
 	if($_POST['action'] == "sethome"){
 		$planetID = (int)($_POST['planetid'] ?? 0);
 		if($planetID > 0 && SetHomePlanet($myPID, $planetID)){
+			AddAlert($myPID, 'system', GetPlanetNameFromID($planetID).' set as home world', 'planet.php?id='.$planetID);
 			header("Location: planet.php?id=$planetID&msg=Home+world+set");
 			exit;
 		}

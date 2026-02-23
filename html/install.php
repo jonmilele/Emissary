@@ -101,7 +101,7 @@ if($step === 'run'){
 		stepMsg("Creating database user...");
 		$db_name = 'emissary';
 		$db_user = 'emissary';
-		$db_pass = 'bumpy5';
+		$db_pass = 'adminpass';
 		mysqli_query($root, "CREATE USER IF NOT EXISTS '$db_user'@'%' IDENTIFIED BY '$db_pass'");
 		mysqli_query($root, "GRANT ALL PRIVILEGES ON `$db_name`.* TO '$db_user'@'%'");
 		mysqli_query($root, "FLUSH PRIVILEGES");

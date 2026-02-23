@@ -16,9 +16,14 @@ if(isset($_POST['action']) && csrf_validate()){
 			}
 			
 			if(($Strategy<2)&&EnemyOwned(($_POST["value"] ?? ""))){ // Trying to Colonise or Enter orbit of enemy owned planet.
+				AddAlertForCurrentUser('fleet', 'Cannot send fleet to enemy-owned planet', 'fleet.php?id='.$FleetID);
 				header("Location: fleet.php?id=".$FleetID."&msg=Enemy+Owned");
 			}else{
 				MoveFleet($FleetID,$Target,$Strategy);
+				$destName = GetPlanetNameFromID(($_POST["value"] ?? ""));
+				$stratNames = ['0'=>'orbit','1'=>'colonise','2'=>'attack','3'=>'invade'];
+				$stratLabel = $stratNames[$Strategy] ?? 'orbit';
+				AddAlertForCurrentUser('fleet', 'Fleet '.GetFleetName($FleetID).' dispatched to '.$destName.' to '.$stratLabel, 'fleet.php?id='.$FleetID);
 				header("Location: fleet.php?id=".$FleetID."&msg=Moving");
 			}
 		}
@@ -51,6 +56,7 @@ if(isset($_POST['action']) && csrf_validate()){
 			}
 			$sql = "UPDATE fleets SET Strategy = '0', MovingFrom = '".$Fleet->Destination."', Destination = '".$Fleet->MovingFrom."', TTF = '".$Abort_TTF."' WHERE(FleetID = '".$Fleet->FleetID."')";
 			$res = mysqli_query($GLOBALS["conn"], $sql) or die(mysqli_error($GLOBALS["conn"]));
+			AddAlertForCurrentUser('fleet', 'Fleet '.GetFleetName($FleetID).' movement aborted, returning in '.$Abort_TTF.' turn(s)', 'fleet.php?id='.$Fleet->FleetID);
 			header("Location: fleet.php?id=".$Fleet->FleetID."&msg=Fleet+movement+aborted+".$Abort_TTF);
 		}
 	}
@@ -59,7 +65,9 @@ if(isset($_POST['action']) && csrf_validate()){
 		if(!OwnsFleet($username, $FleetID)){
 			header("Location: fleetlist.php?msg=Not+your+fleet");
 		}else{
+			$delName = GetFleetName($FleetID);
 			if(DeleteFleet($FleetID)){
+				AddAlertForCurrentUser('fleet', 'Fleet '.$delName.' deleted');
 				header("Location: fleetlist.php?msg=Fleet+deleted");
 			}else{
 				header("Location: fleetlist.php?msg=Fleet+cannot+be+deleted");

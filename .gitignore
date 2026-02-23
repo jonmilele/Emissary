@@ -10,6 +10,13 @@ html/turntime.txt
 html/turninterval.txt
 html/config.inc.php
 
+# Local overrides (not in repo)
+docker-compose.override.yml
+
+# Production forbidden words (real list managed on server)
+# The repo ships data/forbidden_words.txt as an example template
+!html/data/forbidden_words.txt
+
 # MySQL data volume
 mysql_data/
 

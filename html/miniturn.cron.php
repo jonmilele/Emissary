@@ -8,6 +8,7 @@ if(!$lockFp || !flock($lockFp, LOCK_EX | LOCK_NB)){
 
 include_once(__DIR__ . "/connect.inc.php");
 include_once(__DIR__ . "/userfunctions.inc.php");
+include_once(__DIR__ . "/alertfunctions.inc.php");
 
 function DropFleetTTF($FleetID){
 	global $username;
@@ -24,7 +25,10 @@ function DropFleetTTF($FleetID){
 	}else{
 		$sql = "UPDATE fleets SET TTF = '0', Location = '".$row->Destination."', MovingFrom = '', Destination = '', Strategy = '' WHERE(FleetID = '$FleetID')";
 		$res = mysqli_query($GLOBALS["conn"], $sql);
-		Report($row->PlayerID,3,$FleetID.":".$row->Strategy.":".substr($row->Destination,2,strlen($row->Destination)-2));
+		$_arrPlanet = substr($row->Destination,2,strlen($row->Destination)-2);
+		$_stratLabels = ['0'=>'','1'=>' for colonisation','2'=>' to attack','3'=>' to invade'];
+		$_stratPost = $_stratLabels[$row->Strategy] ?? '';
+		AddAlert($row->PlayerID, 'fleet', 'Fleet '.GetFleetName($FleetID).' arrived at '.GetPlanetNameFromID($_arrPlanet).$_stratPost, 'planet.php?id='.$_arrPlanet);
 		if($row->Strategy==2){
 			AttackPlanet($FleetID,substr($row->Destination,2,strlen($row->Destination)-2),false);
 		}
@@ -66,7 +70,7 @@ function DropShipTTF($ShipID){
 		$id = mysqli_insert_id($GLOBALS["conn"]);
 		$sql = "DELETE FROM cships WHERE(ID = '$ShipID')";
 		$res = mysqli_query($GLOBALS["conn"], $sql);
-		Report($row->PlayerID,1,$row->Type.":".$planet);
+		AddAlert($row->PlayerID, 'construction', 'A '.GetShipTypeString($row->Type).' was completed on '.GetPlanetNameFromID($planet), 'planet.php?id='.$planet);
 		if(ShipsInQueue($planet,$grid)){
 			//echo "Ships in Queue\n";
 			$ship = GetNextShipInQueue($planet,$grid);
@@ -131,7 +135,7 @@ function DropBuildingTTF($ShipID){
 		$id = mysqli_insert_id($GLOBALS["conn"]);
 		$sql = "DELETE FROM cbuildings WHERE(ID = '$ShipID')";
 		$res = mysqli_query($GLOBALS["conn"], $sql);
-		Report($row->PlayerID,2,$row->Type.":".$row->Grid.":".$row->PlanetID);
+		AddAlert($row->PlayerID, 'construction', GetGridContentString($row->Type).' completed on '.GetPlanetNameFromID($row->PlanetID), 'planet.php?id='.$row->PlanetID);
 		return 0;
 	}
 }

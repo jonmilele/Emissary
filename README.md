@@ -93,13 +93,20 @@ A summarized changelog is also available in [`CHANGELOG.md`](CHANGELOG.md).
 - **Election motion system** — elections require a motion raised by a member and seconded by 25% of the team before voting begins; automatic elections every 100 turns; leader can resign to trigger an immediate election
 - **Team colour system** — 16 preset colours with uniqueness enforcement and visual colour picker
 - **Home world system** — starting planet as home world, 2× resource production, 1.5× building HP, forced re-selection on invasion, game-over flow with planet purchase option
-- **Configurable game settings** — 13 game balance values (home world multipliers, starting resources, buy planet costs, harvester bonus, election parameters, weapon hit chance) stored in the database and editable from the admin panel
+- **Configurable game settings** — 14 game balance values (home world multipliers, starting resources, buy planet costs, harvester bonus, election parameters, weapon hit chance, construction slots) stored in the database and editable from the admin panel
 - **Galaxy map tooltips** — hover shows sector number, system/planet counts, controlling team, and player breakdown
 - **System page improvements** — planet sidebar shows fleet/shield/weapon icons and home world badges
 - **Planet list improvements** — home world badge, building/fleet/weapon status icons
 - **Player profile** — shows team affiliation with colour swatch, home planet link
 - **Fleet ownership checks** — fleet actions verify the logged-in player owns the fleet
 - **Various bug fixes** — trade.php `$Mineral`, shieldcount.img.php GD calls, sectorimage.img.php TypeError, undefined array key warnings, include guard for userfunctions.inc.php
+- **Alerts system** — full activity log and notification centre replacing the old gamelog system; categorised alerts (system, fleet, construction, combat, team, economy) with links to relevant pages, unread count in header, category filter tabs; action confirmations (fleet moves, building, teams, etc.) now persist as alerts alongside the `?msg=` display; turn events (ship/building completion, fleet arrival, income, battles, invasions, elections) generate alerts automatically; old alerts purged after 30 days
+- **Construction queue system** — configurable build queue slots per planet (`base_construction_slots` setting, +1 per factory), queue capacity display on planet page, build forms hidden when queue is full
+- **Sector page enhancements** — compass-style navigation buttons for adjacent sectors; planets listed under each stakeholder in the sidebar
+- **System & planet renaming** — owners can rename systems (sole controller of all colonised planets) and individual planets; names validated for length, character set, uniqueness (against both custom and default names), and profanity; system renames automatically cascade to planet default names; revert-to-default option for both
+- **Profanity filter** — configurable forbidden word list (`data/forbidden_words.txt`) with admin panel editor and `.htaccess` protection; used by system, planet, and sector rename validation
+- **Galaxy zoom map** — full-size 5000×5000 stitched view of all 100 sector images with links to each sector, accessible from the galaxy overview
+- **Systems list page** — dedicated overview of all owned systems showing income totals, fleet counts, unassigned ships, allied/rival holdings, and majority control status
 
 ### What still needs work
 
@@ -143,7 +150,7 @@ Some hardening has been done, but significant work remains — this is 2004 code
 Several features have UI or stubs but were never finished in the original code:
 
 - **Race/species creation** — signup step 2 has a form but the backend is empty
-- **Alerts** — the header links to an alerts page that doesn't exist
+- ~~**Alerts** — the header links to an alerts page that doesn't exist~~ *(fixed — full alerts system with categorised notifications, unread badges, and category filtering; replaces old gamelog/Report() system)*
 - **Auctions** — the trade page shows "Create an Auction" as placeholder text with no form behind it
 - **Fleet-vs-fleet combat** — the function exists but is commented out; only fleet-vs-planet battles work
 - **Exploration and scouting** — described in the game pitch but no mechanics were ever built
@@ -152,6 +159,7 @@ Several features have UI or stubs but were never finished in the original code:
 - **Player messaging** — no way for players to communicate in-game
 - Several functions are empty stubs: ~~`CanInvade()`~~, `ClearHomePage()`, `GetLowestRankVesselTypeInFleet()`
 - ~~**Team management** — you can view your team but can't create, join, leave, or disband one~~ *(fixed — full team system: create, join/leave, leader elections, team editing, colour picker with 16 unique preset colours)*
+- **Debug log system** — no centralised game logging; need a structured debug/event log accessible from the admin panel covering turn processing, combat resolution, fleet movement, resource calculations, ownership changes, and error conditions — essential for diagnosing game balance issues and tracing bugs in a live game
 
 #### Code Quality
 
@@ -251,9 +259,11 @@ Emissary/
 └── html/                   # Game files (Apache document root)
     ├── install.php         # Web-based first-time installer
     ├── index.php           # Login page / installer redirect
-    ├── schema.sql          # Database schema (17 tables + reference data)
+    ├── schema.sql          # Database schema (18 tables + reference data)
     ├── admin/              # Admin panel
+    ├── data/               # Game data files (forbidden words) — blocked from web access
     ├── images/             # Game artwork and static assets
+    ├── galaxyzoom.php      # Full-size stitched galaxy map
     └── userdata/           # Static seed data (system name pool)
 ```
 
@@ -261,7 +271,8 @@ Emissary/
 
 The admin panel (accessible to PlayerID 1 at `/admin/`, linked from the header bar) provides:
 - Database stats and player management
-- **Game Settings** — configure 13 game balance values (home world multipliers, starting resources, planet purchase costs, election timing, weapon hit chance, and more)
+- **Game Settings** — configure 14 game balance values (home world multipliers, starting resources, planet purchase costs, election timing, weapon hit chance, construction slots, and more)
+- **Forbidden Words** — manage the profanity filter word list used by rename validation
 - Galaxy population and sector ownership tools
 - Manual turn processing (mini-turn and income turn)
 - **The Burn** — full galaxy reset that wipes all game data while preserving player accounts

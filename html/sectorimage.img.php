@@ -22,12 +22,18 @@ for($j = 50;$j<500;$j+=50){
 	imageline($image,0,$j,500,$j,$bordergray);
 }
 
-imagestring($image,2,5,5,"Sector: ".$SectorID,$border);
+$_secName = GetSectorName($SectorID);
+imagestring($image,2,5,5,$_secName . " (" . $SectorID . ")",$border);
 
 // Bulk: get team colours for all players in this sector's systems
 $_teamColours = [];
 $res = mysqli_query($GLOBALS["conn"], "SELECT DISTINCT pl.PlayerID, t.Colour FROM Systems s JOIN players pl ON pl.PlayerID=s.PlayerID JOIN teams t ON t.TeamID=pl.TeamID WHERE s.SectorID='$SectorID' AND s.PlayerID>0 AND pl.TeamID>0");
 while($row = mysqli_fetch_object($res)) $_teamColours[(int)$row->PlayerID] = $row->Colour;
+
+// Bulk: team colours by TeamID (for team-only majority)
+$_teamColoursByID = [];
+$res = mysqli_query($GLOBALS["conn"], "SELECT DISTINCT t.TeamID, t.Colour FROM Systems s JOIN teams t ON t.TeamID=s.TeamID WHERE s.SectorID='$SectorID' AND s.TeamID>0");
+while($row = mysqli_fetch_object($res)) $_teamColoursByID[(int)$row->TeamID] = $row->Colour;
 
 // Bulk: majority owner per system (by planet count)
 $_sysMajOwner = [];
@@ -62,6 +68,11 @@ foreach($Systems as $k=>$System){
 		}
 		imagearc($image,$xcoord,$ycoord,30,30,0,360,$team);
 		imagearc($image,$xcoord,$ycoord,32,32,0,360,$team);
+	} elseif(($System->TeamID ?? 0) > 0 && isset($_teamColoursByID[$System->TeamID])){
+		// No player majority but team controls system — draw dashed team ring
+		$tcol = explode(',', $_teamColoursByID[$System->TeamID]);
+		$teamRing = imagecolorallocate($image,(int)$tcol[0],(int)$tcol[1],(int)$tcol[2]);
+		imagearc($image,$xcoord,$ycoord,30,30,0,360,$teamRing);
 	}
 	
 	imagestring($image,2,$xcoord+10,$ycoord+10,$System->Name,$border);

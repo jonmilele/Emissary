@@ -3,6 +3,31 @@ include("authenticate.inc.php");
 include("connect.inc.php");
 include_once("userfunctions.inc.php");
 
+// Handle rename action
+if(isset($_POST['action']) && $_POST['action'] == 'rename_system' && csrf_validate()){
+	$_rSid = (int)($_POST['system_id'] ?? 0);
+	$_rName = $_POST['system_name'] ?? '';
+	$_rPid = GetPlayerIDFromName($username);
+	$result = RenameSystem($_rSid, $_rName, $_rPid);
+	if($result === true){
+		header("Location: system.php?id=$_rSid&msg=System+renamed");
+	} else {
+		header("Location: system.php?id=$_rSid&msg=" . urlencode($result));
+	}
+	exit;
+}
+if(isset($_POST['action']) && $_POST['action'] == 'revert_system_name' && csrf_validate()){
+	$_rSid = (int)($_POST['system_id'] ?? 0);
+	$_rPid = GetPlayerIDFromName($username);
+	if(CanRenameSystem($_rSid, $_rPid)){
+		RevertSystemName($_rSid);
+		header("Location: system.php?id=$_rSid&msg=Name+reverted+to+default");
+	} else {
+		header("Location: system.php?id=$_rSid&msg=Cannot+revert+name");
+	}
+	exit;
+}
+
 if(!IsSystem(($_GET['id'] ?? ""))){
 	echo "Not a valid system ID";
 }else{
@@ -21,13 +46,18 @@ if(!IsSystem(($_GET['id'] ?? ""))){
 <body>
 <?php
 include("header.inc.php");
+if(isset($_GET['msg'])): ?><p><strong><?php echo h($_GET['msg']); ?></strong></p><?php endif;
 ?>
-<h2>System: <?php echo h(GetSystemNameFromID($SystemID)); ?> </h2>
+<h2>System: <?php echo h($System->Name); ?>
+<?php if($System->DefaultName && $System->Name !== $System->DefaultName): ?>
+  <small style="color:#888;">(originally <?php echo h($System->DefaultName); ?>)</small>
+<?php endif; ?>
+</h2>
 
   
     <div class="side">
 	<div class="panel" style="width:200px;">
-Sector: <a href="sector.php?id=<?php echo $System->SectorID; ?>"><?php echo $System->SectorID; ?></a><br/>
+Sector: <a href="sector.php?id=<?php echo $System->SectorID; ?>"><?php echo h(GetSectorName($System->SectorID)); ?></a><br/>
 	Fleets in System: <?php echo FleetsInSystem($SystemID); ?><br/>
       Planets: <?php echo PlanetsInSystem($SystemID); ?><br/>
       
@@ -75,7 +105,30 @@ foreach($Planets as $key=>$Planet){
   </ol>
   <?php if ($System->PlayerID>0){?>
       Owner: <?php echo h($_playerNames[$System->PlayerID] ?? GetPlayerNameFromID($System->PlayerID)); ?><br/>
-	  <?php }?> 
+	  <?php } ?>
+	  <?php if ($System->TeamID>0){?>
+      Controlling Team: <a href="team.php?id=<?php echo $System->TeamID; ?>"><?php echo h(TeamNameFromID($System->TeamID)); ?></a><br/>
+	  <?php }?>
+	  <?php
+	  $_myPID = GetPlayerIDFromName($username);
+	  if(CanRenameSystem($SystemID, $_myPID)):
+	  ?>
+	  <form method="POST" action="system.php" style="margin-top:8px;">
+	    <input type="hidden" name="action" value="rename_system">
+	    <input type="hidden" name="system_id" value="<?php echo $SystemID; ?>">
+	    <?php echo csrf_token(); ?>
+	    <input type="text" name="system_name" value="<?php echo h($System->Name); ?>" maxlength="50" style="width:160px;">
+	    <input type="submit" value="Rename">
+	  </form>
+	  <?php if($System->DefaultName && $System->Name !== $System->DefaultName): ?>
+	  <form method="POST" action="system.php" style="margin-top:4px; display:inline;" onsubmit="return confirm('Revert to default name: <?php echo h($System->DefaultName); ?>?');">
+	    <input type="hidden" name="action" value="revert_system_name">
+	    <input type="hidden" name="system_id" value="<?php echo $SystemID; ?>">
+	    <?php echo csrf_token(); ?>
+	    <input type="submit" value="Revert to <?php echo h($System->DefaultName); ?>">
+	  </form>
+	  <?php endif; ?>
+	  <?php endif; ?>
 	  </div>
     </div>
   

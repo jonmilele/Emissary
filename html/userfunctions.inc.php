@@ -7,7 +7,7 @@ include_once("fleetfunctions.inc.php");
 include_once("planetfunctions.inc.php");
 include_once("buildingfunctions.inc.php");
 include_once("turnfunctions.inc.php");
-include_once("logfunctions.inc.php");
+include_once("alertfunctions.inc.php");
 include_once("resourcefunctions.inc.php");
 function untag($string,$tag,$mode){
 	$tmpval="";
@@ -88,6 +88,7 @@ function GetNumberOfPlanets($username){
 class Planet{
 	var $PlanetID;
 	var $Name;
+	var $DefaultName;
 	var $Orbit;
 	var $System;
 	var $Size;
@@ -106,7 +107,8 @@ function GetPlanetList($PlayerID){
 	while($row = mysqli_fetch_object($notresult)){
 		$Planet = new Planet();
 		$Planet->PlanetID = $row->PlanetID;
-		$Planet->Name = $row->Name;
+		$Planet->DefaultName = $row->DefaultName ?? null;
+		$Planet->Name = $row->Name ?? $row->DefaultName;
 		$Planet->System = $row->System;
 		$Planet->Orbit = $row->Orbit;
 		$Planet->Size = $row->Size;
@@ -148,24 +150,31 @@ function OwnsPlanet($username,$PlanetID){
 
 function GetPlanetNameFromID($PlanetID){
 	if(!$PlanetID) return "Unknown";
-	$query = "SELECT Name FROM planets WHERE(PlanetID='$PlanetID')";
+	$query = "SELECT Name, DefaultName FROM planets WHERE(PlanetID='$PlanetID')";
 
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
-	return $row ? $row->Name : "Unknown";
+	if(!$row) return "Unknown";
+	return $row->Name ?? $row->DefaultName ?? "Unknown";
 }
 function GetPlanetPictureFromID($PlanetID){
 	global $username;
 	if(OwnsPlanet($username,$PlanetID)){
 		return "planetimage.img.php?id=".$PlanetID;
-	}else{
-		$query = "SELECT Size FROM planets WHERE(PlanetID='$PlanetID')";
-	
-		$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
-		$row = mysqli_fetch_object($notresult);
-		if(!$row) return "images/planets/1.jpg";
-		return "images/planets/".$row->Size.".jpg";
 	}
+	// Team members also see the full grid overlay
+	$query = "SELECT PlayerID, Size FROM planets WHERE(PlanetID='$PlanetID')";
+	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
+	$row = mysqli_fetch_object($notresult);
+	if(!$row) return "images/planets/1.jpg";
+	if($row->PlayerID > 0){
+		$viewerTeam = PlayerTeam(GetPlayerIDFromName($username));
+		$ownerTeam = PlayerTeam($row->PlayerID);
+		if($viewerTeam > 0 && $viewerTeam == $ownerTeam){
+			return "planetimage.img.php?id=".$PlanetID;
+		}
+	}
+	return "images/planets/".$row->Size.".jpg";
 }
 
 function GetPlanet($PlanetID){
@@ -176,7 +185,8 @@ function GetPlanet($PlanetID){
 	if(!$row) return null;
 	$Planet = new Planet();
 	$Planet->PlanetID = $row->PlanetID;
-	$Planet->Name = $row->Name;
+	$Planet->DefaultName = $row->DefaultName ?? null;
+	$Planet->Name = $row->Name ?? $row->DefaultName;
 	$Planet->System = $row->System;
 	$Planet->Orbit = $row->Orbit;
 	$Planet->Size = $row->Size;
@@ -203,8 +213,10 @@ function IsSystem($SystemID){
 class System{
 	var $SystemID;
 	var $Name;
+	var $DefaultName;
 	var $Orbits;
 	var $PlayerID;
+	var $TeamID;
 	var $Coords;
 	var $SectorID;
 }
@@ -228,9 +240,11 @@ function GetSystem($SystemID){
 	if(!$row) return null;
 	$Planet = new System();
 	$Planet->SystemID = $row->SystemID;
-	$Planet->Name = $row->Name;
+	$Planet->DefaultName = $row->DefaultName ?? null;
+	$Planet->Name = $row->Name ?? $row->DefaultName;
 	$Planet->Orbits = $row->Orbits;
 	$Planet->PlayerID = $row->PlayerID;
+	$Planet->TeamID = $row->TeamID ?? 0;
 	$Planet->SectorID = $row->SectorID;
 	$Planet->Coords = $row->Coords;
 	
@@ -239,15 +253,22 @@ function GetSystem($SystemID){
 
 function CheckSystemMajOwner($SystemID){
 	$Players = array();
-	$query = "SELECT * FROM planets WHERE(`System`='$SystemID')";
+	$Teams = array();
+	$query = "SELECT p.PlayerID, pl.TeamID FROM planets p LEFT JOIN players pl ON p.PlayerID = pl.PlayerID WHERE(p.`System`='$SystemID')";
 
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	while($row = mysqli_fetch_object($notresult)){
 		if($row->PlayerID!=0){
-		$Players[$row->PlayerID]["Player"] = $row->PlayerID;
-		$Players[$row->PlayerID]["Count"] = ($Players[$row->PlayerID]["Count"] ?? 0) + 1;
+			$Players[$row->PlayerID]["Player"] = $row->PlayerID;
+			$Players[$row->PlayerID]["Count"] = ($Players[$row->PlayerID]["Count"] ?? 0) + 1;
+			// Track team ownership
+			$tid = (int)($row->TeamID ?? 0);
+			if($tid > 0){
+				$Teams[$tid] = ($Teams[$tid] ?? 0) + 1;
+			}
 		}
 	}
+	// Player majority
 	$largestcount = 0;
 	$player = 0;
 	foreach($Players as $k=>$Player){
@@ -257,17 +278,29 @@ function CheckSystemMajOwner($SystemID){
 		}
 	}
 	//Check for joint majority
-	$dup = false;
 	foreach($Players as $k=>$Player){
 		if($Player["Player"]!=$player){
 			if($Player["Count"]==$largestcount){
-				$dup = true;
-				$player=0;	
+				$player=0;
 			}
 		}
 	}
-	//echo "Setting System Player: ".$player;
-	$query = "UPDATE Systems SET PlayerID = $player WHERE(SystemID='$SystemID')";
+	// Team majority
+	$teamLargest = 0;
+	$majTeam = 0;
+	foreach($Teams as $tid=>$cnt){
+		if($cnt > $teamLargest){
+			$teamLargest = $cnt;
+			$majTeam = $tid;
+		}
+	}
+	foreach($Teams as $tid=>$cnt){
+		if($tid != $majTeam && $cnt == $teamLargest){
+			$majTeam = 0;
+			break;
+		}
+	}
+	$query = "UPDATE Systems SET PlayerID = $player, TeamID = $majTeam WHERE(SystemID='$SystemID')";
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	
 	return $player;
@@ -294,7 +327,8 @@ $Planets = array();
 	while($row = mysqli_fetch_object($notresult)){
 		$Planet = new Planet();
 		$Planet->PlanetID = $row->PlanetID;
-		$Planet->Name = $row->Name;
+		$Planet->DefaultName = $row->DefaultName ?? null;
+		$Planet->Name = $row->Name ?? $row->DefaultName;
 		$Planet->System = $row->System;
 		$Planet->Orbit = $row->Orbit;
 		$Planet->Size = $row->Size;
@@ -314,11 +348,12 @@ function GetSystemPictureFromID($SystemID){
 	return "images/systems/".$row->Orbits.".jpg";
 }
 function GetSystemNameFromID($SystemID){
-	$query = "SELECT Name FROM Systems WHERE(SystemID='$SystemID')";
+	$query = "SELECT Name, DefaultName FROM Systems WHERE(SystemID='$SystemID')";
 
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
-	return $row ? $row->Name : "Unknown";
+	if(!$row) return "Unknown";
+	return $row->Name ?? $row->DefaultName ?? "Unknown";
 }
 function GetKnownSystems($username){
 	$Systems = array();
@@ -341,6 +376,138 @@ function AddKnownSystem($PlayerID, $SystemID){
 }
 function GetSectorPictureFromID($SectorID){
 	return "sectorimage.img.php?id=".$SectorID;
+}
+
+function GetSectorName($SectorID){
+	$sql = "SELECT Name FROM sectors WHERE SectorID='" . (int)$SectorID . "'";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	$row = mysqli_fetch_object($res);
+	if($row && $row->Name) return $row->Name;
+	return "Sector " . (int)$SectorID;
+}
+
+// --- System Renaming ---
+
+function CanRenameSystem($SystemID, $PlayerID){
+	if($PlayerID <= 0) return false;
+	$sid = (int)$SystemID;
+	$pid = (int)$PlayerID;
+	// All owned planets in the system must belong to this player, and there must be at least one
+	$sql = "SELECT PlayerID FROM planets WHERE `System` = '$sid' AND PlayerID > 0";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	if(!$res || mysqli_num_rows($res) == 0) return false;
+	while($row = mysqli_fetch_object($res)){
+		if((int)$row->PlayerID != $pid) return false;
+	}
+	return true;
+}
+
+function IsSystemNameUnique($Name, $ExcludeSystemID = 0){
+	$name = mysqli_real_escape_string($GLOBALS["conn"], $Name);
+	$eid = (int)$ExcludeSystemID;
+	// Check against both user-assigned names and default names
+	$sql = "SELECT SystemID FROM Systems WHERE (Name = '$name' OR (Name IS NULL AND DefaultName = '$name'))";
+	if($eid > 0) $sql .= " AND SystemID != $eid";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	return $res && mysqli_num_rows($res) == 0;
+}
+
+function LoadForbiddenWords(){
+	$file = __DIR__ . '/data/forbidden_words.txt';
+	if(!file_exists($file)) return [];
+	$lines = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+	$words = [];
+	foreach($lines as $line){
+		$w = trim(strtolower($line));
+		if($w !== '' && $w[0] !== '#') $words[] = $w;
+	}
+	return $words;
+}
+
+function ContainsForbiddenWord($Name){
+	$words = LoadForbiddenWords();
+	$lower = strtolower($Name);
+	foreach($words as $word){
+		if(strpos($lower, $word) !== false) return true;
+	}
+	return false;
+}
+
+function RenameSystem($SystemID, $NewName, $PlayerID){
+	$sid = (int)$SystemID;
+	$pid = (int)$PlayerID;
+	if(!CanRenameSystem($sid, $pid)) return 'You must be the sole owner of all planets in this system.';
+	$name = trim($NewName);
+	if(strlen($name) < 2 || strlen($name) > 50) return 'Name must be between 2 and 50 characters.';
+	if(!preg_match('/^[a-zA-Z0-9 \-\']+$/', $name)) return 'Name may only contain letters, numbers, spaces, hyphens and apostrophes.';
+	if(ContainsForbiddenWord($name)) return 'That name contains a forbidden word.';
+	if(!IsSystemNameUnique($name, $sid)) return 'A system with that name already exists.';
+	$eName = mysqli_real_escape_string($GLOBALS["conn"], $name);
+	mysqli_query($GLOBALS["conn"], "UPDATE Systems SET Name = '$eName' WHERE SystemID = '$sid'");
+	// Auto-update planet default names to match new system name (does not touch custom names)
+	mysqli_query($GLOBALS["conn"], "UPDATE planets SET DefaultName = CONCAT('$eName', ' ', Orbit) WHERE `System` = '$sid'");
+	return true;
+}
+
+function RevertSystemName($SystemID){
+	$sid = (int)$SystemID;
+	// Revert planet default names to original system default name
+	$_sysRes = mysqli_query($GLOBALS["conn"], "SELECT DefaultName FROM Systems WHERE SystemID = '$sid'");
+	$_sysRow = mysqli_fetch_object($_sysRes);
+	if($_sysRow && $_sysRow->DefaultName){
+		$eDefault = mysqli_real_escape_string($GLOBALS["conn"], $_sysRow->DefaultName);
+		mysqli_query($GLOBALS["conn"], "UPDATE planets SET DefaultName = CONCAT('$eDefault', ' ', Orbit) WHERE `System` = '$sid'");
+	}
+	mysqli_query($GLOBALS["conn"], "UPDATE Systems SET Name = NULL WHERE SystemID = '$sid'");
+}
+
+// --- Planet Renaming ---
+
+function IsPlanetNameUnique($Name, $ExcludePlanetID = 0){
+	$name = mysqli_real_escape_string($GLOBALS["conn"], $Name);
+	$eid = (int)$ExcludePlanetID;
+	$sql = "SELECT PlanetID FROM planets WHERE (Name = '$name' OR (Name IS NULL AND DefaultName = '$name'))";
+	if($eid > 0) $sql .= " AND PlanetID != $eid";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	return $res && mysqli_num_rows($res) == 0;
+}
+
+function RenamePlanet($PlanetID, $NewName, $PlayerID){
+	$pid = (int)$PlanetID;
+	$plid = (int)$PlayerID;
+	// Must own the planet
+	$sql = "SELECT PlayerID FROM planets WHERE PlanetID = '$pid'";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	$row = mysqli_fetch_object($res);
+	if(!$row || (int)$row->PlayerID != $plid || $plid == 0) return 'You do not own this planet.';
+	$name = trim($NewName);
+	if(strlen($name) < 2 || strlen($name) > 50) return 'Name must be between 2 and 50 characters.';
+	if(!preg_match('/^[a-zA-Z0-9 \-\']+$/', $name)) return 'Name may only contain letters, numbers, spaces, hyphens and apostrophes.';
+	if(ContainsForbiddenWord($name)) return 'That name contains a forbidden word.';
+	if(!IsPlanetNameUnique($name, $pid)) return 'A planet with that name already exists.';
+	$eName = mysqli_real_escape_string($GLOBALS["conn"], $name);
+	mysqli_query($GLOBALS["conn"], "UPDATE planets SET Name = '$eName' WHERE PlanetID = '$pid'");
+	return true;
+}
+
+function RevertPlanetName($PlanetID){
+	$pid = (int)$PlanetID;
+	mysqli_query($GLOBALS["conn"], "UPDATE planets SET Name = NULL WHERE PlanetID = '$pid'");
+}
+
+function RenameSector($SectorID, $NewName, $PlayerID){
+	$sid = (int)$SectorID;
+	$pid = (int)$PlayerID;
+	// Only the majority controller (by system count) can rename
+	$sql = "SELECT MajOwner FROM sectors WHERE SectorID='$sid'";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	$row = mysqli_fetch_object($res);
+	if(!$row || (int)$row->MajOwner != $pid || $pid == 0) return false;
+	$name = mysqli_real_escape_string($GLOBALS["conn"], trim($NewName));
+	if(strlen($name) < 1 || strlen($name) > 100) return false;
+	$sql = "UPDATE sectors SET Name='$name' WHERE SectorID='$sid'";
+	mysqli_query($GLOBALS["conn"], $sql);
+	return true;
 }
 
 function GetSystemsInSector($SectorID){
@@ -443,6 +610,7 @@ function TeamNameFromID($TeamID){
 
 function CalcMajOwner($SectorID){
 	$Players = array();
+	$Teams = array();
 	$query = "SELECT * FROM Systems WHERE(SectorID='$SectorID')";
 
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
@@ -451,7 +619,13 @@ function CalcMajOwner($SectorID){
 			$Players[$row->PlayerID]["Player"] = $row->PlayerID;
 			$Players[$row->PlayerID]["Count"] = ($Players[$row->PlayerID]["Count"] ?? 0) + 1;
 		}
+		// Track team ownership from stored TeamID
+		$tid = (int)($row->TeamID ?? 0);
+		if($tid > 0){
+			$Teams[$tid] = ($Teams[$tid] ?? 0) + 1;
+		}
 	}
+	// Player majority
 	$largestcount = 0;
 	$player = 0;
 	foreach($Players as $k=>$Player){
@@ -460,18 +634,29 @@ function CalcMajOwner($SectorID){
 			$player = $Player["Player"];
 		}
 	}
-	//Check for joint majority
-	$dup = false;
 	foreach($Players as $k=>$Player){
 		if($Player["Player"]!=$player){
 			if($Player["Count"]==$largestcount){
-				$dup = true;
-				$player=0;	
+				$player=0;
 			}
 		}
 	}
-	//echo "Setting Player: ".$player;
-	$query = "UPDATE sectors SET MajOwner = $player WHERE(SectorID='$SectorID')";
+	// Team majority
+	$teamLargest = 0;
+	$majTeam = 0;
+	foreach($Teams as $tid=>$cnt){
+		if($cnt > $teamLargest){
+			$teamLargest = $cnt;
+			$majTeam = $tid;
+		}
+	}
+	foreach($Teams as $tid=>$cnt){
+		if($tid != $majTeam && $cnt == $teamLargest){
+			$majTeam = 0;
+			break;
+		}
+	}
+	$query = "UPDATE sectors SET MajOwner = $player, MajTeamID = $majTeam WHERE(SectorID='$SectorID')";
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	
 	return $player;
@@ -549,7 +734,6 @@ function ListSectorStakeHolders($SectorID){
 	$sql= "SELECT * FROM Systems WHERE(SectorID = '$SectorID')";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	while($row = mysqli_fetch_object($rescount)){
-		//echo "s,";
 		$sql= "SELECT * FROM planets WHERE(`System` = '".$row->SystemID."')";
 		$res=mysqli_query($GLOBALS["conn"], $sql);
 		while($row2 = mysqli_fetch_object($res)){
@@ -559,9 +743,14 @@ function ListSectorStakeHolders($SectorID){
 					$players[$Player]["Name"] = $Player;
 					$players[$Player]["ID"] = $row2->PlayerID;
 					$players[$Player]["Count"] = 1;
+					$players[$Player]["Planets"] = array();
 				}else{
 					$players[$Player]["Count"] +=1;
 				}
+				$players[$Player]["Planets"][] = array(
+					"PlanetID" => $row2->PlanetID,
+					"Name" => GetPlanetNameFromID($row2->PlanetID)
+				);
 			}
 		}
 	}
@@ -829,6 +1018,15 @@ function ResolveLeaderVote($TeamID){
 	// Update leader
 	$sql = "UPDATE teams SET LeaderID='$winnerID', VoteActive=0, VoteTurnsLeft=0 WHERE TeamID='$tid'";
 	mysqli_query($GLOBALS["conn"], $sql);
+
+	// Notify team members
+	$teamName = TeamNameFromID($tid);
+	$winnerName = GetPlayerNameFromID($winnerID);
+	$memberSql = "SELECT PlayerID FROM players WHERE TeamID='$tid'";
+	$memberRes = mysqli_query($GLOBALS["conn"], $memberSql);
+	while($mrow = mysqli_fetch_object($memberRes)){
+		AddAlert((int)$mrow->PlayerID, 'team', $winnerName.' elected as leader of '.$teamName, 'teams.php');
+	}
 
 	// Record in history
 	$winnerVotes = $topCount;

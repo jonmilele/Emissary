@@ -998,8 +998,8 @@ function AttackPlanet($FleetID,$PlanetID,$Invade = false){
 		if($Invade){
 			Invade($PlanetID,$attacker);
 			$echo .= "<br/>Planet Invaded";
-			Report($attacker,5,$PlanetID);
-			Report($defender,6,$PlanetID);
+			AddAlert($attacker, 'combat', 'You have invaded '.GetPlanetNameFromID($PlanetID), 'planet.php?id='.$PlanetID);
+			AddAlert($defender, 'combat', GetPlanetNameFromID($PlanetID).' was invaded', 'planet.php?id='.$PlanetID);
 		}
 	}else{
 		$echo .= "Defender Wins";
@@ -1011,8 +1011,14 @@ function AttackPlanet($FleetID,$PlanetID,$Invade = false){
 	$res=mysqli_query($GLOBALS["conn"], $sql);
 	$id = mysqli_insert_id($GLOBALS["conn"]);
 	
-	Report($attacker,4,$id);
-	Report($defender,4,$id);
+	$_planetName = GetPlanetNameFromID($PlanetID);
+	if($winner == $attacker){
+		AddAlert($attacker, 'combat', 'You have won the battle of '.$_planetName, 'battle.php?id='.$id);
+		AddAlert($defender, 'combat', 'You have lost the battle of '.$_planetName, 'battle.php?id='.$id);
+	} else {
+		AddAlert($attacker, 'combat', 'You have lost the battle of '.$_planetName, 'battle.php?id='.$id);
+		AddAlert($defender, 'combat', 'You have won the battle of '.$_planetName, 'battle.php?id='.$id);
+	}
 }
 
 function PlanetFires($PlanetID,$FleetID){	

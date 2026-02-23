@@ -9,6 +9,7 @@ if(isset($_POST['action']) && csrf_validate()){
 		if($PlanetID > 0){
 			SetHomePlanet(GetPlayerIDFromName($username), $PlanetID);
 		}
+		AddAlertForCurrentUser('system', GetPlanetNameFromID($PlanetID).' set as home world', 'planet.php?id='.$PlanetID);
 		header("Location: planet.php?id=".$PlanetID."&msg=Home+world+set");
 		exit;
 	}
@@ -18,6 +19,29 @@ if(isset($_POST['action']) && csrf_validate()){
 		Colonise($PlanetID);
 		CheckSystemMajOwner($Planet->System);
 		header("Location: planet.php?id=".$PlanetID);
+		exit;
+	}
+	if(($_POST['action'] ?? "")=="rename_planet"){
+		$PlanetID = (int)($_POST["id"] ?? 0);
+		$_rName = $_POST['planet_name'] ?? '';
+		$_rPid = GetPlayerIDFromName($username);
+		$result = RenamePlanet($PlanetID, $_rName, $_rPid);
+		if($result === true){
+			header("Location: planet.php?id=$PlanetID&msg=Planet+renamed");
+		} else {
+			header("Location: planet.php?id=$PlanetID&msg=" . urlencode($result));
+		}
+		exit;
+	}
+	if(($_POST['action'] ?? "")=="revert_planet_name"){
+		$PlanetID = (int)($_POST["id"] ?? 0);
+		if(OwnsPlanet($username, $PlanetID)){
+			RevertPlanetName($PlanetID);
+			header("Location: planet.php?id=$PlanetID&msg=Name+reverted+to+default");
+		} else {
+			header("Location: planet.php?id=$PlanetID&msg=Cannot+revert+name");
+		}
+		exit;
 	}
 }
 
@@ -25,10 +49,20 @@ if(isset($_POST['action']) && csrf_validate()){
 if(!IsPlanet(($_GET['id'] ?? ""))){
 	echo "Not a valid planet ID";
 }else{
-	if(!OwnsPlanet($username,($_GET['id'] ?? ""))){
-		$edit = false;
-	}else{
+	$edit = false;
+	$teamView = false;
+	if(OwnsPlanet($username,($_GET['id'] ?? ""))){
 		$edit = true;
+	} else {
+		// Check if planet owner is on same team
+		$_viewPlanet = GetPlanet(($_GET['id'] ?? ""));
+		if($_viewPlanet && $_viewPlanet->PlayerID > 0){
+			$_viewerTeam = PlayerTeam(GetPlayerIDFromName($username));
+			$_ownerTeam = PlayerTeam($_viewPlanet->PlayerID);
+			if($_viewerTeam > 0 && $_viewerTeam == $_ownerTeam){
+				$teamView = true;
+			}
+		}
 	}
 	$PlanetID = ($_GET['id'] ?? "");
 	$Planet = GetPlanet($PlanetID);
@@ -49,41 +83,91 @@ if(!IsPlanet(($_GET['id'] ?? ""))){
 <body>
 <?php
 include("header.inc.php");
+if(isset($_GET['msg'])): ?><p><strong><?php echo h($_GET['msg']); ?></strong></p><?php endif;
 ?>
 
 <h2>Planet: <?php echo h(GetPlanetNameFromID($PlanetID)); ?>
-<?php if($edit && IsHomePlanet(GetPlayerIDFromName($username), $PlanetID)): ?>
+<?php if($Planet->DefaultName && GetPlanetNameFromID($PlanetID) !== $Planet->DefaultName): ?>
+  <small style="color:#888;">(originally <?php echo h($Planet->DefaultName); ?>)</small>
+<?php endif; ?>
+<?php if(($edit || $teamView) && IsHomePlanet($Planet->PlayerID, $PlanetID)): ?>
  <strong style="color:#FFFF00;">[Home World]</strong>
+<?php endif; ?>
+<?php if($teamView): ?>
+ <small style="color:#00FF00;">[Allied — <?php echo h(GetPlayerNameFromID($Planet->PlayerID)); ?>]</small>
 <?php endif; ?>
 </h2>
 <div class="side"> 
   <div class="panel" style="width:250px;"> 
     <h3>Basic Stats</h3>
+    <?php $_sys = GetSystem($Planet->System); ?>
     System: <a href="system.php?id=<?php echo $Planet->System; ?>"><?php echo h(GetSystemNameFromID($Planet->System)); ?></a><br/>
+    Sector: <a href="sector.php?id=<?php echo $_sys->SectorID; ?>"><?php echo h(GetSectorName($_sys->SectorID)); ?></a><br/>
     Size: <?php echo $Planet->Size; ?><br/>
     Owner: <?php echo PlayerProfileLink($Planet->PlayerID); ?><br/>
+    <?php if($edit): ?>
+    <form method="POST" action="planet.php" style="margin-top:8px;">
+      <input type="hidden" name="action" value="rename_planet">
+      <input type="hidden" name="id" value="<?php echo $PlanetID; ?>">
+      <?php echo csrf_token(); ?>
+      <input type="text" name="planet_name" value="<?php echo h(GetPlanetNameFromID($PlanetID)); ?>" maxlength="50" style="width:160px;">
+      <input type="submit" value="Rename">
+    </form>
+    <?php if($Planet->DefaultName && GetPlanetNameFromID($PlanetID) !== $Planet->DefaultName): ?>
+    <form method="POST" action="planet.php" style="margin-top:4px; display:inline;" onsubmit="return confirm('Revert to default name: <?php echo h($Planet->DefaultName); ?>?');">
+      <input type="hidden" name="action" value="revert_planet_name">
+      <input type="hidden" name="id" value="<?php echo $PlanetID; ?>">
+      <?php echo csrf_token(); ?>
+      <input type="submit" value="Revert to <?php echo h($Planet->DefaultName); ?>">
+    </form>
+    <?php endif; ?>
+    <?php endif; ?>
   </div>
   <?php
-if($edit){?>
+if($edit || $teamView){?>
   <div class="panel" style="width:250px;"> 
     <h3>Owner's Stats</h3>
     Fleets in Orbit: <?php echo FleetsInOrbit($PlanetID); ?><br/>
     Unassigned Ships in Orbit: <?php echo GetShipsInOrbit($PlanetID); ?><br/>
     Orbital Spaces: 0<br/>
     Ground Spaces: <?php echo GridSquares($PlanetID); ?><br>
-    Construction Sites: <?php echo Constructions($PlanetID); ?><br>
+    Construction Queue: <?php echo Constructions($PlanetID) . '/' . GetConstructionSlots($PlanetID); ?><br>
     <?php
-	$Income = GetPlanetIncome($PlanetID);
+	$_pid = $edit ? GetPlayerIDFromName($username) : (int)$Planet->PlayerID;
+	$_isHome = IsHomePlanet($_pid, $PlanetID);
+	// Base income from planet size
+	$_baseQ = mysqli_query($GLOBALS["conn"], "SELECT income FROM planet_types WHERE Type = '".$Planet->Size."'");
+	$_baseRow = mysqli_fetch_object($_baseQ);
+	$_baseParts = $_baseRow ? explode(':', $_baseRow->income) : [0,0,0];
+	$_baseMetal = (int)$_baseParts[0]; $_baseMineral = (int)$_baseParts[1]; $_baseAstrium = (int)$_baseParts[2];
+	// Harvester count
+	$_harvQ = mysqli_query($GLOBALS["conn"], "SELECT COUNT(*) AS cnt FROM buildings WHERE PlanetID = '$PlanetID' AND Type = 3");
+	$_harvRow = mysqli_fetch_object($_harvQ);
+	$_harvCount = $_harvRow ? (int)$_harvRow->cnt : 0;
+	$_harvBonus = (float)GetGameSetting('harvester_bonus', 0.05);
+	$_harvPct = $_harvCount * $_harvBonus;
+	// Home world multiplier
+	$_homeMult = $_isHome ? (float)GetGameSetting('home_income_multiplier', 2) : 1;
+	// Final income
+	$_finalMetal = (int)round($_baseMetal * (1 + $_harvPct) * $_homeMult);
+	$_finalMineral = (int)round($_baseMineral * (1 + $_harvPct) * $_homeMult);
+	$_finalAstrium = (int)round($_baseAstrium * (1 + $_harvPct) * $_homeMult);
 	?>
-    Income (per turn):
-    <?php if(IsHomePlanet(GetPlayerIDFromName($username), $PlanetID)): ?><strong style="color:#FFFF00;">(2x Home World)</strong><?php endif; ?><br/>
-    - <?php echo $Income->Metal; ?> Metal<br/>
-    - <?php echo $Income->Mineral; ?> Mineral<br/>
-    - <?php echo $Income->Astrium; ?> Astrium<br/>
+    <strong>Income (per turn):</strong><br/>
+    <small style="color:#888;">Base (Size <?php echo $Planet->Size; ?>): <?php echo $_baseMetal; ?>m / <?php echo $_baseMineral; ?>n / <?php echo $_baseAstrium; ?>a</small><br/>
+    <?php if($_isHome): ?>
+    <small style="color:#FFFF00;">Home World: x<?php echo $_homeMult; ?> (<?php echo (int)($_baseMetal*$_homeMult); ?>m / <?php echo (int)($_baseMineral*$_homeMult); ?>n / <?php echo (int)($_baseAstrium*$_homeMult); ?>a)</small><br/>
+    <?php endif; ?>
+    <?php if($_harvCount > 0): ?>
+    <small style="color:#00FF00;">Harvesters (x<?php echo $_harvCount; ?>): +<?php echo round($_harvPct * 100); ?>%</small><br/>
+    <?php endif; ?>
+    - <?php echo $_finalMetal; ?> Metal<br/>
+    - <?php echo $_finalMineral; ?> Mineral<br/>
+    - <?php echo $_finalAstrium; ?> Astrium<br/>
     <p>Defence HP: <?php echo GetPlanetDefenceStrength($PlanetID); ?>
       <?php if(IsHomePlanet(GetPlayerIDFromName($username), $PlanetID)): ?><strong style="color:#FFFF00;">(+50% HP)</strong><?php endif; ?><br>
       Attack HP: <?php echo GetPlanetAttackStrength($PlanetID); ?></p>
-    <?php if(!IsHomePlanet(GetPlayerIDFromName($username), $PlanetID)): ?>
+    <?php if($edit && !IsHomePlanet(GetPlayerIDFromName($username), $PlanetID)): ?>
     <form method="POST" action="planet.php" onsubmit="return confirm('Set this planet as your home world?');">
     <input type="hidden" name="action" value="sethome">
     <input type="hidden" name="id" value="<?php echo $PlanetID; ?>">
@@ -115,7 +199,7 @@ if($edit){?>
     <?php } ?>
   </div>
   <?php } ?>
-  <?php } // Edit?>
+  <?php } // Edit or TeamView?>
   <?php
 if(YourFleetsInOrbit($PlanetID)>0){
 ?>
@@ -206,7 +290,7 @@ switch($Planet->Size){
 		$numberinrow = 12;
 		break;
 }
-if($edit){
+if($edit || $teamView){
 	$secid = 1;
 	for($i = 0;$i<$numberinrow;$i++){
 		for($j = 0;$j<$numberinrow;$j++){

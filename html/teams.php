@@ -20,6 +20,7 @@ if(isset($_POST['action']) && csrf_validate()){
 			header("Location: teams.php?msg=That+colour+is+already+taken");
 		} else {
 			CreateTeam($myPID, $tname, $tcolour);
+			AddAlert($myPID, 'team', 'Team '.$tname.' created', 'teams.php');
 			header("Location: teams.php?msg=Team+created");
 		}
 		exit;
@@ -29,6 +30,7 @@ if(isset($_POST['action']) && csrf_validate()){
 		$tid = (int)($_POST['teamid'] ?? 0);
 		if($tid > 0){
 			if(RequestJoinTeam($myPID, $tid)){
+				AddAlert($myPID, 'team', 'Join request sent to '.TeamNameFromID($tid), 'teams.php');
 				header("Location: teams.php?msg=Join+request+sent");
 			} else {
 				header("Location: teams.php?msg=Could+not+send+request");
@@ -44,7 +46,9 @@ if(isset($_POST['action']) && csrf_validate()){
 	}
 
 	if($action == "leave" && $myTeamID > 0){
+		$leftTeamName = TeamNameFromID($myTeamID);
 		LeaveTeam($myPID);
+		AddAlert($myPID, 'team', 'You left '.$leftTeamName, 'teams.php');
 		header("Location: teams.php?msg=You+left+the+team");
 		exit;
 	}
@@ -95,11 +99,12 @@ if(isset($_POST['action']) && csrf_validate()){
 				CastLeaderVote($myTeamID, $myPID, $cid);
 			}
 		}
+		AddAlert($myPID, 'team', 'Vote recorded in team election', 'teams.php');
 		header("Location: teams.php?msg=Vote+recorded");
 		exit;
 	}
 
-	if($action == "edit" && $myTeamID > 0 && IsTeamLeader($myPID)){
+	if($action == "edit"){
 		$tname = trim($_POST['teamname'] ?? "");
 		$tcolour = trim($_POST['teamcolour'] ?? "");
 		$presets = GetTeamColourPresets();
@@ -112,6 +117,7 @@ if(isset($_POST['action']) && csrf_validate()){
 			$tcolour = mysqli_real_escape_string($GLOBALS["conn"], $tcolour);
 			$sql = "UPDATE teams SET Name='$tname', Colour='$tcolour' WHERE TeamID='$myTeamID'";
 			mysqli_query($GLOBALS["conn"], $sql);
+			AddAlert($myPID, 'team', 'Team settings updated', 'teams.php');
 			header("Location: teams.php?msg=Team+updated");
 		}
 		exit;
@@ -120,6 +126,7 @@ if(isset($_POST['action']) && csrf_validate()){
 	if($action == "approve" && $myTeamID > 0 && IsTeamLeader($myPID)){
 		$rid = (int)($_POST['requestid'] ?? 0);
 		if($rid > 0) ApproveJoinRequest($rid);
+		AddAlert($myPID, 'team', 'Join request approved', 'teams.php');
 		header("Location: teams.php?msg=Request+approved");
 		exit;
 	}
@@ -127,6 +134,7 @@ if(isset($_POST['action']) && csrf_validate()){
 	if($action == "deny" && $myTeamID > 0 && IsTeamLeader($myPID)){
 		$rid = (int)($_POST['requestid'] ?? 0);
 		if($rid > 0) DenyJoinRequest($rid);
+		AddAlert($myPID, 'team', 'Join request denied', 'teams.php');
 		header("Location: teams.php?msg=Request+denied");
 		exit;
 	}

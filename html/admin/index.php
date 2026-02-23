@@ -90,7 +90,7 @@ if($action != ""){
 				'harvester_bonus','election_duration',
 				'election_auto_interval','election_motion_threshold',
 				'starting_metal','starting_mineral','starting_astrium',
-				'planet_weapon_hit_chance'
+				'planet_weapon_hit_chance','base_construction_slots'
 			];
 			$updated = 0;
 			foreach($setting_keys as $sk){
@@ -101,11 +101,33 @@ if($action != ""){
 			}
 			echo "$updated game settings saved.";
 			break;
+		case "rename_system_default":
+			$sid = intval($_POST['system_id'] ?? 0);
+			$newName = trim($_POST['default_name'] ?? '');
+			if($sid > 0 && strlen($newName) >= 2 && strlen($newName) <= 100){
+				$eName = mysqli_real_escape_string($GLOBALS["conn"], $newName);
+				mysqli_query($GLOBALS["conn"], "UPDATE Systems SET DefaultName = '$eName' WHERE SystemID = '$sid'");
+				if(mysqli_affected_rows($GLOBALS["conn"]) > 0){
+					echo "System $sid default name changed to: $newName";
+				} else {
+					echo "System $sid not found or name unchanged";
+				}
+			} else {
+				echo "Valid System ID and name (2-100 chars) required";
+			}
+			break;
+		case "save_forbidden_words":
+			$content = $_POST['forbidden_words'] ?? '';
+			$file = __DIR__ . '/../data/forbidden_words.txt';
+			@mkdir(dirname($file), 0755, true);
+			file_put_contents($file, $content);
+			echo "Forbidden words list saved (" . substr_count(trim($content), "\n") + (trim($content) !== '' ? 1 : 0) . " lines).";
+			break;
 		case "the_burn":
 			include("tools.php");
 			include_once("../turnfunctions.inc.php");
 			// Wipe all game data (preserve players and reference tables)
-			$wipe_tables = ["planets","Systems","ships","fleets","buildings","cbuildings","cships","qships","battles","auctions","gamelog"];
+		$wipe_tables = ["planets","Systems","ships","fleets","buildings","cbuildings","cships","qships","battles","auctions","gamelog","alerts"];
 			foreach($wipe_tables as $t){
 				mysqli_query($GLOBALS["conn"], "DELETE FROM `$t`");
 				echo "Cleared $t (" . mysqli_affected_rows($GLOBALS["conn"]) . " rows)\n";
@@ -231,6 +253,7 @@ $players_result = mysqli_query($conn, "SELECT PlayerID, UserName, Email, TeamID,
 		'election_auto_interval' => ['label' => 'Auto-Election Interval (turns)', 'default' => '100',  'hint' => 'Automatic election every N income turns (0 = disabled)'],
 		'election_motion_threshold' => ['label' => 'Election Motion Threshold (%)', 'default' => '25', 'hint' => 'Percentage of team members needed to second a motion'],
 		'planet_weapon_hit_chance' => ['label' => 'Planet Weapon Hit Chance (1-in-N)', 'default' => '3', 'hint' => 'Planet weapons fire with 1-in-N chance per round (higher = less accurate)'],
+		'base_construction_slots'  => ['label' => 'Base Construction Slots',            'default' => '1',  'hint' => 'Construction queue slots per planet before factories (each factory adds +1)'],
 	];
 ?>
 <div class="admin-section">
@@ -270,6 +293,17 @@ $players_result = mysqli_query($conn, "SELECT PlayerID, UserName, Email, TeamID,
 		</tr>
 		<?php endwhile; ?>
 	</table>
+</div>
+
+<!-- System Management -->
+<div class="admin-section">
+	<h3>System Management</h3>
+	<form method="post" style="display:inline-block;">
+		<input type="hidden" name="action" value="rename_system_default">
+		System ID: <input type="number" name="system_id" min="1" size="4" required>
+		New Default Name: <input type="text" name="default_name" maxlength="100" size="20" required>
+		<input type="submit" value="Set Default Name">
+	</form>
 </div>
 
 <!-- World Generation -->
@@ -315,6 +349,20 @@ $players_result = mysqli_query($conn, "SELECT PlayerID, UserName, Email, TeamID,
 		Player ID: <input type="number" name="player_id" min="1" size="4" required>
 		New Password: <input type="password" name="new_password" required>
 		<input type="submit" value="Reset Password">
+	</form>
+</div>
+
+<!-- Forbidden Words -->
+<div class="admin-section">
+	<h3>Forbidden Words (Name Filter)</h3>
+	<p><small>One word per line. Lines starting with # are comments. Matching is case-insensitive substring.</small></p>
+	<form method="post">
+		<input type="hidden" name="action" value="save_forbidden_words">
+		<textarea name="forbidden_words" rows="12" cols="40" style="background:#222;color:#fff;border:1px solid #555;font-family:monospace;"><?php
+			$_fwFile = __DIR__ . '/../data/forbidden_words.txt';
+			if(file_exists($_fwFile)) echo htmlspecialchars(file_get_contents($_fwFile));
+		?></textarea><br>
+		<input type="submit" value="Save Forbidden Words">
 	</form>
 </div>
 

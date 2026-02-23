@@ -40,7 +40,7 @@ function CheckClashes($SectorID,$x,$y){
 function AddPlanet($SystemID,$SystemName,$Orbit){
 	$size = rand(1,2);
 	$name = $SystemName." ".$Orbit;
-	$query = "INSERT INTO planets(Name,Orbit,`System`,Size) VALUES('$name','$Orbit','$SystemID','$size')";
+	$query = "INSERT INTO planets(DefaultName,Orbit,`System`,Size) VALUES('$name','$Orbit','$SystemID','$size')";
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	echo "Added Planet: ".$name."<br/>";
 }
@@ -57,6 +57,7 @@ function CreateCoords($SectorID){
 function PopulateSector($SectorID){
 	include_once(GAME_ROOT . "/turnfunctions.inc.php");
 	$count = 1;
+	$_firstSystemName = '';
 	if(!IsSector($SectorID)){
 		$query = "INSERT INTO sectors(SectorID) VALUES('$SectorID')";
 		$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
@@ -84,16 +85,22 @@ function PopulateSector($SectorID){
 		$orbits = rand(1,2);
 
 		$coords = CreateCoords($SectorID);
-		$query = "INSERT INTO Systems(Name,Orbits,SectorID,Coords) VALUES('$syst','$orbits','$SectorID','$coords')";
+		$query = "INSERT INTO Systems(DefaultName,Orbits,SectorID,Coords) VALUES('$syst','$orbits','$SectorID','$coords')";
 		$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 		$system = mysqli_insert_id($GLOBALS["conn"]);
 		echo "Added System: ".$syst."<br/>";
+		if($_firstSystemName == '') $_firstSystemName = $syst;
 		for($j=1;$j<=$orbits;$j++){
 			AddPlanet($system,$syst,$j);
 		}
 		$count++;	
 	}
 
+	// Auto-name sector from first system
+	if($_firstSystemName != ''){
+		$_escName = mysqli_real_escape_string($GLOBALS["conn"], $_firstSystemName . ' Sector');
+		mysqli_query($GLOBALS["conn"], "UPDATE sectors SET Name='$_escName' WHERE SectorID='$SectorID' AND (Name IS NULL OR Name = '')");
+	}
 	echo "Count: ".$count;
 	SetGameSetting('names_counter', $count);
 	return $Systems;

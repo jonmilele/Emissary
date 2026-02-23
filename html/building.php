@@ -6,23 +6,34 @@ include_once("userfunctions.inc.php");
 if(isset($_POST['action']) && csrf_validate()){
 	if(($_POST['action'] ?? "")=="build"){
 		$PlanetID = ($_POST["planet"] ?? "");
+		$ret = 0;
 		if(OwnsPlanet($username,$PlanetID)){
 			$BuildingType = ($_POST["building_type"] ?? "");
 			$Grid = ($_POST["grid"] ?? "");
 			$ret = Build($PlanetID,$BuildingType,$Grid);
 		}
-		if($ret>0){
+		if($ret > 0){
+			AddAlertForCurrentUser('construction', 'Construction of a '.GetGridContentString($BuildingType).' started on '.GetPlanetNameFromID($PlanetID), 'planet.php?id='.$PlanetID);
 			header("Location: building.php?planet=".$PlanetID."&id=".$Grid);
+		}elseif($ret == -1){
+			AddAlertForCurrentUser('system', 'Construction queue full on '.GetPlanetNameFromID($PlanetID).'. Build more Factories for extra slots.', 'planet.php?id='.$PlanetID);
+			header("Location: building.php?planet=".$PlanetID."&id=".$Grid."&msg=Construction+queue+full");
 		}else{
+			AddAlertForCurrentUser('system', 'Insufficient resources to build on '.GetPlanetNameFromID($PlanetID), 'planet.php?id='.$PlanetID);
 			header("Location: building.php?planet=".$PlanetID."&id=".$Grid."&msg=Insufficient+Resources");
 		}
 	}
 	if(($_POST['action'] ?? "")=="repair"){
 		$PlanetID = ($_POST["planet"] ?? "");
+		$Grid = ($_POST["grid"] ?? "");
 		if(OwnsPlanet($username,$PlanetID)){
-			$Grid = ($_POST["grid"] ?? "");
-			Repair(GetBldIDFromGrid($PlanetID,$Grid));
-			header("Location: building.php?planet=".$PlanetID."&id=".$Grid);	
+			$pid = GetPlayerIDFromName($username);
+			if(Repair(GetBldIDFromGrid($PlanetID,$Grid), $pid)){
+				AddAlertForCurrentUser('construction', GetGridContentString(GetGridContents($PlanetID,$Grid)).' repaired on '.GetPlanetNameFromID($PlanetID), 'planet.php?id='.$PlanetID);
+				header("Location: building.php?planet=".$PlanetID."&id=".$Grid."&msg=Building+Repaired");
+			}else{
+				header("Location: building.php?planet=".$PlanetID."&id=".$Grid."&msg=Insufficient+Resources");
+			}
 		}else{
 			header("Location: building.php?planet=".$PlanetID."&id=".$Grid."&msg=You+don't+own+this+planet");
 		}
@@ -31,8 +42,10 @@ if(isset($_POST['action']) && csrf_validate()){
 		$PlanetID = ($_POST["planet"] ?? "");
 		if(OwnsPlanet($username,$PlanetID)){
 			$Grid = ($_POST["grid"] ?? "");
+			$_demName = GetGridContentString(GetGridContents($PlanetID,$Grid));
 			$sql = "DELETE FROM buildings WHERE(GridSquare = '$Grid')";
 			$res = mysqli_query($GLOBALS["conn"], $sql);
+			AddAlertForCurrentUser('construction', $_demName.' demolished on '.GetPlanetNameFromID($PlanetID), 'planet.php?id='.$PlanetID);
 		}
 		header("Location: planet.php?id=".$PlanetID."&msg=Building+Demolished");
 	}
@@ -71,6 +84,8 @@ if(isset($_POST['action']) && csrf_validate()){
 				$res = mysqli_query($GLOBALS["conn"], $sql);
 			}
 		}
+		$_cancelBldName = ($cbld ? GetGridContentString($cbld->Type) : 'Building');
+		AddAlertForCurrentUser('construction', $_cancelBldName.' cancelled on '.GetPlanetNameFromID($PlanetID).($cancelMsg !== 'Building+Cancelled' ? '. '.str_replace('+', ' ', substr($cancelMsg, strpos($cancelMsg, 'Refund'))) : ''), 'planet.php?id='.$PlanetID);
 		header("Location: planet.php?id=".$PlanetID."&msg=".$cancelMsg);
 	}
 	if(($_POST['action'] ?? "")=="consship"){
@@ -87,8 +102,10 @@ if(isset($_POST['action']) && csrf_validate()){
 			$ret = CreateShip($Type,$PlanetID,$Grid,$Name);
 		}
 		if($ret>0){
+			AddAlertForCurrentUser('construction', GetShipTypeString($Type).' construction started on '.GetPlanetNameFromID($PlanetID), 'planet.php?id='.$PlanetID);
 			header("Location: building.php?planet=".$PlanetID."&id=".$Grid);
 		}else{
+			AddAlertForCurrentUser('system', 'Insufficient resources to build ship on '.GetPlanetNameFromID($PlanetID), 'planet.php?id='.$PlanetID);
 			header("Location: building.php?planet=".$PlanetID."&id=".$Grid."&msg=Insufficient+Resources");
 		}
 		
@@ -105,9 +122,11 @@ if(isset($_POST['action']) && csrf_validate()){
 				$Name = ($_POST["name"] ?? "");
 			}
 			if(GetQueueSize($PlanetID,$Grid)>=10){
+				AddAlertForCurrentUser('system', 'Ship queue is full on '.GetPlanetNameFromID($PlanetID), 'planet.php?id='.$PlanetID);
 				header("Location: building.php?planet=".$PlanetID."&id=".$Grid."&msg=Queue+is+full");
 			}else{
 				AddToQueue($PlanetID,$Grid,$Type,$Name);
+				AddAlertForCurrentUser('construction', $Name.' added to build queue on '.GetPlanetNameFromID($PlanetID), 'planet.php?id='.$PlanetID);
 				header("Location: building.php?planet=".$PlanetID."&id=".$Grid);
 			}
 		}
@@ -181,10 +200,19 @@ if(isset($_POST['action']) && csrf_validate()){
 if(!IsPlanet(($_GET['planet'] ?? ""))){
 	echo "Not a valid planet ID";
 }else{
-	if(!OwnsPlanet($username,($_GET['planet'] ?? ""))){
-		$edit = false;
-	}else{
+	$edit = false;
+	$teamView = false;
+	if(OwnsPlanet($username,($_GET['planet'] ?? ""))){
 		$edit = true;
+	} else {
+		$_bvPlanet = GetPlanet(($_GET['planet'] ?? ""));
+		if($_bvPlanet && $_bvPlanet->PlayerID > 0){
+			$_bvViewerTeam = PlayerTeam(GetPlayerIDFromName($username));
+			$_bvOwnerTeam = PlayerTeam($_bvPlanet->PlayerID);
+			if($_bvViewerTeam > 0 && $_bvViewerTeam == $_bvOwnerTeam){
+				$teamView = true;
+			}
+		}
 	}
 	$PlanetID = ($_GET['planet'] ?? "");
 	$Grid = ($_GET['id'] ?? "");
@@ -223,40 +251,70 @@ $bldg = BuildingUnderConstruction($PlanetID,$Grid);
     $refundStr = round($ccosts->Metal * $prevRate) . " Metal, " . round($ccosts->Mineral * $prevRate) . " Mineral, " . round($ccosts->Astrium * $prevRate) . " Astrium";
   }
   ?>
+  <?php if($edit): ?>
   <p><small>Refund if cancelled: <?php echo $refundStr; ?></small></p>
   <p><form method="post" action="building.php" style="display:inline;">
     <input type="hidden" name="action" value="cancel">
     <input type="hidden" name="planet" value="<?php echo $PlanetID; ?>">
     <input type="hidden" name="grid" value="<?php echo $Grid; ?>">
     <?php echo csrf_token(); ?>
-    <button type="submit" onclick="return confirm('Cancel construction? Refund: <?php echo $refundStr; ?>');">Cancel</button>
+    <input type="submit" value="Cancel" onclick="return confirm('Cancel construction? Refund: <?php echo $refundStr; ?>');">
   </form></p>
+  <?php endif; ?>
 </div>
 <?php }else{ ?>
 <p>This grid contains: <?php echo h(GetGridContentString($GridContents)); ?></p>
-<?php if(($GridContents>0)&&($edit)){?>
+<?php if(($GridContents>0)&&($edit || $teamView)){?>
 <p>HP: <?php echo $hp."/".$default_hp; ?>
+<?php
+if($edit){
+$_repairCost = GetRepairCost($PlanetID, $Grid);
+if($_repairCost):
+  $_costStr = $_repairCost['Metal'].' Metal, '.$_repairCost['Mineral'].' Mineral';
+  if($_repairCost['Astrium'] > 0) $_costStr .= ', '.$_repairCost['Astrium'].' Astrium';
+?>
   [<form method="post" action="building.php" style="display:inline;">
     <input type="hidden" name="action" value="repair">
     <input type="hidden" name="planet" value="<?php echo $PlanetID; ?>">
     <input type="hidden" name="grid" value="<?php echo $Grid; ?>">
     <?php echo csrf_token(); ?>
-    <button type="submit">Repair</button>
-  </form>]</p>
+    <input type="submit" value="Repair" onclick="return confirm('Repair for <?php echo $_costStr; ?>?');">
+  </form> Cost: <?php echo $_costStr; ?>]
+<?php endif; ?>
+</p>
 <p><form method="post" action="building.php" style="display:inline;">
     <input type="hidden" name="action" value="demolish">
     <input type="hidden" name="planet" value="<?php echo $PlanetID; ?>">
     <input type="hidden" name="grid" value="<?php echo $Grid; ?>">
     <?php echo csrf_token(); ?>
-    <button type="submit" onclick="return confirm('Demolish this building?');">Demolish</button>
+    <input type="submit" value="Demolish" onclick="return confirm('Demolish this building?');">
   </form></p>
 <p><?php PrintGridFunctions($PlanetID,$Grid); ?></p>
+<?php } else { ?>
+</p>
+<?php } ?>
 <?php } ?>
 <?php if((!$GridContents>0)&&($edit)){?>
+<?php /* Team viewers see empty grid but no build options */ ?>
+<?php
+	$_qUsed = Constructions($PlanetID);
+	$_qMax = GetConstructionSlots($PlanetID);
+	$_qFree = $_qMax - $_qUsed;
+?>
 <h3>Build on this grid:</h3>
+<p>Construction Queue: <?php echo $_qUsed . '/' . $_qMax; ?>
+<?php if($_qFree > 0): ?>
+  <small style="color:#00FF00;">(<?php echo $_qFree; ?> slot<?php echo $_qFree != 1 ? 's' : ''; ?> free)</small>
+<?php else: ?>
+  <small style="color:#FF0000;">(full — build more Factories for extra slots)</small>
+<?php endif; ?>
+</p>
+<?php if($_qFree <= 0): ?>
+<p style="color:#FF0000;">All construction slots are in use. Build Factories to increase capacity.</p>
+<?php else: ?>
 <?php
 	$descriptions = array(
-		1 => 'Reduces construction time of all buildings on this planet by 5% (stacks).',
+		1 => 'Reduces construction time by 5% (stacks) and adds +1 construction queue slot per factory.',
 		2 => 'Research facility. No gameplay effect yet.',
 		3 => 'Increases all resource income on this planet by 5% (stacks).',
 		4 => 'Allows construction of ships on this planet.',
@@ -288,6 +346,7 @@ $bldg = BuildingUnderConstruction($PlanetID,$Grid);
   </form>
 </div>
 <?php } ?>
+<?php endif; /* queue has free slots */ ?>
 <?php } ?></body>
 </html>
 <?php } ?>

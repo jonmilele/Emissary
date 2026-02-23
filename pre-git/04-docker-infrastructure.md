@@ -76,7 +76,7 @@ MYSQL_ROOT_PASSWORD=<root_password>
 $hostname_conn = "db";
 $database_conn = "emissary";
 $username_conn = "emissary";
-$password_conn = "bumpy5";
+$password_conn = "adminpass";
 ?>
 ```
 

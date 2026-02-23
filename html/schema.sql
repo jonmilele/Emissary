@@ -23,7 +23,12 @@ CREATE TABLE `players` (
   `Mineral` INT DEFAULT 0,
   `Astrium` INT DEFAULT 0,
   `Credits` INT DEFAULT 0,
-  `HomePlanetID` INT DEFAULT 0
+  `HomePlanetID` INT DEFAULT 0,
+  `LastLogin` DATETIME DEFAULT NULL,
+  `LoginMetal` INT DEFAULT 0,
+  `LoginMineral` INT DEFAULT 0,
+  `LoginAstrium` INT DEFAULT 0,
+  `LoginPlanets` INT DEFAULT 0
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 -- ----------------------------
@@ -96,7 +101,9 @@ CREATE TABLE `team_election_history` (
 -- ----------------------------
 CREATE TABLE `sectors` (
   `SectorID` INT PRIMARY KEY,
+  `Name` VARCHAR(100) DEFAULT NULL,
   `MajOwner` INT DEFAULT 0,
+  `MajTeamID` INT DEFAULT 0,
   `GridCoords` VARCHAR(10) DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
@@ -108,6 +115,7 @@ CREATE TABLE `Systems` (
   `Name` VARCHAR(100) NOT NULL,
   `Orbits` INT DEFAULT 1,
   `PlayerID` INT DEFAULT 0,
+  `TeamID` INT DEFAULT 0,
   `SectorID` INT DEFAULT 0,
   `Coords` VARCHAR(20) DEFAULT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
@@ -253,7 +261,7 @@ CREATE TABLE `battles` (
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 -- ----------------------------
--- Game log (activity reports)
+-- Game log (legacy — replaced by alerts)
 -- ----------------------------
 CREATE TABLE `gamelog` (
   `LogID` INT AUTO_INCREMENT PRIMARY KEY,
@@ -261,6 +269,21 @@ CREATE TABLE `gamelog` (
   `PlayerID` INT DEFAULT 0,
   `Code` INT DEFAULT 0,
   `Data` VARCHAR(255) DEFAULT NULL
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
+-- ----------------------------
+-- Alerts (player activity log & notifications)
+-- ----------------------------
+CREATE TABLE `alerts` (
+  `AlertID` INT AUTO_INCREMENT PRIMARY KEY,
+  `PlayerID` INT NOT NULL,
+  `Category` VARCHAR(20) NOT NULL DEFAULT 'system',
+  `Message` VARCHAR(500) NOT NULL,
+  `LinkURL` VARCHAR(255) DEFAULT NULL,
+  `IsRead` TINYINT DEFAULT 0,
+  `CreatedAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_player_read` (`PlayerID`, `IsRead`),
+  INDEX `idx_player_created` (`PlayerID`, `CreatedAt`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 -- ----------------------------

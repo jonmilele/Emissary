@@ -1,0 +1,8 @@
+# Forbidden words for system/sector naming
+# One word per line. Lines starting with # are comments.
+# Matching is case-insensitive and checks for substrings.
+#
+# Add your forbidden words below, one per line.
+# Example:
+# badword
+# anotherbadword

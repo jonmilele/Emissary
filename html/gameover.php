@@ -16,6 +16,7 @@ if(isset($_POST['action']) && csrf_validate()){
 	if($_POST['action'] == "buyplanet"){
 		$planetID = BuyPlanet($myPID);
 		if($planetID > 0){
+			AddAlert($myPID, 'system', 'Planet purchased: '.GetPlanetNameFromID($planetID).' is your new home world', 'planet.php?id='.$planetID);
 			header("Location: planet.php?id=$planetID&msg=Planet+purchased!+This+is+your+new+home+world.");
 			exit;
 		}

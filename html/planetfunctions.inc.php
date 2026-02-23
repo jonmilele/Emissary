@@ -42,6 +42,12 @@ function AssignStartingPlanet($PlayerID){
 
 function Build($PlanetID,$BuildingType,$Grid){
 	global $username;
+
+	// Check construction queue limit
+	if(!HasFreeConstructionSlot($PlanetID)){
+		return -1; // queue full
+	}
+
 	$costmetal = 0;
 	$costmineral = 0;
 	$costastrium = 0;
@@ -147,6 +153,23 @@ function Constructions($PlanetID){
 		}
 	}
 	return $total_count;
+}
+
+function GetConstructionSlots($PlanetID){
+	$base = (int)GetGameSetting('base_construction_slots', 1);
+	// Each factory adds one extra construction slot
+	$factories = 0;
+	$sql = "SELECT COUNT(*) AS count FROM buildings WHERE(PlanetID = '$PlanetID' AND Type = 1)";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	if($res){
+		$row = mysqli_fetch_object($res);
+		if($row) $factories = (int)$row->count;
+	}
+	return $base + $factories;
+}
+
+function HasFreeConstructionSlot($PlanetID){
+	return Constructions($PlanetID) < GetConstructionSlots($PlanetID);
 }
 
 function HasFleets($PlanetID){

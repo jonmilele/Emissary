@@ -8,6 +8,14 @@ services:
       - db
     volumes:
       - ./html:/var/www/html
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.emissary.rule=Host(`emissary.example.com`)
+      - traefik.http.routers.emissary.entrypoints=websecure
+      - traefik.http.routers.emissary.tls=true
+      - traefik.http.routers.emissary.tls.certresolver=default
+      - traefik.http.routers.emissary.middlewares=security-headers@file
+      - traefik.http.services.emissary.loadbalancer.server.port=80
   db:
     image: mysql:8.1.0
     env_file:
@@ -22,3 +30,12 @@ services:
       - db
     environment:
       PMA_HOST: db
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.emissary-phpmyadmin.rule=Host(`emissary.example.com`) && PathPrefix(`/phpmyadmin`)
+      - traefik.http.routers.emissary-phpmyadmin.entrypoints=websecure
+      - traefik.http.routers.emissary-phpmyadmin.tls=true
+      - traefik.http.routers.emissary-phpmyadmin.tls.certresolver=default
+      - traefik.http.routers.emissary-phpmyadmin.middlewares=emissary-phpmyadmin-strip,security-headers@file
+      - traefik.http.middlewares.emissary-phpmyadmin-strip.stripprefix.prefixes=/phpmyadmin
+      - traefik.http.services.emissary-phpmyadmin.loadbalancer.server.port=80
