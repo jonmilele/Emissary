@@ -29,5 +29,69 @@ function ProcessIncome(){
 
 ProcessIncome();
 ProcessElectionCountdowns();
+ResolveExpiredAuctions();
 PurgeOldAlerts(30);
+
+function ResolveExpiredAuctions(){
+	$now = time();
+	$sql = "SELECT * FROM auctions";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	while($auc = mysqli_fetch_object($res)){
+		$end = (int)$auc->StartTime + ((int)$auc->Turns * 1800);
+		if($now < $end) continue; // Not yet expired
+
+		$auctionID = (int)$auc->AuctionID;
+		$seller = (int)$auc->Seller;
+		$winner = (int)$auc->HighBidder;
+		$bid = (int)$auc->CurrentBid;
+
+		if($winner > 0 && $bid > 0){
+			// Pay the seller
+			AddUserCredits($seller, $bid);
+
+			// Auction codes: 1=Ship, 3=Planet
+			switch((int)$auc->Code){
+				case 1: // Ship — transfer ownership
+					$shipID = (int)$auc->Data;
+					mysqli_query($GLOBALS["conn"], "UPDATE ships SET PlayerID='$winner', FleetID=0 WHERE ShipID='$shipID'");
+					AddAlert($winner, 'trade', 'You won a ship auction for '.$bid.'C.');
+					AddAlert($seller, 'trade', 'Your ship auction sold for '.$bid.'C.');
+					break;
+				case 3: // Planet — transfer ownership
+					$planetID = (int)$auc->Data;
+					mysqli_query($GLOBALS["conn"], "UPDATE planets SET PlayerID='$winner' WHERE PlanetID='$planetID'");
+					// Reassign buildings on the planet to the new owner
+					mysqli_query($GLOBALS["conn"], "UPDATE buildings SET PlayerID='$winner' WHERE PlanetID='$planetID'");
+					// Cancel any in-progress construction by old owner
+					mysqli_query($GLOBALS["conn"], "DELETE FROM cbuildings WHERE PlanetID='$planetID' AND PlayerID='$seller'");
+					// Recalculate system and sector ownership
+					$planet = GetPlanet($planetID);
+					if($planet){
+						CheckSystemMajOwner($planet->System);
+						$sys = GetSystem($planet->System);
+						if($sys) CalcMajOwner($sys->SectorID);
+					}
+					$pName = GetPlanetNameFromID($planetID);
+					AddAlert($winner, 'trade', 'You won planet '.$pName.' at auction for '.$bid.'C.', 'planet.php?id='.$planetID);
+					AddAlert($seller, 'trade', 'Your planet '.$pName.' sold at auction for '.$bid.'C.');
+					break;
+			}
+		} else {
+			// No bids — notify seller
+			// Auction codes: 1=Ship, 3=Planet
+			switch((int)$auc->Code){
+				case 1:
+					AddAlert($seller, 'trade', 'Your ship auction ended with no bids.');
+					break;
+				case 3:
+					$pName = GetPlanetNameFromID((int)$auc->Data);
+					AddAlert($seller, 'trade', 'Your auction for planet '.$pName.' ended with no bids.');
+					break;
+			}
+		}
+
+		// Remove the resolved auction
+		mysqli_query($GLOBALS["conn"], "DELETE FROM auctions WHERE AuctionID='$auctionID'");
+	}
+}
 ?>

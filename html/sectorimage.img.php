@@ -5,7 +5,7 @@ include_once(__DIR__ . "/userfunctions.inc.php");
 $SectorID = ($_GET['id'] ?? "");
 $Systems = GetSystemsInSector($SectorID);
 
-$image = imagecreate(550,550);
+$image = imagecreate(500,500);
 $bg = imagecolorallocate($image,0,0,0);
 $border = imagecolorallocate($image,255,255,255);
 $bordergray = imagecolorallocate($image,153,153,153);
@@ -75,7 +75,12 @@ foreach($Systems as $k=>$System){
 		imagearc($image,$xcoord,$ycoord,30,30,0,360,$teamRing);
 	}
 	
-	imagestring($image,2,$xcoord+10,$ycoord+10,$System->Name,$border);
+	// Smart text placement: flip to left/top if text would overflow grid edge
+	$textWidth = imagefontwidth(2) * strlen($System->Name);
+	$textHeight = imagefontheight(2);
+	$textX = ($xcoord + 10 + $textWidth > 499) ? $xcoord - 10 - $textWidth : $xcoord + 10;
+	$textY = ($ycoord + 10 + $textHeight > 499) ? $ycoord - 10 - $textHeight : $ycoord + 10;
+	imagestring($image,2,$textX,$textY,$System->Name,$border);
 }
 header("Content-type: image/jpg");
 imagejpeg($image);

@@ -10,9 +10,11 @@ if(isset($_POST['action']) && $_POST['action'] == 'rename_system' && csrf_valida
 	$_rPid = GetPlayerIDFromName($username);
 	$result = RenameSystem($_rSid, $_rName, $_rPid);
 	if($result === true){
-		header("Location: system.php?id=$_rSid&msg=System+renamed");
+		SetFlash("System renamed");
+		header("Location: system.php?id=$_rSid");
 	} else {
-		header("Location: system.php?id=$_rSid&msg=" . urlencode($result));
+		SetFlash($result);
+		header("Location: system.php?id=$_rSid");
 	}
 	exit;
 }
@@ -21,9 +23,11 @@ if(isset($_POST['action']) && $_POST['action'] == 'revert_system_name' && csrf_v
 	$_rPid = GetPlayerIDFromName($username);
 	if(CanRenameSystem($_rSid, $_rPid)){
 		RevertSystemName($_rSid);
-		header("Location: system.php?id=$_rSid&msg=Name+reverted+to+default");
+		SetFlash("Name reverted to default");
+		header("Location: system.php?id=$_rSid");
 	} else {
-		header("Location: system.php?id=$_rSid&msg=Cannot+revert+name");
+		SetFlash("Cannot revert name");
+		header("Location: system.php?id=$_rSid");
 	}
 	exit;
 }
@@ -46,7 +50,6 @@ if(!IsSystem(($_GET['id'] ?? ""))){
 <body>
 <?php
 include("header.inc.php");
-if(isset($_GET['msg'])): ?><p><strong><?php echo h($_GET['msg']); ?></strong></p><?php endif;
 ?>
 <h2>System: <?php echo h($System->Name); ?>
 <?php if($System->DefaultName && $System->Name !== $System->DefaultName): ?>

@@ -93,17 +93,14 @@ for($j = 50;$j<500;$j+=50){
 $sql = "SELECT MovingFrom,Destination,Strategy FROM fleets WHERE(FleetID = '".($_GET['id'] ?? "")."')";
 $res = mysqli_query($GLOBALS["conn"], $sql);
 $row = mysqli_fetch_object($res);
+// Strategy: 0=orbit, 1=colonise, 2=attack, 3=invade
 switch($row->Strategy){
-	case "0":
+	case "0": // Orbit — yellow route
+	case "1": // Colonise — yellow route
 		$colour = $yellow;
 		break;
-	case "1":
-		$colour = $yellow;
-		break;
-	case "2":
-		$colour = $red;
-		break;
-	case "3":
+	case "2": // Attack — red route
+	case "3": // Invade — red route
 		$colour = $red;
 		break;
 }

@@ -17,10 +17,12 @@ if(isset($_POST['action']) && csrf_validate()){
 		$planetID = BuyPlanet($myPID);
 		if($planetID > 0){
 			AddAlert($myPID, 'system', 'Planet purchased: '.GetPlanetNameFromID($planetID).' is your new home world', 'planet.php?id='.$planetID);
-			header("Location: planet.php?id=$planetID&msg=Planet+purchased!+This+is+your+new+home+world.");
+			SetFlash("Planet purchased! This is your new home world.");
+			header("Location: planet.php?id=$planetID");
 			exit;
 		}
-		header("Location: gameover.php?msg=Could+not+purchase+planet.+Check+resources.");
+		SetFlash("Could not purchase planet. Check resources.");
+		header("Location: gameover.php");
 		exit;
 	}
 }
@@ -42,7 +44,7 @@ $myTeamID = PlayerTeam($myPID);
 </head>
 <body>
 <p>[<a href="home.php">Home</a>]&nbsp;&nbsp;&nbsp;[<a href="logout.back.php">Logout</a>]</p>
-<?php PrintMessage($_GET["msg"] ?? "");?>
+<?php PrintMessage(GetFlash());?>
 
 <h1>All Planets Lost</h1>
 <p>You have lost all your planets. You can recover by purchasing a new planet or requesting a donation from your team.</p>

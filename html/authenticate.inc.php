@@ -14,7 +14,9 @@ if(empty($_SESSION['username'])) {
 if(isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity']) > SESSION_TIMEOUT){
 	session_unset();
 	session_destroy();
-	header("Location: /index.php?msg=Session+expired");
+	session_start();
+	SetFlash("Session expired");
+	header("Location: /index.php");
 	exit;
 }
 $_SESSION['last_activity'] = time();
@@ -23,7 +25,9 @@ $_SESSION['last_activity'] = time();
 if(isset($_SESSION['ip']) && ($_SESSION['ip'] !== $_SERVER['REMOTE_ADDR'] || ($_SESSION['ua'] ?? '') !== ($_SERVER['HTTP_USER_AGENT'] ?? ''))){
 	session_unset();
 	session_destroy();
-	header("Location: /index.php?msg=Session+invalidated");
+	session_start();
+	SetFlash("Session invalidated");
+	header("Location: /index.php");
 	exit;
 }
 

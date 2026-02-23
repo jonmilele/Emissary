@@ -19,7 +19,7 @@ if(!empty($_SESSION['username'])){
 <body>
 <div class="wrapper">
 <div class="title"><img src="images/title.jpg" width="900" height="179" /></div>
-<?php PrintMessage($_GET["msg"] ?? "");?>
+<?php PrintMessage(GetFlash());?>
 <div class="login"> 
   <form name="form1" method="post" action="login.back.php">
     <p>UserName: <br>

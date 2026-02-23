@@ -17,10 +17,12 @@ if(isset($_POST['action']) && csrf_validate()){
 			header("Location: building.php?planet=".$PlanetID."&id=".$Grid);
 		}elseif($ret == -1){
 			AddAlertForCurrentUser('system', 'Construction queue full on '.GetPlanetNameFromID($PlanetID).'. Build more Factories for extra slots.', 'planet.php?id='.$PlanetID);
-			header("Location: building.php?planet=".$PlanetID."&id=".$Grid."&msg=Construction+queue+full");
+			SetFlash("Construction queue full");
+			header("Location: building.php?planet=".$PlanetID."&id=".$Grid);
 		}else{
 			AddAlertForCurrentUser('system', 'Insufficient resources to build on '.GetPlanetNameFromID($PlanetID), 'planet.php?id='.$PlanetID);
-			header("Location: building.php?planet=".$PlanetID."&id=".$Grid."&msg=Insufficient+Resources");
+			SetFlash("Insufficient Resources");
+			header("Location: building.php?planet=".$PlanetID."&id=".$Grid);
 		}
 	}
 	if(($_POST['action'] ?? "")=="repair"){
@@ -30,12 +32,15 @@ if(isset($_POST['action']) && csrf_validate()){
 			$pid = GetPlayerIDFromName($username);
 			if(Repair(GetBldIDFromGrid($PlanetID,$Grid), $pid)){
 				AddAlertForCurrentUser('construction', GetGridContentString(GetGridContents($PlanetID,$Grid)).' repaired on '.GetPlanetNameFromID($PlanetID), 'planet.php?id='.$PlanetID);
-				header("Location: building.php?planet=".$PlanetID."&id=".$Grid."&msg=Building+Repaired");
+				SetFlash("Building Repaired");
+				header("Location: building.php?planet=".$PlanetID."&id=".$Grid);
 			}else{
-				header("Location: building.php?planet=".$PlanetID."&id=".$Grid."&msg=Insufficient+Resources");
+				SetFlash("Insufficient Resources");
+				header("Location: building.php?planet=".$PlanetID."&id=".$Grid);
 			}
 		}else{
-			header("Location: building.php?planet=".$PlanetID."&id=".$Grid."&msg=You+don't+own+this+planet");
+			SetFlash("You don't own this planet");
+			header("Location: building.php?planet=".$PlanetID."&id=".$Grid);
 		}
 	}
 	if(($_POST['action'] ?? "")=="demolish"){
@@ -43,11 +48,12 @@ if(isset($_POST['action']) && csrf_validate()){
 		if(OwnsPlanet($username,$PlanetID)){
 			$Grid = ($_POST["grid"] ?? "");
 			$_demName = GetGridContentString(GetGridContents($PlanetID,$Grid));
-			$sql = "DELETE FROM buildings WHERE(GridSquare = '$Grid')";
+			$sql = "DELETE FROM buildings WHERE(GridSquare = '$Grid' AND PlanetID = '$PlanetID')";
 			$res = mysqli_query($GLOBALS["conn"], $sql);
 			AddAlertForCurrentUser('construction', $_demName.' demolished on '.GetPlanetNameFromID($PlanetID), 'planet.php?id='.$PlanetID);
 		}
-		header("Location: planet.php?id=".$PlanetID."&msg=Building+Demolished");
+		SetFlash("Building Demolished");
+		header("Location: planet.php?id=".$PlanetID);
 	}
 	if(($_POST['action'] ?? "")=="cancel"){
 		$PlanetID = ($_POST["planet"] ?? "");
@@ -56,7 +62,8 @@ if(isset($_POST['action']) && csrf_validate()){
 			$Grid = ($_POST["grid"] ?? "");
 			// Check construction still exists (may have completed between page load and click)
 			if(!ConstructingBuilding($PlanetID,$Grid)){
-				header("Location: building.php?planet=".$PlanetID."&id=".$Grid."&msg=Construction+already+completed");
+			SetFlash("Construction already completed");
+			header("Location: building.php?planet=".$PlanetID."&id=".$Grid);
 				exit;
 			}
 			// Fetch construction record before deleting
@@ -86,7 +93,8 @@ if(isset($_POST['action']) && csrf_validate()){
 		}
 		$_cancelBldName = ($cbld ? GetGridContentString($cbld->Type) : 'Building');
 		AddAlertForCurrentUser('construction', $_cancelBldName.' cancelled on '.GetPlanetNameFromID($PlanetID).($cancelMsg !== 'Building+Cancelled' ? '. '.str_replace('+', ' ', substr($cancelMsg, strpos($cancelMsg, 'Refund'))) : ''), 'planet.php?id='.$PlanetID);
-		header("Location: planet.php?id=".$PlanetID."&msg=".$cancelMsg);
+		SetFlash(str_replace('+', ' ', $cancelMsg));
+		header("Location: planet.php?id=".$PlanetID);
 	}
 	if(($_POST['action'] ?? "")=="consship"){
 		$PlanetID = ($_POST["planet"] ?? "");
@@ -106,7 +114,8 @@ if(isset($_POST['action']) && csrf_validate()){
 			header("Location: building.php?planet=".$PlanetID."&id=".$Grid);
 		}else{
 			AddAlertForCurrentUser('system', 'Insufficient resources to build ship on '.GetPlanetNameFromID($PlanetID), 'planet.php?id='.$PlanetID);
-			header("Location: building.php?planet=".$PlanetID."&id=".$Grid."&msg=Insufficient+Resources");
+			SetFlash("Insufficient Resources");
+			header("Location: building.php?planet=".$PlanetID."&id=".$Grid);
 		}
 		
 	}
@@ -123,7 +132,8 @@ if(isset($_POST['action']) && csrf_validate()){
 			}
 			if(GetQueueSize($PlanetID,$Grid)>=10){
 				AddAlertForCurrentUser('system', 'Ship queue is full on '.GetPlanetNameFromID($PlanetID), 'planet.php?id='.$PlanetID);
-				header("Location: building.php?planet=".$PlanetID."&id=".$Grid."&msg=Queue+is+full");
+				SetFlash("Queue is full");
+				header("Location: building.php?planet=".$PlanetID."&id=".$Grid);
 			}else{
 				AddToQueue($PlanetID,$Grid,$Type,$Name);
 				AddAlertForCurrentUser('construction', $Name.' added to build queue on '.GetPlanetNameFromID($PlanetID), 'planet.php?id='.$PlanetID);

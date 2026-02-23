@@ -8,9 +8,11 @@ if(isset($_POST['action']) && $_POST['action'] == 'rename_sector' && csrf_valida
 	$_rName = trim($_POST['sector_name'] ?? '');
 	$_rPid = GetPlayerIDFromName($username);
 	if(RenameSector($_rSid, $_rName, $_rPid)){
-		header("Location: sector.php?id=$_rSid&msg=Sector+renamed");
+		SetFlash("Sector renamed");
+		header("Location: sector.php?id=$_rSid");
 	} else {
-		header("Location: sector.php?id=$_rSid&msg=Cannot+rename+sector");
+		SetFlash("Cannot rename sector");
+		header("Location: sector.php?id=$_rSid");
 	}
 	exit;
 }
@@ -37,7 +39,6 @@ if(!IsSector(($_GET['id'] ?? ""))){
 <body>
 <?php
 include("header.inc.php");
-if(isset($_GET['msg'])): ?><p><strong><?php echo h($_GET['msg']); ?></strong></p><?php endif;
 ?>
 <h2><?php echo h($_sectorName); ?> <small style="color:#888;">(Sector <?php echo $SectorID; ?>)</small></h2>
 <div class="side">

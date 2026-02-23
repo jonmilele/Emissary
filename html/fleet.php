@@ -7,7 +7,8 @@ if(isset($_POST['action']) && csrf_validate()){
 	if(($_POST['action'] ?? "")=="move"){
 		$FleetID = ($_POST["fleet"] ?? "");
 		if(!OwnsFleet($username, $FleetID)){
-			header("Location: fleetlist.php?msg=Not+your+fleet");
+		SetFlash("Not your fleet");
+			header("Location: fleetlist.php");
 		}else{
 			$Target = "P:".($_POST["value"] ?? "");
 			$Strategy = ($_POST["strat"] ?? "");
@@ -17,21 +18,25 @@ if(isset($_POST['action']) && csrf_validate()){
 			
 			if(($Strategy<2)&&EnemyOwned(($_POST["value"] ?? ""))){ // Trying to Colonise or Enter orbit of enemy owned planet.
 				AddAlertForCurrentUser('fleet', 'Cannot send fleet to enemy-owned planet', 'fleet.php?id='.$FleetID);
-				header("Location: fleet.php?id=".$FleetID."&msg=Enemy+Owned");
+				SetFlash("Enemy Owned");
+				header("Location: fleet.php?id=".$FleetID);
 			}else{
 				MoveFleet($FleetID,$Target,$Strategy);
 				$destName = GetPlanetNameFromID(($_POST["value"] ?? ""));
-				$stratNames = ['0'=>'orbit','1'=>'colonise','2'=>'attack','3'=>'invade'];
+			// Strategy: 0=orbit, 1=colonise, 2=attack, 3=invade
+			$stratNames = ['0'=>'orbit','1'=>'colonise','2'=>'attack','3'=>'invade'];
 				$stratLabel = $stratNames[$Strategy] ?? 'orbit';
 				AddAlertForCurrentUser('fleet', 'Fleet '.GetFleetName($FleetID).' dispatched to '.$destName.' to '.$stratLabel, 'fleet.php?id='.$FleetID);
-				header("Location: fleet.php?id=".$FleetID."&msg=Moving");
+				SetFlash("Moving");
+				header("Location: fleet.php?id=".$FleetID);
 			}
 		}
 	}
 	if(($_POST['action'] ?? "")=="rename"){
 		$FleetID = ($_POST["fleet"] ?? "");
 		if(!OwnsFleet($username, $FleetID)){
-			header("Location: fleetlist.php?msg=Not+your+fleet");
+			SetFlash("Not your fleet");
+			header("Location: fleetlist.php");
 		}else{
 			$Name = ($_POST["new_name"] ?? "");
 			if($Name!=""){
@@ -39,14 +44,16 @@ if(isset($_POST['action']) && csrf_validate()){
 				$res = mysqli_query($GLOBALS["conn"], $sql);
 				header("Location: fleet.php?id=".$FleetID);
 			}else{
-				header("Location: fleet.php?id=".$FleetID."&msg=Fleet+name+cannot+be+empty");
+				SetFlash("Fleet name cannot be empty");
+				header("Location: fleet.php?id=".$FleetID);
 			}
 		}
 	}
 	if(($_POST['action'] ?? "")=="abort"){
 		$FleetID = ($_POST["id"] ?? "");
 		if(!OwnsFleet($username, $FleetID)){
-			header("Location: fleetlist.php?msg=Not+your+fleet");
+			SetFlash("Not your fleet");
+			header("Location: fleetlist.php");
 		}else{
 			$Fleet = GetFleet($FleetID);
 			$Orig_TTF = CalcTTF($Fleet->MovingFrom,$Fleet->Destination);
@@ -57,20 +64,24 @@ if(isset($_POST['action']) && csrf_validate()){
 			$sql = "UPDATE fleets SET Strategy = '0', MovingFrom = '".$Fleet->Destination."', Destination = '".$Fleet->MovingFrom."', TTF = '".$Abort_TTF."' WHERE(FleetID = '".$Fleet->FleetID."')";
 			$res = mysqli_query($GLOBALS["conn"], $sql) or die(mysqli_error($GLOBALS["conn"]));
 			AddAlertForCurrentUser('fleet', 'Fleet '.GetFleetName($FleetID).' movement aborted, returning in '.$Abort_TTF.' turn(s)', 'fleet.php?id='.$Fleet->FleetID);
-			header("Location: fleet.php?id=".$Fleet->FleetID."&msg=Fleet+movement+aborted+".$Abort_TTF);
+			SetFlash("Fleet movement aborted ".$Abort_TTF);
+			header("Location: fleet.php?id=".$Fleet->FleetID);
 		}
 	}
 	if(($_POST['action'] ?? "")=="delete"){
 		$FleetID = ($_POST["id"] ?? "");
 		if(!OwnsFleet($username, $FleetID)){
-			header("Location: fleetlist.php?msg=Not+your+fleet");
+			SetFlash("Not your fleet");
+			header("Location: fleetlist.php");
 		}else{
 			$delName = GetFleetName($FleetID);
 			if(DeleteFleet($FleetID)){
 				AddAlertForCurrentUser('fleet', 'Fleet '.$delName.' deleted');
-				header("Location: fleetlist.php?msg=Fleet+deleted");
+				SetFlash("Fleet deleted");
+				header("Location: fleetlist.php");
 			}else{
-				header("Location: fleetlist.php?msg=Fleet+cannot+be+deleted");
+				SetFlash("Fleet cannot be deleted");
+				header("Location: fleetlist.php");
 			}
 		}
 	}
@@ -107,7 +118,7 @@ $CurrentPlanet = 0;
       <?php } ?>
     </p>
     <p>HP: <?php echo FleetHP($FleetID); ?><br/>
-		AP: <?php echo FleetHP($FleetID); ?></p>
+		AP: <?php echo FleetAP($FleetID); ?></p>
 </div><div class="panel" style="width:250;">
 <h3>Fleet Modification</h3>
     <p>Rename Fleet:</p>

@@ -37,12 +37,13 @@ for($i = $startcornerx+40;$i<$startcornerx+$numberinrow*40;$i+=40){
 for($j = $startcornery+40;$j<$startcornery+$numberinrow*40;$j+=40){
 	imageline($image,$startcornerx,$j,$startcornerx+$numberinrow*40,$j,$bordergray);
 }
+// Planet sizes: 1=Small, 2=Medium, 3=Large, 4=Huge
 switch($Planet->Size){
-	case "1":
+	case "1": // Small
 		$offsetx = 0;
 		$offsety = 30;
 		break;
-	case "2":
+	case "2": // Medium
 		$offsetx = 0;
 		$offsety = 80;
 		break;

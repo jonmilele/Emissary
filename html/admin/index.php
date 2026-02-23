@@ -6,7 +6,8 @@ include_once("../userfunctions.inc.php");
 // --- Admin check: only PlayerID 1 can access ---
 $adminID = GetPlayerIDFromName($username);
 if($adminID != 1){
-	header("Location: /home.php?msg=" . urlencode("Access denied — admin only"));
+	SetFlash("Access denied — admin only");
+	header("Location: /home.php");
 	exit;
 }
 
@@ -90,7 +91,8 @@ if($action != ""){
 				'harvester_bonus','election_duration',
 				'election_auto_interval','election_motion_threshold',
 				'starting_metal','starting_mineral','starting_astrium',
-				'planet_weapon_hit_chance','base_construction_slots'
+				'planet_weapon_hit_chance','base_construction_slots',
+				'default_auction_turns'
 			];
 			$updated = 0;
 			foreach($setting_keys as $sk){
@@ -127,7 +129,7 @@ if($action != ""){
 			include("tools.php");
 			include_once("../turnfunctions.inc.php");
 			// Wipe all game data (preserve players and reference tables)
-		$wipe_tables = ["planets","Systems","ships","fleets","buildings","cbuildings","cships","qships","battles","auctions","gamelog","alerts"];
+		$wipe_tables = ["planets","Systems","ships","fleets","buildings","cbuildings","cships","qships","battles","auctions","auction_cooldowns","gamelog","alerts"];
 			foreach($wipe_tables as $t){
 				mysqli_query($GLOBALS["conn"], "DELETE FROM `$t`");
 				echo "Cleared $t (" . mysqli_affected_rows($GLOBALS["conn"]) . " rows)\n";
@@ -254,6 +256,7 @@ $players_result = mysqli_query($conn, "SELECT PlayerID, UserName, Email, TeamID,
 		'election_motion_threshold' => ['label' => 'Election Motion Threshold (%)', 'default' => '25', 'hint' => 'Percentage of team members needed to second a motion'],
 		'planet_weapon_hit_chance' => ['label' => 'Planet Weapon Hit Chance (1-in-N)', 'default' => '3', 'hint' => 'Planet weapons fire with 1-in-N chance per round (higher = less accurate)'],
 		'base_construction_slots'  => ['label' => 'Base Construction Slots',            'default' => '1',  'hint' => 'Construction queue slots per planet before factories (each factory adds +1)'],
+		'default_auction_turns'    => ['label' => 'Default Auction Duration (turns)',    'default' => '5',  'hint' => 'Default number of income turns an auction lasts (each turn = 30 min)'],
 	];
 ?>
 <div class="admin-section">

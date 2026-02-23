@@ -8,4 +8,4 @@ $resources = GetPlayerResources($_hdrPID);
   <br>
   Resources: <?php echo $resources["Metal"]; ?> Metal, <?php echo $resources["Mineral"]; ?> 
   Mineral, <?php echo $resources["Astrium"]; ?> Astrium</small></p>
-  <?php PrintMessage($_GET["msg"] ?? "");?>
+  <?php PrintMessage(GetFlash());?>

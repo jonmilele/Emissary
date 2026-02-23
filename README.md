@@ -127,7 +127,7 @@ Some hardening has been done, but significant work remains — this is 2004 code
 **Still needed:**
 - **SQL injection everywhere** — every query uses string interpolation instead of prepared statements
 - **Unauthenticated dev tools** — `giveplanetships.php` and `simulatebattle.php` have no login check and are publicly accessible
-- **Dangerous DELETE queries** — building demolish/cancel queries are missing a planet ID filter and can affect buildings on other planets
+- ~~**Dangerous DELETE queries** — building demolish/cancel queries are missing a planet ID filter and can affect buildings on other planets~~ *(fixed — added `AND PlanetID` filter to demolish DELETE query)*
 - **Weak password handling** — passwords are lowercased before hashing, reducing entropy
 - **No HTTPS** configured
 - ~~**XSS** — user-supplied values (messages, fleet names, ship names) are echoed without escaping~~ *(fixed — added `h()` helper wrapping `htmlspecialchars()` across all page files, include files, and HTML-building functions)*
@@ -136,10 +136,10 @@ Some hardening has been done, but significant work remains — this is 2004 code
 
 #### Known Bugs
 
-- Fleet AP display calls the HP function instead — shows HP for both stats
-- Building demolish/cancel queries are missing `AND PlanetID` in the WHERE clause
-- The cron colonise branch references undefined `$PlanetID` and `$PlayerID` variables
-- `FleetBattle()` tries to iterate a `ShipBundle` object as a flat array
+- ~~Fleet AP display calls the HP function instead — shows HP for both stats~~ *(fixed — now calls `FleetAP()`)*
+- ~~Building demolish/cancel queries are missing `AND PlanetID` in the WHERE clause~~ *(fixed — added `AND PlanetID` filter)*
+- ~~The cron colonise branch references undefined `$PlanetID` and `$PlayerID` variables~~ *(fixed — derived from fleet row data)*
+- ~~`FleetBattle()` tries to iterate a `ShipBundle` object as a flat array~~ *(fixed — uses `GetShipArray()`, corrected `$attacker->AP` and `GetShipTypeString()` arg)*
 - `chooserace.php` calls `StageTwo()` without the required `$username` argument
 - ~~`DestroyShip()` references the wrong variable (`$res` instead of `$rescount`) — always fails~~ *(fixed)*
 - ~~Building ownership check uses a bare word `(edit)` instead of the variable `($edit)` — always passes~~ *(fixed)*
@@ -181,7 +181,7 @@ Several features have UI or stubs but were never finished in the original code:
 - No responsive design — doesn't work on mobile
 - Planet management is a JPEG image map with no hover states or interactivity
 - ~~No confirmation dialogs before destructive actions (demolish, delete fleet)~~ *(fixed — `confirm()` dialogs on demolish, cancel construction, delete fleet, abort movement, build, colonise, attack/invade launch, set home world, rename revert)*
-- Error messages passed through URL query strings *(partially addressed — alerts system now provides persistent notifications alongside `?msg=` display)*
+- ~~Error messages passed through URL query strings~~ *(fixed — replaced all `?msg=` query strings with session flash messages via `SetFlash()`/`GetFlash()`)*
 - ~~"galazy" typo on the front page~~ *(fixed)*
 
 #### Game Balance

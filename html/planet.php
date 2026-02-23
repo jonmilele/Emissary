@@ -10,7 +10,8 @@ if(isset($_POST['action']) && csrf_validate()){
 			SetHomePlanet(GetPlayerIDFromName($username), $PlanetID);
 		}
 		AddAlertForCurrentUser('system', GetPlanetNameFromID($PlanetID).' set as home world', 'planet.php?id='.$PlanetID);
-		header("Location: planet.php?id=".$PlanetID."&msg=Home+world+set");
+		SetFlash("Home world set");
+		header("Location: planet.php?id=".$PlanetID);
 		exit;
 	}
 	if(($_POST['action'] ?? "")=="colonise"){
@@ -27,9 +28,11 @@ if(isset($_POST['action']) && csrf_validate()){
 		$_rPid = GetPlayerIDFromName($username);
 		$result = RenamePlanet($PlanetID, $_rName, $_rPid);
 		if($result === true){
-			header("Location: planet.php?id=$PlanetID&msg=Planet+renamed");
+			SetFlash("Planet renamed");
+			header("Location: planet.php?id=$PlanetID");
 		} else {
-			header("Location: planet.php?id=$PlanetID&msg=" . urlencode($result));
+			SetFlash($result);
+			header("Location: planet.php?id=$PlanetID");
 		}
 		exit;
 	}
@@ -37,9 +40,11 @@ if(isset($_POST['action']) && csrf_validate()){
 		$PlanetID = (int)($_POST["id"] ?? 0);
 		if(OwnsPlanet($username, $PlanetID)){
 			RevertPlanetName($PlanetID);
-			header("Location: planet.php?id=$PlanetID&msg=Name+reverted+to+default");
+			SetFlash("Name reverted to default");
+			header("Location: planet.php?id=$PlanetID");
 		} else {
-			header("Location: planet.php?id=$PlanetID&msg=Cannot+revert+name");
+			SetFlash("Cannot revert name");
+			header("Location: planet.php?id=$PlanetID");
 		}
 		exit;
 	}
@@ -83,7 +88,6 @@ if(!IsPlanet(($_GET['id'] ?? ""))){
 <body>
 <?php
 include("header.inc.php");
-if(isset($_GET['msg'])): ?><p><strong><?php echo h($_GET['msg']); ?></strong></p><?php endif;
 ?>
 
 <h2>Planet: <?php echo h(GetPlanetNameFromID($PlanetID)); ?>
@@ -264,26 +268,27 @@ $squares = 0;
 $startcorner = 0;
 $numberinrow = 0;
 
+// Planet sizes: 1=Small (10x10), 2=Medium (11x11), 3=Large (9x9), 4=Huge (12x12)
 switch($Planet->Size){
-	case "1":
+	case "1": // Small — 100 grid squares
 		$squares = 100;
 		$startcornerx = 100;
 		$startcornery = 50;
 		$numberinrow = 10;
 		break;
-	case "2":
+	case "2": // Medium — 121 grid squares
 		$squares = 121;
 		$startcornerx = 75;
 		$startcornery = 75;
 		$numberinrow = 11;
 		break;
-	case "3":
+	case "3": // Large — 81 grid squares
 		$squares = 81;
 		$startcornerx = 130;
 		$startcornery = 85;
 		$numberinrow = 9;
 		break;
-	case "4":
+	case "4": // Huge — 144 grid squares
 		$squares = 144;
 		$startcornerx = 75;
 		$startcornery = 25;

@@ -106,11 +106,12 @@ if(sizeof($Fleets)>0){
 	echo "<strong>Incoming Enemy Fleets!</strong><br/>";
 	foreach($Fleets as $k=>$Fleet){
 		$post = "";
+		// Strategy: 0=orbit, 1=colonise, 2=attack, 3=invade
 		switch($Fleet->Strategy){
-			case "2":
+			case "2": // Attack
 				$post = " to attack";
 				break;
-			case "3":
+			case "3": // Invade
 				$post = " to invade";
 				break;
 		}

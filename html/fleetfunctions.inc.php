@@ -103,17 +103,18 @@ function GetFleetLocationString($FleetID){
 	}else{
 		$pre = "";
 		$post = "";
+		// Strategy: 0=orbit, 1=colonise, 2=attack, 3=invade
 		switch($row->Strategy){
-			case "0":
+			case "0": // Orbit
 				$post = "";
 				break;
-			case "1":
+			case "1": // Colonise
 				$post = " for colonisation";
 				break;
-			case "2":
+			case "2": // Attack
 				$post = " to attack";
 				break;
-			case "3":
+			case "3": // Invade
 				$post = " to invade";
 				break;
 		}
@@ -304,29 +305,10 @@ function GetShips($FleetID){
 	// Check for Transports
 	$sql= "SELECT * FROM ships WHERE(FleetID = '$FleetID')";
 	$res=mysqli_query($GLOBALS["conn"], $sql);
+	// Ship types: 2=Transport, 3=Coloniser, 4=Frigate, 5=Cruiser, 6=Warship, 7=Mothership, 8=Fighter
 	while($row = mysqli_fetch_object($res)){
-		switch($row->Type){
-			case "2":
-				$bundle->Add(GetShip($row->ShipID));
-				break;
-			case "3":
-				$bundle->Add(GetShip($row->ShipID));
-				break;
-			case "4":
-				$bundle->Add(GetShip($row->ShipID));
-				break;
-			case "5":
-				$bundle->Add(GetShip($row->ShipID));
-				break;
-			case "6":
-				$bundle->Add(GetShip($row->ShipID));
-				break;
-			case "7":
-				$bundle->Add(GetShip($row->ShipID));
-				break;
-			case "8":
-				$bundle->Add(GetShip($row->ShipID));
-				break;
+		if($row->Type >= 2 && $row->Type <= 8){
+			$bundle->Add(GetShip($row->ShipID));
 		}
 	}
 
@@ -355,30 +337,16 @@ class ShipBundle{
 		return $total;
 	}
 	
+	// Ship types: 2=Transport, 3=Coloniser, 4=Frigate, 5=Cruiser, 6=Warship, 7=Mothership, 8=Fighter
 	function Add($Ship){
-		//echo "Adding Ship ".$Ship->Type;
 		switch($Ship->Type){
-			case "2":
-				$this->Transports[] = $Ship;
-				break;
-			case "3":
-				$this->Colonisers[] = $Ship;
-				break;
-			case "4":
-				$this->Frigates[] = $Ship;
-				break;
-			case "5":
-				$this->Cruisers[] = $Ship;
-				break;
-			case "6":
-				$this->Warships[] = $Ship;
-				break;
-			case "7":
-				$this->Motherships[] = $Ship;
-				break;
-			case "8":
-				$this->Fighters[] = $Ship;
-				break;
+			case "2": $this->Transports[] = $Ship; break;
+			case "3": $this->Colonisers[] = $Ship; break;
+			case "4": $this->Frigates[] = $Ship; break;
+			case "5": $this->Cruisers[] = $Ship; break;
+			case "6": $this->Warships[] = $Ship; break;
+			case "7": $this->Motherships[] = $Ship; break;
+			case "8": $this->Fighters[] = $Ship; break;
 		}
 	}
 }
@@ -1151,20 +1119,20 @@ function FleetBattle($Fleet1, $Fleet2){
 	$next = $Fleet1;
 	$other = $Fleet2;
 	while(HasShipsLeft($Fleet1)&&HasShipsLeft($Fleet2)){	
-		$ships = GetShips($next);
+		$ships = GetShipArray($next);
 		foreach($ships as $k=>$ship){	
 			$tid = GetRandomShip($other);
 			if($tid==""){
 				break;
 			}
 			$target = GetShip($tid);
-			$typestring = GetShipTypeString($target->ShipID);
+			$typestring = GetShipTypeString($target->Type);
 			if($ship->AP>=$target->HP){
 				$sql= "DELETE FROM ships WHERE(ShipID = '".$target->ShipID."')";
 				$rescount=mysqli_query($GLOBALS["conn"], $sql);
 				$echo .= "The ".h($typestring)." ".h($target->Name)." was Destroyed<br/>";
 			}else{
-				$new_hp = $target->HP - $attacker->AP;
+				$new_hp = $target->HP - $ship->AP;
 				$nquery = "UPDATE ships SET HP = '$new_hp' WHERE(ShipID = '".$target->ShipID."')";
 				$nresult = mysqli_query($GLOBALS["conn"], $nquery) or die(mysqli_error($GLOBALS["conn"]));
 				$echo .= "The ".h($typestring)." ".h($target->Name)." was Damaged<br/>";

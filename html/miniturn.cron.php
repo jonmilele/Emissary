@@ -29,17 +29,22 @@ function DropFleetTTF($FleetID){
 		$_stratLabels = ['0'=>'','1'=>' for colonisation','2'=>' to attack','3'=>' to invade'];
 		$_stratPost = $_stratLabels[$row->Strategy] ?? '';
 		AddAlert($row->PlayerID, 'fleet', 'Fleet '.GetFleetName($FleetID).' arrived at '.GetPlanetNameFromID($_arrPlanet).$_stratPost, 'planet.php?id='.$_arrPlanet);
-		if($row->Strategy==2){
-			AttackPlanet($FleetID,substr($row->Destination,2,strlen($row->Destination)-2),false);
-		}
-		elseif($row->Strategy==3){
-			AttackPlanet($FleetID,substr($row->Destination,2,strlen($row->Destination)-2),true);
-		}
-		elseif($row->Strategy==1){
-			if(CanColonise($PlanetID,$FleetID)){
+		// Strategy: 0=orbit, 1=colonise, 2=attack, 3=invade
+		switch($row->Strategy){
+			case 1: // Colonise
+				$PlanetID = substr($row->Destination,2,strlen($row->Destination)-2);
+				$PlayerID = $row->PlayerID;
 				$username = GetPlayerNameFromID($PlayerID);
-				Colonise(substr($row->Destination,2,strlen($row->Destination)-2));
-			}
+				if(CanColonise($PlanetID,$FleetID)){
+					Colonise($PlanetID);
+				}
+				break;
+			case 2: // Attack
+				AttackPlanet($FleetID,substr($row->Destination,2,strlen($row->Destination)-2),false);
+				break;
+			case 3: // Invade
+				AttackPlanet($FleetID,substr($row->Destination,2,strlen($row->Destination)-2),true);
+				break;
 		}
 	}
 }

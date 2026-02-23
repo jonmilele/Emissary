@@ -4,15 +4,16 @@ class ResourceBundle{
 	var $Mineral = 0;
 	var $Astrium = 0;
 	
+	// Resource types: 1=Metal, 2=Mineral, 3=Astrium
 	function Add($Amount,$Type){
 		switch($Type){
-			case "1":
+			case "1": // Metal
 				$this->Metal += $Amount;
 				break;
-			case "2":
+			case "2": // Mineral
 				$this->Mineral += $Amount;
 				break;
-			case "3":
+			case "3": // Astrium
 				$this->Astrium += $Amount;
 				break;
 		}
@@ -28,20 +29,21 @@ class ResourceBundle{
 		$this->Mineral = round($this->Mineral,0);
 		$this->Astrium = round($this->Astrium,0);
 	}
+	// Resource types: 0=All, 1=Metal, 2=Mineral, 3=Astrium
 	function Percentage($Amount,$Type){
 		switch($Type){
-			case "0":
+			case "0": // All resources
 				$this->Metal *= $Amount;
 				$this->Mineral *= $Amount;
 				$this->Astrium *= $Amount;
 				break;
-			case "1":
+			case "1": // Metal
 				$this->Metal *= $Amount;
 				break;
-			case "2":
+			case "2": // Mineral
 				$this->Mineral *= $Amount;
 				break;
-			case "3":
+			case "3": // Astrium
 				$this->Astrium *= $Amount;
 				break;
 		}
@@ -228,23 +230,81 @@ function IsAuction($AuctionID){
 		return false;
 }
 
-function ListPublicAuctions(){
+function ListTeamAuctions($TeamID){
 	$return = "";
-	$sql = "SELECT * FROM auctions WHERE(OpenTo = '1')";
+	$tid = (int)$TeamID;
+	if($tid < 1) return $return;
+	$sql = "SELECT * FROM auctions WHERE OpenTo = '$tid'";
 	$res = mysqli_query($GLOBALS["conn"], $sql);
+	// Auction codes: 1=Ship, 2=Resources (not implemented), 3=Planet
 	while($row = mysqli_fetch_object($res)){
+		$end = (int)$row->StartTime + ((int)$row->Turns * 1800);
+		if(time() >= $end) continue; // Skip expired (awaiting cron resolution)
+		$lotDesc = '';
 		switch($row->Code){
-			case "1":
+			case "1": // Ship auction
 				$sqlship = "SELECT * FROM ships WHERE(ShipID = '".$row->Data."')";
 				$resship = mysqli_query($GLOBALS["conn"], $sqlship);
 				$rowship = mysqli_fetch_object($resship);
-				$return .= "Auction of ".GetShipTypeString($rowship->Type)." [<a href=\"auction.php?id=".$row->AuctionID."\">View Auction</a>]";
+				$lotDesc = "Ship: ".GetShipTypeString($rowship->Type);
 				break;
-			case "2":
+			case "2": // Resource auction (not implemented)
 				break;
+			case "3": // Planet auction
+				$lotDesc = "Planet: ".h(GetPlanetNameFromID($row->Data));
+				break;
+		}
+		if($lotDesc){
+			$return .= "Auction of ".$lotDesc;
+			$return .= " — Bid: ".((int)$row->CurrentBid > 0 ? $row->CurrentBid."C" : $row->StartBid."C (start)");
+			$return .= " — Ends: ".date("M j, H:i", $end);
+			$return .= " [<a href=\"auction.php?id=".$row->AuctionID."\">View</a>]<br>";
 		}
 	}
 	return $return;
+}
+
+function CancelAuction($AuctionID, $PlayerID){
+	$auc = GetAuction($AuctionID);
+	if(!$auc) return false;
+	if((int)$auc->Seller != (int)$PlayerID) return false;
+	$end = (int)$auc->StartTime + ((int)$auc->Turns * 1800);
+	if(time() >= $end) return false; // Already expired
+
+	// Refund high bidder if any
+	if((int)$auc->HighBidder > 0 && (int)$auc->CurrentBid > 0){
+		AddUserCredits((int)$auc->HighBidder, (int)$auc->CurrentBid);
+		include_once(__DIR__ . "/alertfunctions.inc.php");
+		AddAlert((int)$auc->HighBidder, 'trade', 'Auction #'.$AuctionID.' was cancelled. '.$auc->CurrentBid.'C refunded.');
+	}
+
+	// Set 24h cooldown for non-resource auctions (Code != 2)
+	if((int)$auc->Code != 2){
+		SetAuctionCooldown((int)$auc->Code, $auc->Data);
+	}
+
+	mysqli_query($GLOBALS["conn"], "DELETE FROM auctions WHERE AuctionID='".(int)$AuctionID."'");
+	return true;
+}
+
+function HasAuctionCooldown($Code, $Data){
+	$code = (int)$Code;
+	$data = mysqli_real_escape_string($GLOBALS["conn"], $Data);
+	$sql = "SELECT CooldownUntil FROM auction_cooldowns WHERE Code='$code' AND Data='$data'";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	$row = mysqli_fetch_object($res);
+	if(!$row) return false;
+	if(time() < (int)$row->CooldownUntil) return true;
+	// Expired cooldown — clean up
+	mysqli_query($GLOBALS["conn"], "DELETE FROM auction_cooldowns WHERE Code='$code' AND Data='$data'");
+	return false;
+}
+
+function SetAuctionCooldown($Code, $Data){
+	$code = (int)$Code;
+	$data = mysqli_real_escape_string($GLOBALS["conn"], $Data);
+	$until = time() + 86400; // 24 hours
+	mysqli_query($GLOBALS["conn"], "REPLACE INTO auction_cooldowns(Code, Data, CooldownUntil) VALUES('$code','$data','$until')");
 }
 
 function GetAuction($AuctionID){

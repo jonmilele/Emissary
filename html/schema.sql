@@ -287,7 +287,7 @@ CREATE TABLE `alerts` (
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 -- ----------------------------
--- Auctions
+-- Auctions (OpenTo stores seller's TeamID — team-only visibility)
 -- ----------------------------
 CREATE TABLE `auctions` (
   `AuctionID` INT AUTO_INCREMENT PRIMARY KEY,
@@ -300,6 +300,16 @@ CREATE TABLE `auctions` (
   `StartBid` INT DEFAULT 0,
   `CurrentBid` INT DEFAULT 0,
   `HighBidder` INT DEFAULT 0
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
+-- ----------------------------
+-- Auction cooldowns (24h re-list prevention after cancel)
+-- ----------------------------
+CREATE TABLE `auction_cooldowns` (
+  `Code` INT NOT NULL,
+  `Data` VARCHAR(100) NOT NULL,
+  `CooldownUntil` INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (`Code`, `Data`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 -- ----------------------------
@@ -383,4 +393,5 @@ INSERT INTO `game_settings` (`setting_key`, `setting_value`) VALUES
 ('starting_metal', '500'),
 ('starting_mineral', '250'),
 ('starting_astrium', '50'),
-('planet_weapon_hit_chance', '3');
+('planet_weapon_hit_chance', '3'),
+('default_auction_turns', '5');

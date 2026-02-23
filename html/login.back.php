@@ -63,5 +63,6 @@ include("connect.inc.php");
 	else
 	{
 		$message = "Invalid Username/password combination";
-		header("Location: /index.php?msg=".urlencode($message));
+		SetFlash($message);
+		header("Location: /index.php");
 	}

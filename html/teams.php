@@ -15,13 +15,16 @@ if(isset($_POST['action']) && csrf_validate()){
 		$tcolour = trim($_POST['teamcolour'] ?? "");
 		$presets = GetTeamColourPresets();
 		if($tname === "" || !in_array($tcolour, $presets)){
-			header("Location: teams.php?msg=Invalid+team+name+or+colour");
+			SetFlash("Invalid team name or colour");
+			header("Location: teams.php");
 		} elseif(IsTeamColourTaken($tcolour)){
-			header("Location: teams.php?msg=That+colour+is+already+taken");
+			SetFlash("That colour is already taken");
+			header("Location: teams.php");
 		} else {
 			CreateTeam($myPID, $tname, $tcolour);
 			AddAlert($myPID, 'team', 'Team '.$tname.' created', 'teams.php');
-			header("Location: teams.php?msg=Team+created");
+			SetFlash("Team created");
+			header("Location: teams.php");
 		}
 		exit;
 	}
@@ -31,9 +34,11 @@ if(isset($_POST['action']) && csrf_validate()){
 		if($tid > 0){
 			if(RequestJoinTeam($myPID, $tid)){
 				AddAlert($myPID, 'team', 'Join request sent to '.TeamNameFromID($tid), 'teams.php');
-				header("Location: teams.php?msg=Join+request+sent");
+				SetFlash("Join request sent");
+				header("Location: teams.php");
 			} else {
-				header("Location: teams.php?msg=Could+not+send+request");
+				SetFlash("Could not send request");
+				header("Location: teams.php");
 			}
 			exit;
 		}
@@ -41,7 +46,8 @@ if(isset($_POST['action']) && csrf_validate()){
 
 	if($action == "cancelrequest" && $myTeamID == 0){
 		CancelJoinRequest($myPID);
-		header("Location: teams.php?msg=Request+cancelled");
+		SetFlash("Request cancelled");
+		header("Location: teams.php");
 		exit;
 	}
 
@@ -49,7 +55,8 @@ if(isset($_POST['action']) && csrf_validate()){
 		$leftTeamName = TeamNameFromID($myTeamID);
 		LeaveTeam($myPID);
 		AddAlert($myPID, 'team', 'You left '.$leftTeamName, 'teams.php');
-		header("Location: teams.php?msg=You+left+the+team");
+		SetFlash("You left the team");
+		header("Location: teams.php");
 		exit;
 	}
 
@@ -58,12 +65,15 @@ if(isset($_POST['action']) && csrf_validate()){
 			// Check if election started immediately (small team)
 			$ti = GetTeamInfo($myTeamID);
 			if($ti && $ti->VoteActive){
-				header("Location: teams.php?msg=Motion+carried+%E2%80%94+election+started");
+				SetFlash("Motion carried \xe2\x80\x94 election started");
+				header("Location: teams.php");
 			} else {
-				header("Location: teams.php?msg=Motion+raised.+Needs+seconds+from+other+members.");
+				SetFlash("Motion raised. Needs seconds from other members.");
+				header("Location: teams.php");
 			}
 		} else {
-			header("Location: teams.php?msg=Cannot+raise+motion+right+now");
+			SetFlash("Cannot raise motion right now");
+			header("Location: teams.php");
 		}
 		exit;
 	}
@@ -72,21 +82,26 @@ if(isset($_POST['action']) && csrf_validate()){
 		if(SecondElectionMotion($myTeamID, $myPID)){
 			$ti = GetTeamInfo($myTeamID);
 			if($ti && $ti->VoteActive){
-				header("Location: teams.php?msg=Motion+carried+%E2%80%94+election+started");
+				SetFlash("Motion carried \xe2\x80\x94 election started");
+				header("Location: teams.php");
 			} else {
-				header("Location: teams.php?msg=Motion+seconded");
+				SetFlash("Motion seconded");
+				header("Location: teams.php");
 			}
 		} else {
-			header("Location: teams.php?msg=Cannot+second+motion");
+			SetFlash("Cannot second motion");
+			header("Location: teams.php");
 		}
 		exit;
 	}
 
 	if($action == "resignleader" && $myTeamID > 0 && IsTeamLeader($myPID)){
 		if(ResignAsLeader($myPID)){
-			header("Location: teams.php?msg=You+resigned+as+leader.+Election+called.");
+			SetFlash("You resigned as leader. Election called.");
+			header("Location: teams.php");
 		} else {
-			header("Location: teams.php?msg=Could+not+resign");
+			SetFlash("Could not resign");
+			header("Location: teams.php");
 		}
 		exit;
 	}
@@ -100,7 +115,8 @@ if(isset($_POST['action']) && csrf_validate()){
 			}
 		}
 		AddAlert($myPID, 'team', 'Vote recorded in team election', 'teams.php');
-		header("Location: teams.php?msg=Vote+recorded");
+		SetFlash("Vote recorded");
+		header("Location: teams.php");
 		exit;
 	}
 
@@ -109,16 +125,19 @@ if(isset($_POST['action']) && csrf_validate()){
 		$tcolour = trim($_POST['teamcolour'] ?? "");
 		$presets = GetTeamColourPresets();
 		if($tname === "" || !in_array($tcolour, $presets)){
-			header("Location: teams.php?msg=Invalid+name+or+colour");
+			SetFlash("Invalid name or colour");
+			header("Location: teams.php");
 		} elseif(IsTeamColourTaken($tcolour, $myTeamID)){
-			header("Location: teams.php?msg=That+colour+is+already+taken");
+			SetFlash("That colour is already taken");
+			header("Location: teams.php");
 		} else {
 			$tname = mysqli_real_escape_string($GLOBALS["conn"], $tname);
 			$tcolour = mysqli_real_escape_string($GLOBALS["conn"], $tcolour);
 			$sql = "UPDATE teams SET Name='$tname', Colour='$tcolour' WHERE TeamID='$myTeamID'";
 			mysqli_query($GLOBALS["conn"], $sql);
 			AddAlert($myPID, 'team', 'Team settings updated', 'teams.php');
-			header("Location: teams.php?msg=Team+updated");
+			SetFlash("Team updated");
+			header("Location: teams.php");
 		}
 		exit;
 	}
@@ -127,7 +146,8 @@ if(isset($_POST['action']) && csrf_validate()){
 		$rid = (int)($_POST['requestid'] ?? 0);
 		if($rid > 0) ApproveJoinRequest($rid);
 		AddAlert($myPID, 'team', 'Join request approved', 'teams.php');
-		header("Location: teams.php?msg=Request+approved");
+		SetFlash("Request approved");
+		header("Location: teams.php");
 		exit;
 	}
 
@@ -135,7 +155,8 @@ if(isset($_POST['action']) && csrf_validate()){
 		$rid = (int)($_POST['requestid'] ?? 0);
 		if($rid > 0) DenyJoinRequest($rid);
 		AddAlert($myPID, 'team', 'Join request denied', 'teams.php');
-		header("Location: teams.php?msg=Request+denied");
+		SetFlash("Request denied");
+		header("Location: teams.php");
 		exit;
 	}
 }

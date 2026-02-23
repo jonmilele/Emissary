@@ -2,20 +2,21 @@
 function PrintGridFunctions($PlanetID,$Grid){
 	$Type = GetGridContents($PlanetID,$Grid);
 	
+	// Building types: 1=Factory, 2=Laboratory, 3=Harvester, 4=Shipyard, 5=Hangar, 6=Shield, 7=Pulse Cannon, 8=Gigashield, 9=Missile Silo
 	switch($Type){
-		case "1":
+		case "1": // Factory
 			break;
-		case "2":
+		case "2": // Laboratory
 			break;
-		case "3":
+		case "3": // Harvester
 			break;
-		case "4":
+		case "4": // Shipyard
 			include("inc/shipyard.bld.inc.php");
 			break;
-		case "5":
+		case "5": // Hangar
 			include("inc/hangar.bld.inc.php");
 			break;
-		case "6":
+		case "6": // Shield
 			break;
 	}
 }

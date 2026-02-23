@@ -222,12 +222,13 @@ function GetBldColour($Type){
 
 function GetOrbitalGridCoords($Size){
 $grids = array();
+// Planet sizes: 1=Small, 2=Medium, 3=Large, 4=Huge
 switch($Size){
-	case "1":
+	case "1": // Small
 		$offsetx = 0;
 		$offsety = 30;
 		break;
-	case "2":
+	case "2": // Medium
 		$offsetx = 0;
 		$offsety = 80;
 		break;
