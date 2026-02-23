@@ -253,6 +253,9 @@ $players_result = mysqli_query($conn, "SELECT PlayerID, UserName, Email, TeamID,
 	.admin-tabs a { display: block; padding: 8px 16px; color: #aaa; text-decoration: none; background: #1a1a2e; border: 1px solid #444; border-bottom: none; margin-right: 2px; border-radius: 4px 4px 0 0; }
 	.admin-tabs a:hover { color: #fff; background: #2a2a4e; }
 	.admin-tabs a.active { color: #ff9900; background: #0d0d1a; border-color: #ff9900; font-weight: bold; }
+	.admin-tabs a.tab-danger { color: #ff4444; }
+	.admin-tabs a.tab-danger:hover { color: #ff6666; background: #2a1a1a; }
+	.admin-tabs a.tab-danger.active { color: #ff3333; border-color: #ff3333; background: #1a0d0d; }
 	.tab-panel { display: none; }
 	.tab-panel.active { display: block; }
 </style>
@@ -268,7 +271,7 @@ $_tabs = [
 	'world'    => 'World',
 	'turns'    => 'Turns',
 	'moderation' => 'Moderation',
-	'danger'   => 'Danger Zone',
+	'danger'   => ['label' => 'Danger Zone', 'class' => 'tab-danger'],
 ];
 ?>
 <h2>Admin Panel</h2>
@@ -278,8 +281,12 @@ $_tabs = [
 <?php endif; ?>
 
 <div class="admin-tabs">
-<?php foreach($_tabs as $_tk => $_tl): ?>
-	<a href="?tab=<?php echo $_tk; ?>" class="<?php echo $_tab == $_tk ? 'active' : ''; ?>"><?php echo $_tl; ?></a>
+<?php foreach($_tabs as $_tk => $_tl):
+	$_tLabel = is_array($_tl) ? $_tl['label'] : $_tl;
+	$_tClass = is_array($_tl) ? ($_tl['class'] ?? '') : '';
+	$_tActive = $_tab == $_tk ? 'active' : '';
+?>
+	<a href="?tab=<?php echo $_tk; ?>" class="<?php echo trim("$_tClass $_tActive"); ?>"><?php echo $_tLabel; ?></a>
 <?php endforeach; ?>
 </div>
 
