@@ -177,18 +177,18 @@ Several features have UI or stubs but were never finished in the original code:
 #### UI/UX
 
 - 2004-era HTML 4.01 markup with `<font>` tags, inline styles, and hardcoded pixel widths
-- ISO-8859-1 encoding instead of UTF-8
+- ~~ISO-8859-1 encoding instead of UTF-8~~ *(fixed — all pages now use `charset=utf-8`)*
 - No responsive design — doesn't work on mobile
 - Planet management is a JPEG image map with no hover states or interactivity
-- No confirmation dialogs before destructive actions (demolish, delete fleet)
-- Error messages passed through URL query strings
-- "galazy" typo on the front page
+- ~~No confirmation dialogs before destructive actions (demolish, delete fleet)~~ *(fixed — `confirm()` dialogs on demolish, cancel construction, delete fleet, abort movement, build, colonise, attack/invade launch, set home world, rename revert)*
+- Error messages passed through URL query strings *(partially addressed — alerts system now provides persistent notifications alongside `?msg=` display)*
+- ~~"galazy" typo on the front page~~ *(fixed)*
 
 #### Game Balance
 
 All building and ship stat values are estimates — the originals were not recoverable. Beyond that:
 
-- Repair is completely free — restores full HP at zero cost
+- ~~Repair is completely free — restores full HP at zero cost~~ *(fixed — repair now costs resources proportional to damage, based on the building's original construction cost)*
 - No upkeep or maintenance costs for ships or buildings
 - Harvester income bonus (5% per harvester) stacks without any cap
 - No ship-type advantages or counters — combat is purely stat-based

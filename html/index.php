@@ -38,7 +38,7 @@ if(!empty($_SESSION['username'])){
     games as well as classic PC games.</p>
   <p>You start with one planet in one system. From there you must harvest your 
     planet's resources in order to spread your race across the system, then the 
-    sector and maybe even the galazy?</p>
+    sector and maybe even the galaxy?</p>
   <p>Along the way you will meet other races controlled by other players. Some 
     may be friendly, some may want your resources for their own.</p>
   <p>Team together with other players to form republics or empires that can bring 
