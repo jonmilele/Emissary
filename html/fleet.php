@@ -148,7 +148,7 @@ $CurrentPlanet = 0;
   if(sizeof($Fleet->Ships->Transports)>0){
  	 foreach($Fleet->Ships->Transports as $k=>$Ship){ 
 	  ?>
-	  - <?php echo h($Ship->Name); ?>
+	  - <?php if($Ship->Registration) echo '<small>['.h($Ship->Registration).']</small> '; echo h($Ship->Name); ?>
 	  <?php
 	  }
   }
@@ -159,7 +159,7 @@ $CurrentPlanet = 0;
   if(sizeof($Fleet->Ships->Colonisers)>0){
  	 foreach($Fleet->Ships->Colonisers as $k=>$Ship){ 
 	  ?>
-	  - <?php echo h($Ship->Name); ?><br/>
+	  - <?php if($Ship->Registration) echo '<small>['.h($Ship->Registration).']</small> '; echo h($Ship->Name); ?><br/>
 	  <?php
 	  }
   }
@@ -169,7 +169,7 @@ $CurrentPlanet = 0;
   if(sizeof($Fleet->Ships->Frigates)>0){
  	 foreach($Fleet->Ships->Frigates as $k=>$Ship){ 
 	  ?>
-	  - <?php echo h($Ship->Name); ?><br/>
+	  - <?php if($Ship->Registration) echo '<small>['.h($Ship->Registration).']</small> '; echo h($Ship->Name); ?><br/>
 	  <?php
 	  }
   }
@@ -179,7 +179,7 @@ $CurrentPlanet = 0;
   if(sizeof($Fleet->Ships->Cruisers)>0){
  	 foreach($Fleet->Ships->Cruisers as $k=>$Ship){ 
 	  ?>
-	  - <?php echo h($Ship->Name); ?><br/>
+	  - <?php if($Ship->Registration) echo '<small>['.h($Ship->Registration).']</small> '; echo h($Ship->Name); ?><br/>
 	  <?php
 	  }
   }
@@ -189,7 +189,7 @@ $CurrentPlanet = 0;
   if(sizeof($Fleet->Ships->Warships)>0){
  	 foreach($Fleet->Ships->Warships as $k=>$Ship){ 
 	  ?>
-	  - <?php echo h($Ship->Name); ?><br/>
+	  - <?php if($Ship->Registration) echo '<small>['.h($Ship->Registration).']</small> '; echo h($Ship->Name); ?><br/>
 	  <?php
 	  }
   }
@@ -199,7 +199,7 @@ $CurrentPlanet = 0;
   if(sizeof($Fleet->Ships->Motherships)>0){
  	 foreach($Fleet->Ships->Motherships as $k=>$Ship){ 
 	  ?>
-	  - <?php echo h($Ship->Name); ?><br/>
+	  - <?php if($Ship->Registration) echo '<small>['.h($Ship->Registration).']</small> '; echo h($Ship->Name); ?><br/>
 	  <?php
 	  }
   }
@@ -209,7 +209,7 @@ $CurrentPlanet = 0;
   if(sizeof($Fleet->Ships->Fighters)>0){
  	 foreach($Fleet->Ships->Fighters as $k=>$Ship){ 
 	  ?>
-	  - <?php echo h($Ship->Name); ?><br/>
+	  - <?php if($Ship->Registration) echo '<small>['.h($Ship->Registration).']</small> '; echo h($Ship->Name); ?><br/>
 	  <?php
 	  }
   }

@@ -47,12 +47,30 @@ if(isset($_POST['action']) && csrf_validate()){
 		$PlanetID = ($_POST["planet"] ?? "");
 		if(OwnsPlanet($username,$PlanetID)){
 			$Grid = ($_POST["grid"] ?? "");
-			$_demName = GetGridContentString(GetGridContents($PlanetID,$Grid));
+			$_demType = GetGridContents($PlanetID,$Grid);
+			$_demName = GetGridContentString($_demType);
+			$_demHP = GetBldHP($PlanetID,$Grid);
+			$_demMaxHP = GetBldDefaultHP($_demType);
+			// Calculate salvage refund
+			$_salvageRate = (float)GetGameSetting('building_salvage_rate', 0.5);
+			$_hpRate = ($_demMaxHP > 0) ? $_demHP / $_demMaxHP : 0;
+			$_demCosts = mysqli_fetch_object(mysqli_query($GLOBALS["conn"], "SELECT Metal, Mineral, Astrium FROM building_types WHERE Type='$_demType'"));
+			$_demFlash = 'Building Demolished';
+			if($_demCosts){
+				$_pid = GetPlayerIDFromName($username);
+				$_rMetal = (int)round($_demCosts->Metal * $_salvageRate * $_hpRate);
+				$_rMineral = (int)round($_demCosts->Mineral * $_salvageRate * $_hpRate);
+				$_rAstrium = (int)round($_demCosts->Astrium * $_salvageRate * $_hpRate);
+				if($_rMetal > 0) AddResources($_pid, 1, $_rMetal);
+				if($_rMineral > 0) AddResources($_pid, 2, $_rMineral);
+				if($_rAstrium > 0) AddResources($_pid, 3, $_rAstrium);
+				$_demFlash = "Building Demolished. Salvage: {$_rMetal} Metal, {$_rMineral} Mineral, {$_rAstrium} Astrium";
+			}
 			$sql = "DELETE FROM buildings WHERE(GridSquare = '$Grid' AND PlanetID = '$PlanetID')";
 			$res = mysqli_query($GLOBALS["conn"], $sql);
-			AddAlertForCurrentUser('construction', $_demName.' demolished on '.GetPlanetNameFromID($PlanetID), 'planet.php?id='.$PlanetID);
+			AddAlertForCurrentUser('construction', $_demName.' demolished on '.GetPlanetNameFromID($PlanetID).($_demCosts ? ". Salvage: {$_rMetal} Metal, {$_rMineral} Mineral, {$_rAstrium} Astrium" : ''), 'planet.php?id='.$PlanetID);
+			SetFlash($_demFlash);
 		}
-		SetFlash("Building Demolished");
 		header("Location: planet.php?id=".$PlanetID);
 	}
 	if(($_POST['action'] ?? "")=="cancel"){
@@ -95,6 +113,47 @@ if(isset($_POST['action']) && csrf_validate()){
 		AddAlertForCurrentUser('construction', $_cancelBldName.' cancelled on '.GetPlanetNameFromID($PlanetID).($cancelMsg !== 'Building+Cancelled' ? '. '.str_replace('+', ' ', substr($cancelMsg, strpos($cancelMsg, 'Refund'))) : ''), 'planet.php?id='.$PlanetID);
 		SetFlash(str_replace('+', ' ', $cancelMsg));
 		header("Location: planet.php?id=".$PlanetID);
+	}
+	if(($_POST['action'] ?? "")=="cancelship"){
+		$PlanetID = ($_POST["planet"] ?? "");
+		$Grid = ($_POST["grid"] ?? "");
+		if(OwnsPlanet($username,$PlanetID)){
+			$yard = $PlanetID.":".$Grid;
+			if(!ConstructingShip($PlanetID,$Grid)){
+				SetFlash("Ship construction already completed");
+				header("Location: building.php?planet=".$PlanetID."&id=".$Grid);
+				exit;
+			}
+			$sql = "SELECT * FROM cships WHERE(Yard = '$yard')";
+			$res = mysqli_query($GLOBALS["conn"], $sql);
+			$cship = mysqli_fetch_object($res);
+			if($cship){
+				$sql = "SELECT Metal, Mineral, Astrium FROM ship_types WHERE(Type = '{$cship->Type}')";
+				$res = mysqli_query($GLOBALS["conn"], $sql);
+				$costs = mysqli_fetch_object($res);
+				$refundStr = '';
+				if($costs){
+					$totalTime = CalculateShipBuildTime($PlanetID, $cship->Type);
+					if($totalTime < $cship->TTF) $totalTime = $cship->TTF;
+					$refundRate = ($totalTime > 0) ? $cship->TTF / $totalTime : 0;
+					$refundMetal = round($costs->Metal * $refundRate);
+					$refundMineral = round($costs->Mineral * $refundRate);
+					$refundAstrium = round($costs->Astrium * $refundRate);
+					if($refundMetal > 0) AddResources($cship->PlayerID, 1, $refundMetal);
+					if($refundMineral > 0) AddResources($cship->PlayerID, 2, $refundMineral);
+					if($refundAstrium > 0) AddResources($cship->PlayerID, 3, $refundAstrium);
+					$refundStr = "Refund: {$refundMetal} Metal, {$refundMineral} Mineral, {$refundAstrium} Astrium";
+				}
+				$shipName = GetShipTypeString($cship->Type);
+				mysqli_query($GLOBALS["conn"], "DELETE FROM cships WHERE(Yard = '$yard')");
+				$flashMsg = $shipName.' construction cancelled';
+				if($refundStr) $flashMsg .= '. '.$refundStr;
+				AddAlertForCurrentUser('construction', $flashMsg.' on '.GetPlanetNameFromID($PlanetID), 'planet.php?id='.$PlanetID);
+				SetFlash($flashMsg);
+			}
+		}
+		header("Location: building.php?planet=".$PlanetID."&id=".$Grid);
+		exit;
 	}
 	if(($_POST['action'] ?? "")=="consship"){
 		$PlanetID = ($_POST["planet"] ?? "");
@@ -140,6 +199,26 @@ if(isset($_POST['action']) && csrf_validate()){
 				header("Location: building.php?planet=".$PlanetID."&id=".$Grid);
 			}
 		}
+	}
+	if(($_POST['action'] ?? "")=="removequeue"){
+		$PlanetID = ($_POST["planet"] ?? "");
+		if(OwnsPlanet($username,$PlanetID)){
+			$qShipID = (int)($_POST["qship_id"] ?? 0);
+			$Grid = ($_POST["grid"] ?? "");
+			if($qShipID > 0){
+				// Verify this queued ship belongs to this yard
+				$_qchk = mysqli_query($GLOBALS["conn"], "SELECT ShipID, Name, QueuePosition FROM qships WHERE ShipID='$qShipID' AND Yard='$PlanetID:$Grid'");
+				$_qrow = mysqli_fetch_object($_qchk);
+				if($_qrow){
+					mysqli_query($GLOBALS["conn"], "DELETE FROM qships WHERE ShipID='$qShipID'");
+					// Shift positions down for ships after the removed one
+					mysqli_query($GLOBALS["conn"], "UPDATE qships SET QueuePosition = QueuePosition-1 WHERE Yard='$PlanetID:$Grid' AND QueuePosition > '".$_qrow->QueuePosition."'");
+					SetFlash("Removed '".h($_qrow->Name)."' from queue");
+				}
+			}
+		}
+		header("Location: building.php?planet=".$PlanetID."&id=".$Grid);
+		exit;
 	}
 	if(($_POST['action'] ?? "")=="createfleet"){
 		$PlanetID = ($_POST["planet"] ?? "");
@@ -292,14 +371,30 @@ if($_repairCost):
   </form> Cost: <?php echo $_costStr; ?>]
 <?php endif; ?>
 </p>
+<?php
+	$_salvageRate = (float)GetGameSetting('building_salvage_rate', 0.5);
+	$_hpRate = ($default_hp > 0) ? $hp / $default_hp : 0;
+	$_demCosts = mysqli_fetch_object(mysqli_query($GLOBALS["conn"], "SELECT Metal, Mineral, Astrium FROM building_types WHERE Type='$GridContents'"));
+	$_salvStr = '';
+	if($_demCosts){
+		$_sMetal = (int)round($_demCosts->Metal * $_salvageRate * $_hpRate);
+		$_sMineral = (int)round($_demCosts->Mineral * $_salvageRate * $_hpRate);
+		$_sAstrium = (int)round($_demCosts->Astrium * $_salvageRate * $_hpRate);
+		$_salvStr = $_sMetal . ' Metal, ' . $_sMineral . ' Mineral';
+		if($_sAstrium > 0) $_salvStr .= ', ' . $_sAstrium . ' Astrium';
+	}
+?>
+<?php if($_salvStr): ?>
+<p><small>Salvage if demolished: <?php echo $_salvStr; ?> <em>(<?php echo round($_salvageRate * 100); ?>% &times; <?php echo round($_hpRate * 100); ?>% HP)</em></small></p>
+<?php endif; ?>
 <p><form method="post" action="building.php" style="display:inline;">
     <input type="hidden" name="action" value="demolish">
     <input type="hidden" name="planet" value="<?php echo $PlanetID; ?>">
     <input type="hidden" name="grid" value="<?php echo $Grid; ?>">
     <?php echo csrf_token(); ?>
-    <input type="submit" value="Demolish" onclick="return confirm('Demolish this building?');">
+    <input type="submit" value="Demolish" onclick="return confirm('Demolish this building?<?php if($_salvStr) echo ' Salvage: '.$_salvStr; ?>');">
   </form></p>
-<p><?php PrintGridFunctions($PlanetID,$Grid); ?></p>
+<p><?php PrintGridFunctions($PlanetID,$Grid,$edit); ?></p>
 <?php } else { ?>
 </p>
 <?php } ?>
@@ -312,7 +407,8 @@ if($_repairCost):
 	$_qFree = $_qMax - $_qUsed;
 ?>
 <h3>Build on this grid:</h3>
-<p>Construction Queue: <?php echo $_qUsed . '/' . $_qMax; ?>
+<?php $_qTip = GetConstructionSlotsTooltip($PlanetID); ?>
+<p>Construction Queue: <span title="<?php echo htmlspecialchars($_qTip); ?>" style="cursor:help; border-bottom:1px dotted #888;"><?php echo $_qUsed . '/' . $_qMax; ?></span>
 <?php if($_qFree > 0): ?>
   <small style="color:#00FF00;">(<?php echo $_qFree; ?> slot<?php echo $_qFree != 1 ? 's' : ''; ?> free)</small>
 <?php else: ?>

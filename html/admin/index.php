@@ -102,8 +102,8 @@ if($action != ""){
 				'harvester_bonus','election_duration',
 				'election_auto_interval','election_motion_threshold',
 				'starting_metal','starting_mineral','starting_astrium',
-				'planet_weapon_hit_chance','base_construction_slots',
-				'default_auction_turns','building_salvage_rate',
+				'planet_weapon_hit_chance',
+				'default_auction_turns','building_salvage_rate','building_valuation_rate',
 				'metal_credit_value','mineral_credit_value','astrium_credit_value'
 			];
 			$updated = 0;
@@ -138,15 +138,73 @@ if($action != ""){
 				if($_ptId < 1) continue;
 				$_ptGrids = (int)($_POST['pt_grids'][$_ptId] ?? 0);
 				$_ptRows = (int)($_POST['pt_rowsquares'][$_ptId] ?? 0);
+				$_ptSlots = max(1, (int)($_POST['pt_slots'][$_ptId] ?? 1));
 				$_ptMetal = (int)($_POST['pt_metal'][$_ptId] ?? 0);
 				$_ptMineral = (int)($_POST['pt_mineral'][$_ptId] ?? 0);
 				$_ptAstrium = (int)($_POST['pt_astrium'][$_ptId] ?? 0);
 				$_ptIncome = $_ptMetal . ':' . $_ptMineral . ':' . $_ptAstrium;
-				$sql = "UPDATE planet_types SET Grids='$_ptGrids', rowsquares='$_ptRows', income='$_ptIncome' WHERE Type='$_ptId'";
+				$sql = "UPDATE planet_types SET Grids='$_ptGrids', rowsquares='$_ptRows', construction_slots='$_ptSlots', income='$_ptIncome' WHERE Type='$_ptId'";
 				mysqli_query($GLOBALS["conn"], $sql);
 				$_ptUpdated++;
 			}
 			echo "$_ptUpdated planet type(s) updated.";
+			break;
+		case "save_player":
+			$_spId = (int)($_POST['player_id'] ?? 0);
+			if($_spId > 0){
+				$_spMetal = (int)($_POST['p_metal'] ?? 0);
+				$_spMineral = (int)($_POST['p_mineral'] ?? 0);
+				$_spAstrium = (int)($_POST['p_astrium'] ?? 0);
+				$_spCredits = (int)($_POST['p_credits'] ?? 0);
+				$_spTeam = (int)($_POST['p_team'] ?? 0);
+				$_spEmail = mysqli_real_escape_string($GLOBALS["conn"], trim($_POST['email'] ?? ''));
+				mysqli_query($GLOBALS["conn"], "UPDATE players SET Email='$_spEmail', Metal='$_spMetal', Mineral='$_spMineral', Astrium='$_spAstrium', Credits='$_spCredits', TeamID='$_spTeam' WHERE PlayerID='$_spId'");
+				echo "Player #$_spId updated.";
+			} else {
+				echo "Invalid player ID";
+			}
+			break;
+		case "save_ship_types":
+			$_stTypes = $_POST['st_type'] ?? [];
+			$_stUpdated = 0;
+			foreach($_stTypes as $_stId){
+				$_stId = (int)$_stId;
+				if($_stId < 1) continue;
+				$_stName = trim($_POST['st_name'][$_stId] ?? '');
+				$_stHP = (int)($_POST['st_hp'][$_stId] ?? 0);
+				$_stAP = (int)($_POST['st_ap'][$_stId] ?? 0);
+				$_stMetal = (int)($_POST['st_metal'][$_stId] ?? 0);
+				$_stMineral = (int)($_POST['st_mineral'][$_stId] ?? 0);
+				$_stAstrium = (int)($_POST['st_astrium'][$_stId] ?? 0);
+				$_stTurns = max(1, (int)($_POST['st_turns'][$_stId] ?? 1));
+				$_stPrefix = strtoupper(substr(trim($_POST['st_prefix'][$_stId] ?? 'XX'), 0, 5));
+				$_stNameSafe = mysqli_real_escape_string($GLOBALS["conn"], $_stName);
+				$_stPrefixSafe = mysqli_real_escape_string($GLOBALS["conn"], $_stPrefix);
+				$sql = "UPDATE ship_types SET Name='$_stNameSafe', HP='$_stHP', AP='$_stAP', Metal='$_stMetal', Mineral='$_stMineral', Astrium='$_stAstrium', Turns='$_stTurns', RegPrefix='$_stPrefixSafe' WHERE Type='$_stId'";
+				mysqli_query($GLOBALS["conn"], $sql);
+				$_stUpdated++;
+			}
+			echo "$_stUpdated ship type(s) updated.";
+			break;
+		case "save_building_types":
+			$_btTypes = $_POST['bt_type'] ?? [];
+			$_btUpdated = 0;
+			foreach($_btTypes as $_btId){
+				$_btId = (int)$_btId;
+				if($_btId < 1) continue;
+				$_btHP = (int)($_POST['bt_hp'][$_btId] ?? 0);
+				$_btAP = (int)($_POST['bt_ap'][$_btId] ?? 0);
+				$_btMetal = (int)($_POST['bt_metal'][$_btId] ?? 0);
+				$_btMineral = (int)($_POST['bt_mineral'][$_btId] ?? 0);
+				$_btAstrium = (int)($_POST['bt_astrium'][$_btId] ?? 0);
+				$_btTurns = max(1, (int)($_POST['bt_turns'][$_btId] ?? 1));
+				$_btColour = trim($_POST['bt_colour'][$_btId] ?? '255,255,255');
+				$_btColourSafe = mysqli_real_escape_string($GLOBALS["conn"], $_btColour);
+				$sql = "UPDATE building_types SET HP='$_btHP', AP='$_btAP', Metal='$_btMetal', Mineral='$_btMineral', Astrium='$_btAstrium', Turns='$_btTurns', Colour='$_btColourSafe' WHERE Type='$_btId'";
+				mysqli_query($GLOBALS["conn"], $sql);
+				$_btUpdated++;
+			}
+			echo "$_btUpdated building type(s) updated.";
 			break;
 		case "save_forbidden_words":
 			$content = $_POST['forbidden_words'] ?? '';
@@ -224,6 +282,9 @@ $stats = [
 
 // --- Player list for reference ---
 $players_result = mysqli_query($conn, "SELECT PlayerID, UserName, Email, TeamID, Metal, Mineral, Astrium, Credits FROM players ORDER BY PlayerID");
+$_teams_result = mysqli_query($conn, "SELECT TeamID, Name FROM teams ORDER BY Name");
+$_teamsList = [];
+while($_t = mysqli_fetch_object($_teams_result)) $_teamsList[(int)$_t->TeamID] = $_t->Name;
 ?>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
@@ -267,6 +328,7 @@ $_tab = $_GET['tab'] ?? ($_POST['_tab'] ?? 'overview');
 $_tabs = [
 	'overview' => 'Overview',
 	'settings' => 'Settings',
+	'buildings' => 'Buildings',
 	'players'  => 'Players',
 	'world'    => 'World',
 	'turns'    => 'Turns',
@@ -321,9 +383,9 @@ $_tabs = [
 		'election_auto_interval' => ['label' => 'Auto-Election Interval (turns)', 'default' => '100',  'hint' => 'Automatic election every N income turns (0 = disabled)'],
 		'election_motion_threshold' => ['label' => 'Election Motion Threshold (%)', 'default' => '25', 'hint' => 'Percentage of team members needed to second a motion'],
 		'planet_weapon_hit_chance' => ['label' => 'Planet Weapon Hit Chance (1-in-N)', 'default' => '3', 'hint' => 'Planet weapons fire with 1-in-N chance per round (higher = less accurate)'],
-		'base_construction_slots'  => ['label' => 'Base Construction Slots',            'default' => '1',  'hint' => 'Construction queue slots per planet before factories (each factory adds +1)'],
 		'default_auction_turns'    => ['label' => 'Default Auction Duration (turns)',    'default' => '5',  'hint' => 'Default number of income turns an auction lasts (each turn = 30 min)'],
-		'building_salvage_rate'    => ['label' => 'Building Salvage Rate',                'default' => '0.5','hint' => 'Fraction of building cost counted toward planet auction value (0.5 = 50%)'],
+		'building_salvage_rate'    => ['label' => 'Building Salvage Rate',                'default' => '0.5','hint' => 'Fraction of building cost refunded when demolished (0.5 = 50%, scaled by HP)'],
+		'building_valuation_rate'  => ['label' => 'Building Valuation Rate',              'default' => '0.7','hint' => 'Fraction of building cost counted toward planet value (0.7 = 70%, scaled by HP)'],
 		'metal_credit_value'       => ['label' => 'Metal Credit Value',                    'default' => '1',  'hint' => 'Credit value of 1 Metal (used for planet valuation and leaderboard)'],
 		'mineral_credit_value'     => ['label' => 'Mineral Credit Value',                  'default' => '10', 'hint' => 'Credit value of 1 Mineral (used for planet valuation and leaderboard)'],
 		'astrium_credit_value'     => ['label' => 'Astrium Credit Value',                  'default' => '100','hint' => 'Credit value of 1 Astrium (used for planet valuation and leaderboard)'],
@@ -368,7 +430,7 @@ $_tabs = [
 		<input type="hidden" name="_tab" value="settings">
 		<input type="hidden" name="action" value="save_planet_types">
 		<table>
-			<tr><th>Type</th><th>Size</th><th>Grids</th><th>Row Squares</th><th>Metal/turn</th><th>Mineral/turn</th><th>Astrium/turn</th><th>Existing</th></tr>
+			<tr><th>Type</th><th>Size</th><th>Grids</th><th>Row Squares</th><th>Slots</th><th>Metal/turn</th><th>Mineral/turn</th><th>Astrium/turn</th><th>Existing</th></tr>
 			<?php foreach($_ptRows as $_pt):
 				$_ptInc = explode(':', $_pt->income);
 				$_ptLabel = $_ptSizeLabels[(int)$_pt->Type] ?? 'Type '.$_pt->Type;
@@ -379,6 +441,7 @@ $_tabs = [
 				<td><?php echo $_ptLabel; ?></td>
 				<td><input type="number" name="pt_grids[<?php echo $_pt->Type; ?>]" value="<?php echo $_pt->Grids; ?>" size="5" min="1"></td>
 				<td><input type="number" name="pt_rowsquares[<?php echo $_pt->Type; ?>]" value="<?php echo $_pt->rowsquares; ?>" size="5" min="1"></td>
+				<td><input type="number" name="pt_slots[<?php echo $_pt->Type; ?>]" value="<?php echo $_pt->construction_slots; ?>" size="3" min="1"></td>
 				<td><input type="number" name="pt_metal[<?php echo $_pt->Type; ?>]" value="<?php echo (int)($_ptInc[0] ?? 0); ?>" size="5" min="0"></td>
 				<td><input type="number" name="pt_mineral[<?php echo $_pt->Type; ?>]" value="<?php echo (int)($_ptInc[1] ?? 0); ?>" size="5" min="0"></td>
 				<td><input type="number" name="pt_astrium[<?php echo $_pt->Type; ?>]" value="<?php echo (int)($_ptInc[2] ?? 0); ?>" size="5" min="0"></td>
@@ -392,31 +455,121 @@ $_tabs = [
 </div>
 </div><!-- /settings -->
 
+<!-- ==================== BUILDINGS TAB ==================== -->
+<div class="tab-panel<?php echo $_tab == 'buildings' ? ' active' : ''; ?>">
+<?php
+	$_btRes = mysqli_query($GLOBALS["conn"], "SELECT * FROM building_types ORDER BY Type ASC");
+	$_btRows = [];
+	while($_btr = mysqli_fetch_object($_btRes)) $_btRows[] = $_btr;
+
+	// Count existing buildings per type
+	$_btCounts = [];
+	$_bcRes = mysqli_query($GLOBALS["conn"], "SELECT Type, COUNT(*) AS cnt FROM buildings GROUP BY Type");
+	while($_bcr = mysqli_fetch_object($_bcRes)) $_btCounts[(int)$_bcr->Type] = (int)$_bcr->cnt;
+?>
+<div class="admin-section">
+	<h3>Building Types</h3>
+	<p><small>Edit building stats, resource costs, and construction time. Changes apply to new buildings only.</small></p>
+	<form method="post">
+		<input type="hidden" name="_tab" value="buildings">
+		<input type="hidden" name="action" value="save_building_types">
+		<table>
+			<tr><th>ID</th><th>Name</th><th>HP</th><th>AP</th><th>Metal</th><th>Mineral</th><th>Astrium</th><th>Turns</th><th>Colour (R,G,B)</th><th>Built</th></tr>
+			<?php foreach($_btRows as $_bt):
+				$_btCount = $_btCounts[(int)$_bt->Type] ?? 0;
+			?>
+			<tr>
+				<td><?php echo $_bt->Type; ?><input type="hidden" name="bt_type[]" value="<?php echo $_bt->Type; ?>"></td>
+				<td><?php echo htmlspecialchars($_bt->Name); ?></td>
+				<td><input type="number" name="bt_hp[<?php echo $_bt->Type; ?>]" value="<?php echo $_bt->HP; ?>" size="5" min="0"></td>
+				<td><input type="number" name="bt_ap[<?php echo $_bt->Type; ?>]" value="<?php echo $_bt->AP; ?>" size="5" min="0"></td>
+				<td><input type="number" name="bt_metal[<?php echo $_bt->Type; ?>]" value="<?php echo $_bt->Metal; ?>" size="5" min="0"></td>
+				<td><input type="number" name="bt_mineral[<?php echo $_bt->Type; ?>]" value="<?php echo $_bt->Mineral; ?>" size="5" min="0"></td>
+				<td><input type="number" name="bt_astrium[<?php echo $_bt->Type; ?>]" value="<?php echo $_bt->Astrium; ?>" size="5" min="0"></td>
+				<td><input type="number" name="bt_turns[<?php echo $_bt->Type; ?>]" value="<?php echo $_bt->Turns; ?>" size="3" min="1"></td>
+				<td><input type="text" name="bt_colour[<?php echo $_bt->Type; ?>]" value="<?php echo htmlspecialchars($_bt->Colour); ?>" size="11"></td>
+				<td style="color:#888;"><?php echo number_format($_btCount); ?></td>
+			</tr>
+			<?php endforeach; ?>
+		</table>
+		<br>
+		<input type="submit" value="Save Building Types">
+	</form>
+</div>
+<!-- Ship Types -->
+<?php
+	$_stRes = mysqli_query($GLOBALS["conn"], "SELECT * FROM ship_types ORDER BY Type ASC");
+	$_stRows = [];
+	while($_str = mysqli_fetch_object($_stRes)) $_stRows[] = $_str;
+
+	// Count existing ships per type
+	$_stCounts = [];
+	$_scRes = mysqli_query($GLOBALS["conn"], "SELECT Type, COUNT(*) AS cnt FROM ships GROUP BY Type");
+	while($_scr = mysqli_fetch_object($_scRes)) $_stCounts[(int)$_scr->Type] = (int)$_scr->cnt;
+?>
+<div class="admin-section">
+	<h3>Ship Types</h3>
+	<p><small>Edit ship stats, resource costs, and build time. Changes apply to newly constructed ships only.</small></p>
+	<form method="post">
+		<input type="hidden" name="_tab" value="buildings">
+		<input type="hidden" name="action" value="save_ship_types">
+		<table>
+			<tr><th>ID</th><th>Name</th><th>Prefix</th><th>HP</th><th>AP</th><th>Metal</th><th>Mineral</th><th>Astrium</th><th>Turns</th><th>Built</th></tr>
+			<?php foreach($_stRows as $_st):
+				$_stCount = $_stCounts[(int)$_st->Type] ?? 0;
+			?>
+			<tr>
+				<td><?php echo $_st->Type; ?><input type="hidden" name="st_type[]" value="<?php echo $_st->Type; ?>"></td>
+				<td><input type="text" name="st_name[<?php echo $_st->Type; ?>]" value="<?php echo htmlspecialchars($_st->Name); ?>" size="12"></td>
+				<td><input type="text" name="st_prefix[<?php echo $_st->Type; ?>]" value="<?php echo htmlspecialchars($_st->RegPrefix ?? 'XX'); ?>" size="3" maxlength="5"></td>
+				<td><input type="number" name="st_hp[<?php echo $_st->Type; ?>]" value="<?php echo $_st->HP; ?>" size="5" min="0"></td>
+				<td><input type="number" name="st_ap[<?php echo $_st->Type; ?>]" value="<?php echo $_st->AP; ?>" size="5" min="0"></td>
+				<td><input type="number" name="st_metal[<?php echo $_st->Type; ?>]" value="<?php echo $_st->Metal; ?>" size="5" min="0"></td>
+				<td><input type="number" name="st_mineral[<?php echo $_st->Type; ?>]" value="<?php echo $_st->Mineral; ?>" size="5" min="0"></td>
+				<td><input type="number" name="st_astrium[<?php echo $_st->Type; ?>]" value="<?php echo $_st->Astrium; ?>" size="5" min="0"></td>
+				<td><input type="number" name="st_turns[<?php echo $_st->Type; ?>]" value="<?php echo $_st->Turns; ?>" size="3" min="1"></td>
+				<td style="color:#888;"><?php echo number_format($_stCount); ?></td>
+			</tr>
+			<?php endforeach; ?>
+		</table>
+		<br>
+		<input type="submit" value="Save Ship Types">
+	</form>
+</div>
+</div><!-- /buildings -->
+
 <!-- ==================== PLAYERS TAB ==================== -->
 <div class="tab-panel<?php echo $_tab == 'players' ? ' active' : ''; ?>">
 <!-- Player List -->
 <div class="admin-section">
 	<h3>Players</h3>
 	<table>
-		<tr><th>ID</th><th>Username</th><th>Email</th><th>Team</th><th>Metal</th><th>Mineral</th><th>Astrium</th><th>Credits</th></tr>
+		<tr><th>ID</th><th>Username</th><th>Email</th><th>Team</th><th>Metal</th><th>Mineral</th><th>Astrium</th><th>Credits</th><th></th></tr>
 		<?php while($p = mysqli_fetch_object($players_result)): ?>
 		<tr>
+			<form method="post">
+			<input type="hidden" name="_tab" value="players">
+			<input type="hidden" name="action" value="save_player">
+			<input type="hidden" name="player_id" value="<?php echo $p->PlayerID; ?>">
 			<td><?php echo $p->PlayerID; ?></td>
 			<td><?php echo h($p->UserName); ?></td>
 			<td>
-				<form method="post" style="display:inline; white-space:nowrap;">
-					<input type="hidden" name="_tab" value="players">
-					<input type="hidden" name="action" value="save_email">
-					<input type="hidden" name="player_id" value="<?php echo $p->PlayerID; ?>">
-					<input type="text" name="email" value="<?php echo htmlspecialchars($p->Email); ?>" size="20">
-					<input type="submit" value="&#10003;" title="Save email" style="padding:1px 5px;">
-				</form>
+				<input type="text" name="email" value="<?php echo htmlspecialchars($p->Email); ?>" size="18">
 			</td>
-			<td><?php echo $p->TeamID > 0 ? h(TeamNameFromID($p->TeamID)) : "-"; ?></td>
-			<td><?php echo $p->Metal; ?></td>
-			<td><?php echo $p->Mineral; ?></td>
-			<td><?php echo $p->Astrium; ?></td>
-			<td><?php echo $p->Credits; ?></td>
+			<td>
+				<select name="p_team" style="background:#222;color:#fff;border:1px solid #555;">
+					<option value="0"<?php echo $p->TeamID == 0 ? ' selected' : ''; ?>>— None —</option>
+					<?php foreach($_teamsList as $_tid => $_tname): ?>
+					<option value="<?php echo $_tid; ?>"<?php echo $p->TeamID == $_tid ? ' selected' : ''; ?>><?php echo h($_tname); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</td>
+			<td><input type="number" name="p_metal" value="<?php echo $p->Metal; ?>" size="6" min="0"></td>
+			<td><input type="number" name="p_mineral" value="<?php echo $p->Mineral; ?>" size="6" min="0"></td>
+			<td><input type="number" name="p_astrium" value="<?php echo $p->Astrium; ?>" size="6" min="0"></td>
+			<td><input type="number" name="p_credits" value="<?php echo $p->Credits; ?>" size="6" min="0"></td>
+			<td><input type="submit" value="Save" style="padding:2px 8px;"></td>
+			</form>
 		</tr>
 		<?php endwhile; ?>
 	</table>

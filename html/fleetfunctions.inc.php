@@ -265,6 +265,7 @@ class Ship{
 	var $Name;
 	var $HP;
 	var $AP;
+	var $Registration;
 }
 
 function GetShip($ShipID){
@@ -280,6 +281,7 @@ function GetShip($ShipID){
 	$ship->Name = $row->Name;
 	$ship->HP = $row->HP;
 	$ship->AP = GetShipTypeDefaultAP($row->Type);
+	$ship->Registration = $row->Registration ?? '';
 	
 	return $ship;
 }
@@ -872,10 +874,28 @@ function GetShipTypeString($Type){
 }
 
 function GetShipName($ShipID){
-$query = "SELECT Name FROM ships WHERE(ShipID = '$ShipID')";
+	$query = "SELECT Name, Registration FROM ships WHERE(ShipID = '$ShipID')";
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
 	$row = mysqli_fetch_object($notresult);
-	return $row ? $row->Name : "Unknown";
+	if(!$row) return "Unknown";
+	$reg = ($row->Registration ?? '');
+	return $reg !== '' ? $reg . ' ' . $row->Name : $row->Name;
+}
+
+function GenerateShipRegistration($Type){
+	$query = "SELECT RegPrefix FROM ship_types WHERE(Type = '$Type')";
+	$res = mysqli_query($GLOBALS["conn"], $query);
+	$row = mysqli_fetch_object($res);
+	$prefix = ($row && $row->RegPrefix !== '') ? $row->RegPrefix : 'XX';
+	for($i = 0; $i < 100; $i++){
+		$num = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT);
+		$code = $prefix . '-' . $num;
+		$esc = mysqli_real_escape_string($GLOBALS["conn"], $code);
+		$chk = mysqli_query($GLOBALS["conn"], "SELECT 1 FROM ships WHERE Registration='$esc' LIMIT 1");
+		if(mysqli_num_rows($chk) == 0) return $code;
+	}
+	// Fallback: use prefix + ShipID-based suffix
+	return $prefix . '-' . rand(10000, 99999);
 }
 
 class ShipBundleSingleType{

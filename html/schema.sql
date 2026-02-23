@@ -141,7 +141,8 @@ CREATE TABLE `planet_types` (
   `xstart` INT DEFAULT 0,
   `ystart` INT DEFAULT 0,
   `rowsquares` INT DEFAULT 0,
-  `income` VARCHAR(30) DEFAULT '0:0:0'
+  `income` VARCHAR(30) DEFAULT '0:0:0',
+  `construction_slots` INT NOT NULL DEFAULT 1
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 -- ----------------------------
@@ -194,7 +195,8 @@ CREATE TABLE `ship_types` (
   `Metal` INT DEFAULT 0,
   `Mineral` INT DEFAULT 0,
   `Astrium` INT DEFAULT 0,
-  `Turns` INT DEFAULT 1
+  `Turns` INT DEFAULT 1,
+  `RegPrefix` VARCHAR(5) NOT NULL DEFAULT 'XX'
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 -- ----------------------------
@@ -207,7 +209,8 @@ CREATE TABLE `ships` (
   `PlanetID` INT DEFAULT 0,
   `FleetID` INT DEFAULT 0,
   `Name` VARCHAR(100) DEFAULT '',
-  `HP` INT DEFAULT 0
+  `HP` INT DEFAULT 0,
+  `Registration` VARCHAR(10) DEFAULT ''
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 -- ----------------------------
@@ -360,16 +363,17 @@ INSERT INTO `building_types` (`Type`, `Name`, `HP`, `AP`, `Metal`, `Mineral`, `A
 (9, 'Missile Silo',  3000, 6000, 400, 300, 50, 3, '153,153,153');
 
 -- Ship types (inferred from ShipBundle class and code)
--- Types: 2=Transport, 3=Coloniser, 4=Frigate, 5=Cruiser,
+-- Types: 1=Scout, 2=Transport, 3=Coloniser, 4=Frigate, 5=Cruiser,
 --        6=Warship, 7=Mothership, 8=Fighter
-INSERT INTO `ship_types` (`Type`, `Name`, `HP`, `AP`, `Metal`, `Mineral`, `Astrium`, `Turns`) VALUES
-(2, 'Transport',   500,  0,    100, 50,  0,  1),
-(3, 'Coloniser',   500,  0,    200, 100, 10, 2),
-(4, 'Frigate',     1000, 500,  300, 200, 10, 2),
-(5, 'Cruiser',     2000, 1000, 500, 300, 20, 3),
-(6, 'Warship',     4000, 2000, 800, 500, 50, 5),
-(7, 'Mothership',  8000, 4000, 1500, 1000, 100, 10),
-(8, 'Fighter',     300,  200,  50,  30,  0,  1);
+INSERT INTO `ship_types` (`Type`, `Name`, `HP`, `AP`, `Metal`, `Mineral`, `Astrium`, `Turns`, `RegPrefix`) VALUES
+(1, 'Scout',       200,  100,  100, 50,  0,  1, 'SC'),
+(2, 'Transport',   500,  0,    100, 50,  0,  1, 'TR'),
+(3, 'Coloniser',   500,  0,    200, 100, 10, 2, 'CO'),
+(4, 'Frigate',     1000, 500,  300, 200, 10, 2, 'FR'),
+(5, 'Cruiser',     2000, 1000, 500, 300, 20, 3, 'CR'),
+(6, 'Warship',     4000, 2000, 800, 500, 50, 5, 'WS'),
+(7, 'Mothership',  8000, 4000, 1500, 1000, 100, 10, 'MS'),
+(8, 'Fighter',     300,  200,  50,  30,  0,  1, 'FI');
 
 -- Seed 100 sectors with grid coordinates (10x10 galaxy)
 INSERT INTO `sectors` (`SectorID`, `GridCoords`) VALUES
@@ -400,4 +404,5 @@ INSERT INTO `game_settings` (`setting_key`, `setting_value`) VALUES
 ('starting_astrium', '50'),
 ('planet_weapon_hit_chance', '3'),
 ('default_auction_turns', '5'),
-('building_salvage_rate', '0.5');
+('building_salvage_rate', '0.5'),
+('building_valuation_rate', '0.7');

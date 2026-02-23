@@ -1,5 +1,5 @@
 <?php
-function PrintGridFunctions($PlanetID,$Grid){
+function PrintGridFunctions($PlanetID,$Grid,$edit=false){
 	$Type = GetGridContents($PlanetID,$Grid);
 	
 	// Building types: 1=Factory, 2=Laboratory, 3=Harvester, 4=Shipyard, 5=Hangar, 6=Shield, 7=Pulse Cannon, 8=Gigashield, 9=Missile Silo

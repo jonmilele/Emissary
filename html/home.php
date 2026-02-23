@@ -22,7 +22,7 @@ if(isset($_POST['action']) && $_POST['action'] === 'dismiss_summary' && csrf_val
 include("header.inc.php");
 ?>
 <p>Home</p>
-<p>Welcome <?php echo h($username); ?>. [<a href="logout.back.php">Logout</a>]</p>
+<p>Welcome <?php echo PlayerProfileLink(GetPlayerIDFromName($username)); ?>. [<a href="logout.back.php">Logout</a>]</p>
 <p>You control <?php echo GetNumberOfPlanets(GetPlayerIDFromName($username)); ?> 
   planet(s).</p>
 <?php if(!empty($_SESSION['show_login_summary']) && !empty($_SESSION['prev_login_time'])):
@@ -40,7 +40,7 @@ $_sinceEsc = mysqli_real_escape_string($GLOBALS["conn"], $_prevTime);
       <button type="submit" style="background:none; border:none; color:#999; cursor:pointer; font-size:16pt; line-height:1;" title="Dismiss">&times;</button>
     </form>
   </h3>
-  <p style="color:#888; margin:2px 0 8px 0;"><small>Last login: <?php echo date('d M Y H:i', strtotime($_prevTime)); ?></small></p>
+  <p style="color:#888; margin:2px 0 8px 0;"><small>Last login: <?php echo date('d M Y H:i T', strtotime($_prevTime)); ?></small></p>
   <p style="margin:4px 0;"><strong>Resources:</strong>
   <?php
   foreach(['Metal','Mineral','Astrium'] as $_rType){

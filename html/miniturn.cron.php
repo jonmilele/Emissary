@@ -70,7 +70,9 @@ function DropShipTTF($ShipID){
 		$planetar = explode(":",$row->Yard);
 		$planet = $planetar[0];
 		$grid = $planetar[1];
-		$sql = "INSERT INTO ships(PlayerID,Type,PlanetID,Name,HP) VALUES('".$row->PlayerID."','".$row->Type."','".$planet."','".$row->Name."','$HP')";
+		$reg = GenerateShipRegistration($row->Type);
+		$regEsc = mysqli_real_escape_string($GLOBALS["conn"], $reg);
+		$sql = "INSERT INTO ships(PlayerID,Type,PlanetID,Name,HP,Registration) VALUES('".$row->PlayerID."','".$row->Type."','".$planet."','".$row->Name."','$HP','$regEsc')";
 		$res = mysqli_query($GLOBALS["conn"], $sql);
 		$id = mysqli_insert_id($GLOBALS["conn"]);
 		$sql = "DELETE FROM cships WHERE(ID = '$ShipID')";

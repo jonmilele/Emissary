@@ -149,7 +149,14 @@ function Constructions($PlanetID){
 }
 
 function GetConstructionSlots($PlanetID){
-	$base = (int)GetGameSetting('base_construction_slots', 1);
+	// Base slots from planet type
+	$base = 1;
+	$sql = "SELECT pt.construction_slots FROM planets p JOIN planet_types pt ON p.Size = pt.Type WHERE p.PlanetID = '$PlanetID'";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	if($res){
+		$row = mysqli_fetch_object($res);
+		if($row) $base = (int)$row->construction_slots;
+	}
 	// Each factory adds one extra construction slot
 	$factories = 0;
 	$sql = "SELECT COUNT(*) AS count FROM buildings WHERE(PlanetID = '$PlanetID' AND Type = 1)";
@@ -163,6 +170,27 @@ function GetConstructionSlots($PlanetID){
 
 function HasFreeConstructionSlot($PlanetID){
 	return Constructions($PlanetID) < GetConstructionSlots($PlanetID);
+}
+
+function GetConstructionSlotsTooltip($PlanetID){
+	$sizeLabels = [1=>'Small',2=>'Medium',3=>'Large',4=>'Huge'];
+	$base = 1;
+	$sizeName = '?';
+	$sql = "SELECT p.Size, pt.construction_slots FROM planets p JOIN planet_types pt ON p.Size = pt.Type WHERE p.PlanetID = '$PlanetID'";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	if($res){
+		$row = mysqli_fetch_object($res);
+		if($row){ $base = (int)$row->construction_slots; $sizeName = $sizeLabels[(int)$row->Size] ?? 'Type '.$row->Size; }
+	}
+	$factories = 0;
+	$sql = "SELECT COUNT(*) AS cnt FROM buildings WHERE PlanetID = '$PlanetID' AND Type = 1";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	if($res){ $row = mysqli_fetch_object($res); if($row) $factories = (int)$row->cnt; }
+	$total = $base + $factories;
+	$tip = $sizeName . ' base: ' . $base;
+	if($factories > 0) $tip .= ' + ' . $factories . ' Factor' . ($factories != 1 ? 'ies' : 'y') . ': +' . $factories;
+	$tip .= ' = ' . $total . ' slot' . ($total != 1 ? 's' : '');
+	return $tip;
 }
 
 function HasFleets($PlanetID){
@@ -484,8 +512,8 @@ function GetPlanetValueBreakdown($PlanetID){
 	$grids = GetGridSquares($row->Size);
 	$bd['land'] = $grids * 10;
 
-	// 2. Building value: salvage rate of build cost (converted to credits)
-	$salvageRate = (float)GetGameSetting('building_salvage_rate', 0.5);
+	// 2. Building value: valuation rate of build cost (converted to credits)
+	$valuationRate = (float)GetGameSetting('building_valuation_rate', 0.7);
 	$sql = "SELECT b.HP AS CurrentHP, bt.Metal, bt.Mineral, bt.Astrium, bt.HP AS MaxHP, bt.AP
 	        FROM buildings b JOIN building_types bt ON b.Type = bt.Type
 	        WHERE b.PlanetID='$pid'";
@@ -495,7 +523,7 @@ function GetPlanetValueBreakdown($PlanetID){
 	while($bld = mysqli_fetch_object($res)){
 		$buildCost = ((int)$bld->Metal * $mcv) + ((int)$bld->Mineral * $ncv) + ((int)$bld->Astrium * $acv);
 		$hpRatio = ((int)$bld->MaxHP > 0) ? (int)$bld->CurrentHP / (int)$bld->MaxHP : 1;
-		$bd['buildings'] += (int)round($buildCost * $salvageRate * $hpRatio);
+		$bd['buildings'] += (int)round($buildCost * $valuationRate * $hpRatio);
 		$totalHP += (int)$bld->CurrentHP;
 		$totalAP += (int)$bld->AP;
 	}

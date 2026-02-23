@@ -133,7 +133,7 @@ if($edit || $teamView){?>
     Unassigned Ships in Orbit: <?php echo GetShipsInOrbit($PlanetID); ?><br/>
     Orbital Spaces: 0<br/>
     Ground Spaces: <?php echo GridSquares($PlanetID); ?><br>
-    Construction Queue: <?php echo Constructions($PlanetID) . '/' . GetConstructionSlots($PlanetID); ?><br>
+    Construction Queue: <span title="<?php echo htmlspecialchars(GetConstructionSlotsTooltip($PlanetID)); ?>" style="cursor:help; border-bottom:1px dotted #888;"><?php echo Constructions($PlanetID) . '/' . GetConstructionSlots($PlanetID); ?></span><br>
     <?php
 	$_pid = $edit ? GetPlayerIDFromName($username) : (int)$Planet->PlayerID;
 	$_isHome = IsHomePlanet($_pid, $PlanetID);
@@ -221,6 +221,18 @@ if($edit || $teamView){?>
       <font color="#FF99FF">Gigashield</font> <br>
       <font color="#999999">Missile Silo</font></p>
   </div>
+  <?php
+  $cres = mysqli_query($GLOBALS["conn"], "SELECT Grid, Type, TTF FROM cbuildings WHERE PlanetID = '$PlanetID' ORDER BY Grid ASC");
+  if($cres && mysqli_num_rows($cres) > 0){ ?>
+  <div class="panel" style="width:250px;">
+    <h3>Under Construction</h3>
+    <?php while($crow = mysqli_fetch_object($cres)){ ?>
+    <p><a href="building.php?planet=<?php echo $PlanetID; ?>&id=<?php echo $crow->Grid; ?>">Grid <?php echo $crow->Grid; ?>: <?php echo h(GetGridContentString($crow->Type)); ?></a><br/>
+      <small>Time left: <?php echo $crow->TTF; ?> min</small></p>
+    <?php } ?>
+  </div>
+  <?php } ?>
+  <?php } // Edit or TeamView?>
   <div class="panel" style="width:250px;">
     <h3>System: <?php echo h(GetSystemNameFromID($Planet->System)); ?></h3>
     <?php
@@ -245,18 +257,6 @@ if($edit || $teamView){?>
     </p>
     <?php endforeach; ?>
   </div>
-  <?php
-  $cres = mysqli_query($GLOBALS["conn"], "SELECT Grid, Type, TTF FROM cbuildings WHERE PlanetID = '$PlanetID' ORDER BY Grid ASC");
-  if($cres && mysqli_num_rows($cres) > 0){ ?>
-  <div class="panel" style="width:250px;">
-    <h3>Under Construction</h3>
-    <?php while($crow = mysqli_fetch_object($cres)){ ?>
-    <p><a href="building.php?planet=<?php echo $PlanetID; ?>&id=<?php echo $crow->Grid; ?>">Grid <?php echo $crow->Grid; ?>: <?php echo h(GetGridContentString($crow->Type)); ?></a><br/>
-      <small>Time left: <?php echo $crow->TTF; ?> min</small></p>
-    <?php } ?>
-  </div>
-  <?php } ?>
-  <?php } // Edit or TeamView?>
   <?php
 if(YourFleetsInOrbit($PlanetID)>0){
 ?>

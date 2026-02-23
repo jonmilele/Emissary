@@ -8,6 +8,9 @@ services:
       - db
     volumes:
       - ./html:/var/www/html
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+      - ./php-timezone.ini:/usr/local/etc/php/conf.d/timezone.ini:ro
     labels:
       - traefik.enable=true
       - traefik.http.routers.emissary.rule=Host(`emissary.example.com`)
@@ -22,6 +25,8 @@ services:
       - .env
     volumes:
       - ./mysql_data:/var/lib/mysql
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     ports:
@@ -30,12 +35,17 @@ services:
       - db
     environment:
       PMA_HOST: db
+      PMA_ABSOLUTE_URI: https://emissary.example.com/phpmyadmin/
     labels:
       - traefik.enable=true
       - traefik.http.routers.emissary-phpmyadmin.rule=Host(`emissary.example.com`) && PathPrefix(`/phpmyadmin`)
       - traefik.http.routers.emissary-phpmyadmin.entrypoints=websecure
       - traefik.http.routers.emissary-phpmyadmin.tls=true
       - traefik.http.routers.emissary-phpmyadmin.tls.certresolver=default
-      - traefik.http.routers.emissary-phpmyadmin.middlewares=emissary-phpmyadmin-strip,security-headers@file
+      - traefik.http.routers.emissary-phpmyadmin.middlewares=emissary-phpmyadmin-slash,emissary-phpmyadmin-strip,security-headers@file
+      - traefik.http.middlewares.emissary-phpmyadmin-slash.redirectregex.regex=^(https?://[^/]*)/phpmyadmin$$
+      - traefik.http.middlewares.emissary-phpmyadmin-slash.redirectregex.replacement=$${1}/phpmyadmin/
+      - traefik.http.middlewares.emissary-phpmyadmin-slash.redirectregex.permanent=true
       - traefik.http.middlewares.emissary-phpmyadmin-strip.stripprefix.prefixes=/phpmyadmin
-      - traefik.http.services.emissary-phpmyadmin.loadbalancer.server.port=80
+      - traefik.http.services.emissary-phpmyadmin.loadbalancer.server.port=8080
+
