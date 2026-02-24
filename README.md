@@ -206,22 +206,35 @@ All building and ship stat values are estimates — the originals were not recov
 
 ## Screenshots
 
-<p align="center">
-  <a href="screenshots/planet-page.png"><img src="screenshots/planet-page.png" alt="Planet" width="280" style="border:2px solid #fff; margin:4px;" /></a>
-  <a href="screenshots/fleet-page.png"><img src="screenshots/fleet-page.png" alt="Fleet" width="280" style="border:2px solid #fff; margin:4px;" /></a>
-  <a href="screenshots/ship-page.png"><img src="screenshots/ship-page.png" alt="Ship" width="280" style="border:2px solid #fff; margin:4px;" /></a>
-</p>
-<p align="center">
-  <a href="screenshots/sector-page.png"><img src="screenshots/sector-page.png" alt="Sector" width="280" style="border:2px solid #fff; margin:4px;" /></a>
-  <a href="screenshots/galaxy-page.png"><img src="screenshots/galaxy-page.png" alt="Galaxy" width="280" style="border:2px solid #fff; margin:4px;" /></a>
-  <a href="screenshots/galaxy-zoom.png"><img src="screenshots/galaxy-zoom.png" alt="Galaxy Zoom" width="280" style="border:2px solid #fff; margin:4px;" /></a>
-</p>
-<p align="center">
-  <a href="screenshots/admin-panel.png"><img src="screenshots/admin-panel.png" alt="Admin Panel" width="280" style="border:2px solid #fff; margin:4px;" /></a>
-</p>
-<p align="center">
-  <sub>Planet · Fleet · Ship · Sector · Galaxy · Galaxy Zoom · Admin Panel</sub>
-</p>
+Click to view full size.
+
+### Planet
+
+[![Planet Page](screenshots/planet-page.png)](screenshots/planet-page.png)
+
+### Fleet
+
+[![Fleet Page](screenshots/fleet-page.png)](screenshots/fleet-page.png)
+
+### Ship
+
+[![Ship Page](screenshots/ship-page.png)](screenshots/ship-page.png)
+
+### Sector
+
+[![Sector Page](screenshots/sector-page.png)](screenshots/sector-page.png)
+
+### Galaxy
+
+[![Galaxy Page](screenshots/galaxy-page.png)](screenshots/galaxy-page.png)
+
+### Galaxy Zoom
+
+[![Galaxy Zoom](screenshots/galaxy-zoom.png)](screenshots/galaxy-zoom.png)
+
+### Admin Panel
+
+[![Admin Panel](screenshots/admin-panel.png)](screenshots/admin-panel.png)
 
 ## Quick Start
 
