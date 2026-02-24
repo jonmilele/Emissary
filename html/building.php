@@ -71,7 +71,7 @@ if(isset($_POST['action']) && csrf_validate()){
 			AddAlertForCurrentUser('construction', $_demName.' demolished on '.GetPlanetNameFromID($PlanetID).($_demCosts ? ". Salvage: {$_rMetal} Metal, {$_rMineral} Mineral, {$_rAstrium} Astrium" : ''), 'planet.php?id='.$PlanetID);
 			SetFlash($_demFlash);
 		}
-		header("Location: planet.php?id=".$PlanetID);
+		header("Location: building.php?planet=".$PlanetID."&id=".$Grid);
 	}
 	if(($_POST['action'] ?? "")=="cancel"){
 		$PlanetID = ($_POST["planet"] ?? "");
@@ -112,7 +112,7 @@ if(isset($_POST['action']) && csrf_validate()){
 		$_cancelBldName = ($cbld ? GetGridContentString($cbld->Type) : 'Building');
 		AddAlertForCurrentUser('construction', $_cancelBldName.' cancelled on '.GetPlanetNameFromID($PlanetID).($cancelMsg !== 'Building+Cancelled' ? '. '.str_replace('+', ' ', substr($cancelMsg, strpos($cancelMsg, 'Refund'))) : ''), 'planet.php?id='.$PlanetID);
 		SetFlash(str_replace('+', ' ', $cancelMsg));
-		header("Location: planet.php?id=".$PlanetID);
+		header("Location: building.php?planet=".$PlanetID."&id=".$Grid);
 	}
 	if(($_POST['action'] ?? "")=="cancelship"){
 		$PlanetID = ($_POST["planet"] ?? "");
@@ -314,6 +314,7 @@ if(!IsPlanet(($_GET['planet'] ?? ""))){
 <head>
 <title><?php echo h(GetPlanetNameFromID($PlanetID)); ?> - Grid: <?php echo $Grid; ?></title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="style.css" rel="stylesheet" type="text/css">
 </head>
 
@@ -321,6 +322,21 @@ if(!IsPlanet(($_GET['planet'] ?? ""))){
 <?php include("header.inc.php");?>
 <p>Return to: <a href="planet.php?id=<?php echo $PlanetID; ?>"><?php echo h(GetPlanetNameFromID($PlanetID)); ?></a></p>
 <h2>Grid: <?php echo $Grid; ?> </h2>
+<?php
+$_gridBoon = GetGridBoon($PlanetID, $Grid);
+if($_gridBoon > 0):
+	$_boonNames = [1 => 'Resource', 2 => 'Research', 3 => 'Energy'];
+	$_boonColours = [1 => '#32FF32', 2 => '#3264FF', 3 => '#FFFF32'];
+	$_boonEffects = [
+		1 => 'Harvesters built here gain +' . round((float)GetGameSetting('boon_resource_bonus', 0.10) * 100) . '% resource bonus',
+		2 => 'Future implementation',
+		3 => 'Shields/weapons built here gain +' . round((float)GetGameSetting('boon_energy_hp_bonus', 0.25) * 100) . '% HP and +' . round((float)GetGameSetting('boon_energy_ap_bonus', 0.25) * 100) . '% AP',
+	];
+?>
+<p style="color:<?php echo $_boonColours[$_gridBoon]; ?>; border:2px solid <?php echo $_boonColours[$_gridBoon]; ?>; padding:4px 8px; display:inline-block;">
+	&#9733; <?php echo $_boonNames[$_gridBoon]; ?> Grid Boon &mdash; <?php echo $_boonEffects[$_gridBoon]; ?>
+</p>
+<?php endif; ?>
 <?php if(ConstructingBuilding($PlanetID,$Grid))
 {
 $bldg = BuildingUnderConstruction($PlanetID,$Grid);

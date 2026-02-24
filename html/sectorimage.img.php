@@ -163,6 +163,95 @@ foreach($_sysData as $sd){
 	imagestring($image, 2, $bestPos[0], $bestPos[1], $System->Name, $border);
 	$_placedLabels[] = [$bestPos[0], $bestPos[1], $bestPos[0] + $tw, $bestPos[1] + $th];
 }
+// --- Fleet Overlay ---
+$_secCoords = GetSectorCoords($SectorID);
+$_secOriginX = ((int)$_secCoords[0] - 1) * 500;
+$_secOriginY = ((int)$_secCoords[1] - 1) * 500;
+
+// Helper: resolve MovingFrom to galactic coords
+function _resolveLocGalactic($loc){
+	if(substr($loc, 0, 2) == 'X:'){
+		$c = explode('/', substr($loc, 2));
+		return [(float)$c[0], (float)$c[1]];
+	} elseif(substr($loc, 0, 2) == 'P:'){
+		$pid = (int)substr($loc, 2);
+		$r = mysqli_query($GLOBALS['conn'], "SELECT `System` FROM planets WHERE PlanetID='$pid'");
+		$row = mysqli_fetch_object($r);
+		if(!$row) return null;
+		$sc = GetSystemCoords($row->System);
+		return [(float)$sc['x'], (float)$sc['y']];
+	}
+	return null;
+}
+
+// 1. Stationary fleets at planets in this sector
+$_stQ = mysqli_query($GLOBALS['conn'],
+	"SELECT f.FleetID, f.PlayerID, s.Coords, COALESCE(t.Colour, '128,128,128') AS TeamColour
+	 FROM fleets f
+	 JOIN planets p ON f.Location = CONCAT('P:', p.PlanetID)
+	 JOIN Systems s ON p.`System` = s.SystemID
+	 LEFT JOIN players pl ON f.PlayerID = pl.PlayerID
+	 LEFT JOIN teams t ON pl.TeamID = t.TeamID
+	 WHERE s.SectorID = '$SectorID' AND f.Location != ''");
+$_stByCoord = [];
+while($_sf = mysqli_fetch_object($_stQ)){
+	$ca = explode('/', $_sf->Coords);
+	$key = (int)($ca[0] * 50) . ':' . (int)($ca[1] * 50);
+	if(!isset($_stByCoord[$key])) $_stByCoord[$key] = [];
+	$_stByCoord[$key][] = $_sf;
+}
+foreach($_stByCoord as $key => $fleets){
+	$parts = explode(':', $key);
+	$cx = (int)$parts[0]; $cy = (int)$parts[1];
+	foreach($fleets as $i => $fl){
+		$tc = explode(',', $fl->TeamColour);
+		$fcol = imagecolorallocate($image, (int)$tc[0], (int)$tc[1], (int)$tc[2]);
+		$fx = $cx + 18 + ($i * 8);
+		$fy = $cy - 3;
+		imagefilledrectangle($image, $fx, $fy, $fx + 5, $fy + 5, $fcol);
+		imagerectangle($image, $fx, $fy, $fx + 5, $fy + 5, $border);
+	}
+}
+
+// 2. In-transit fleets — draw route lines and current position markers
+$_trQ = mysqli_query($GLOBALS['conn'],
+	"SELECT f.FleetID, f.PlayerID, f.MovingFrom, f.Destination, f.TTF, f.Strategy,
+	        COALESCE(t.Colour, '128,128,128') AS TeamColour
+	 FROM fleets f
+	 LEFT JOIN players pl ON f.PlayerID = pl.PlayerID
+	 LEFT JOIN teams t ON pl.TeamID = t.TeamID
+	 WHERE f.Location = '' AND f.Destination != ''");
+imagesetthickness($image, 2);
+while($_tf = mysqli_fetch_object($_trQ)){
+	$fromGal = _resolveLocGalactic($_tf->MovingFrom);
+	$destPid = (int)substr($_tf->Destination, 2);
+	$dsr = mysqli_query($GLOBALS['conn'], "SELECT `System` FROM planets WHERE PlanetID='$destPid'");
+	$dsRow = mysqli_fetch_object($dsr);
+	if(!$fromGal || !$dsRow) continue;
+	$dsc = GetSystemCoords($dsRow->System);
+	$fromLX = $fromGal[0] - $_secOriginX; $fromLY = $fromGal[1] - $_secOriginY;
+	$destLX = (float)$dsc['x'] - $_secOriginX; $destLY = (float)$dsc['y'] - $_secOriginY;
+	// Skip if neither endpoint is near sector
+	$fIn = ($fromLX >= -50 && $fromLX <= 550 && $fromLY >= -50 && $fromLY <= 550);
+	$dIn = ($destLX >= -50 && $destLX <= 550 && $destLY >= -50 && $destLY <= 550);
+	if(!$fIn && !$dIn) continue;
+	// Route colour: yellow=peaceful, red=hostile
+	$routeCol = ((int)$_tf->Strategy >= 2) ? $red : $yellow;
+	imageline($image, (int)$fromLX, (int)$fromLY, (int)$destLX, (int)$destLY, $routeCol);
+	// Current position marker
+	$galLoc = GetGalacticLocation($_tf->FleetID);
+	$gc = explode('/', substr($galLoc, 2));
+	$curLX = (int)((float)$gc[0] - $_secOriginX);
+	$curLY = (int)((float)$gc[1] - $_secOriginY);
+	if($curLX >= 0 && $curLX <= 500 && $curLY >= 0 && $curLY <= 500){
+		$tc = explode(',', $_tf->TeamColour);
+		$fcol = imagecolorallocate($image, (int)$tc[0], (int)$tc[1], (int)$tc[2]);
+		imagefilledrectangle($image, $curLX - 3, $curLY - 3, $curLX + 3, $curLY + 3, $fcol);
+		imagerectangle($image, $curLX - 3, $curLY - 3, $curLX + 3, $curLY + 3, $border);
+	}
+}
+imagesetthickness($image, 1);
+
 header("Content-type: image/jpg");
 imagejpeg($image);
 imagedestroy($image);

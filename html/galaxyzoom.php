@@ -8,6 +8,7 @@ include_once("userfunctions.inc.php");
 <head>
 <title>Galaxy Map — Zoom</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="style.css" rel="stylesheet" type="text/css">
 <style>
   .galaxy-zoom { overflow: auto; padding: 15px; }
@@ -19,7 +20,6 @@ include_once("userfunctions.inc.php");
 <body>
 <?php include("header.inc.php"); ?>
 <h2>Galaxy Map — Zoom</h2>
-<p><a href="galaxy.php">&laquo; Back to Galaxy Overview</a></p>
 <div class="galaxy-zoom">
 <div class="galaxy-grid">
 <?php

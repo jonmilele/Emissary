@@ -23,7 +23,7 @@ function DropFleetTTF($FleetID){
 		$res = mysqli_query($GLOBALS["conn"], $sql);	
 		return $newTtf;
 	}else{
-		$sql = "UPDATE fleets SET TTF = '0', Location = '".$row->Destination."', MovingFrom = '', Destination = '', Strategy = '' WHERE(FleetID = '$FleetID')";
+		$sql = "UPDATE fleets SET TTF = '0', Location = '".$row->Destination."', MovingFrom = '', Destination = '', Strategy = '0' WHERE(FleetID = '$FleetID')";
 		$res = mysqli_query($GLOBALS["conn"], $sql);
 		$_arrPlanet = substr($row->Destination,2,strlen($row->Destination)-2);
 		$_stratLabels = ['0'=>'','1'=>' for colonisation','2'=>' to attack','3'=>' to invade'];

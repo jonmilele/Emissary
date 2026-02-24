@@ -307,6 +307,12 @@ function GetPlanetIncome($PlanetID){
 	$income->Add($base[0],1);
 	$income->Add($base[1],2);
 	$income->Add($base[2],3);
+
+	// Resource Rich planet boon: boost base income before other modifiers
+	if(HasPlanetBoon($PlanetID, 1)){
+		$rrBonus = 1 + (float)GetGameSetting('pboon_resource_rich_bonus', 0.20);
+		$income->Percentage($rrBonus, 0);
+	}
 	
 	// Harvesters add 5% more to the base income.
 	$total_count = 0;
@@ -318,9 +324,14 @@ function GetPlanetIncome($PlanetID){
 		}
 	}
 	if($total_count>0){
-		//echo "Percenting $total_count harvesters<br/>";
 		$harvesterBonus = (float)GetGameSetting('harvester_bonus', 0.05);
-		$percentage = 1+($total_count*$harvesterBonus);
+		// Resource boon: harvesters on resource boon grids get extra bonus
+		$_boonHarvCount = 0;
+		$boonResBonus = (float)GetGameSetting('boon_resource_bonus', 0.10);
+		$_bq = mysqli_query($GLOBALS["conn"], "SELECT COUNT(*) AS cnt FROM buildings b INNER JOIN planet_grid_boons pgb ON pgb.PlanetID = b.PlanetID AND pgb.Grid = b.GridSquare WHERE b.PlanetID='$PlanetID' AND b.Type=3 AND pgb.BoonType=1");
+		$_br = mysqli_fetch_object($_bq);
+		if($_br) $_boonHarvCount = (int)$_br->cnt;
+		$percentage = 1 + ($total_count * $harvesterBonus) + ($_boonHarvCount * $boonResBonus);
 		$income->Percentage($percentage,0);
 	}
 	
@@ -335,47 +346,61 @@ function IsHomeWorldPlanet($PlanetID){
 	return IsHomePlanet((int)$row->PlayerID, (int)$PlanetID);
 }
 
-function GetEffectiveBuildingHP($HP, $PlanetID){
+function GetEffectiveBuildingHP($HP, $PlanetID, $GridSquare = 0, $BuildingType = 0){
+	$hp = (int)$HP;
 	// Home world buildings get HP multiplier
 	if(IsHomeWorldPlanet($PlanetID)){
 		$mult = (float)GetGameSetting('home_hp_multiplier', 1.5);
-		return (int)round($HP * $mult);
+		$hp = (int)round($hp * $mult);
 	}
-	return (int)$HP;
+	// Energy grid boon: shields/weapons get HP bonus
+	if($GridSquare > 0 && GetGridBoon($PlanetID, $GridSquare) == 3){
+		$energyBonus = (float)GetGameSetting('boon_energy_hp_bonus', 0.25);
+		$hp = (int)round($hp * (1 + $energyBonus));
+	}
+	// Geothermal planet boon: shields/weapons get HP bonus
+	if(in_array((int)$BuildingType, [6, 7, 8, 9]) && HasPlanetBoon($PlanetID, 2)){
+		$geoBonus = (float)GetGameSetting('pboon_geothermal_bonus', 0.50);
+		$hp = (int)round($hp * (1 + $geoBonus));
+	}
+	return $hp;
 }
 
 function GetPlanetDefenceStrength($PlanetID){
 	$strength = 0;
 	$isHome = IsHomeWorldPlanet($PlanetID);
 	$hpMult = (float)GetGameSetting('home_hp_multiplier', 1.5);
-	$sql= "SELECT HP FROM buildings WHERE(PlanetID = '$PlanetID' AND (Type = 6 OR Type = '8'))";
+	$energyHpBonus = (float)GetGameSetting('boon_energy_hp_bonus', 0.25);
+	$hasGeo = HasPlanetBoon($PlanetID, 2);
+	$geoBonus = $hasGeo ? (float)GetGameSetting('pboon_geothermal_bonus', 0.50) : 0;
+	$sql= "SELECT HP, GridSquare FROM buildings WHERE(PlanetID = '$PlanetID' AND (Type = 6 OR Type = '8'))";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql);
 	while($row = mysqli_fetch_object($rescount)){
 		$hp = $isHome ? (int)round($row->HP * $hpMult) : (int)$row->HP;
+		if(GetGridBoon($PlanetID, $row->GridSquare) == 3){
+			$hp = (int)round($hp * (1 + $energyHpBonus));
+		}
+		if($hasGeo) $hp = (int)round($hp * (1 + $geoBonus));
 		$strength += $hp;
 	}
 	return $strength;
 }
 
 function GetPlanetAttackStrength($PlanetID){
-	$total_count = 0;
-	$sql= "SELECT COUNT(*) AS count FROM buildings WHERE(PlanetID = '$PlanetID' AND Type = 7)";
-	$rescount=mysqli_query($GLOBALS["conn"], $sql);
-	if ($rescount){
-		if ($rowcount = mysqli_fetch_object($rescount)){
-			$total_count = $rowcount->count;
+	$strength = 0;
+	$energyApBonus = (float)GetGameSetting('boon_energy_ap_bonus', 0.25);
+	$hasGeo = HasPlanetBoon($PlanetID, 2);
+	$geoBonus = $hasGeo ? (float)GetGameSetting('pboon_geothermal_bonus', 0.50) : 0;
+	$sql = "SELECT b.GridSquare, bt.AP FROM buildings b JOIN building_types bt ON b.Type = bt.Type WHERE b.PlanetID = '$PlanetID' AND (b.Type = 7 OR b.Type = 9)";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	while($row = mysqli_fetch_object($res)){
+		$ap = (int)$row->AP;
+		if(GetGridBoon($PlanetID, $row->GridSquare) == 3){
+			$ap = (int)round($ap * (1 + $energyApBonus));
 		}
+		if($hasGeo) $ap = (int)round($ap * (1 + $geoBonus));
+		$strength += $ap;
 	}
-	$strength = $total_count * 2000;
-	$sql= "SELECT COUNT(*) AS count FROM buildings WHERE(PlanetID = '$PlanetID' AND Type = 9)";
-	$rescount=mysqli_query($GLOBALS["conn"], $sql);
-	if ($rescount){
-		if ($rowcount = mysqli_fetch_object($rescount)){
-			$total_count = $rowcount->count;
-		}
-	}
-	$strength += $total_count * 6000; // 2000 HP per shield
-	
 	return $strength;
 }
 
@@ -568,14 +593,186 @@ function GetWeapons($PlanetID){
 	$weapons = array();
 	$sql= "SELECT * FROM buildings WHERE(PlanetID = '$PlanetID' AND (Type = 7 OR Type = 9))";
 	$rescount=mysqli_query($GLOBALS["conn"], $sql) or die(mysqli_error($GLOBALS["conn"]));
-	//echo "Getting Weapons 2<br/>";
 	while($row = mysqli_fetch_object($rescount)){
-	//	echo "Getting Weapon<br/>";
 		$weapon = new Weapon();
-		$weapon->HP = GetBldDefaultAP($row->Type);
+		$baseAP = GetBldDefaultAP($row->Type);
+		// Energy grid boon: boost AP
+		if(GetGridBoon($PlanetID, $row->GridSquare) == 3){
+			$apBonus = (float)GetGameSetting('boon_energy_ap_bonus', 0.25);
+			$baseAP = (int)round($baseAP * (1 + $apBonus));
+		}
+		// Geothermal planet boon: boost AP
+		if(HasPlanetBoon($PlanetID, 2)){
+			$geoApBonus = (float)GetGameSetting('pboon_geothermal_bonus', 0.50);
+			$baseAP = (int)round($baseAP * (1 + $geoApBonus));
+		}
+		$weapon->HP = $baseAP;
 		$weapon->Type = $row->Type;
 		$weapons[] = $weapon;
 	}
 	return $weapons;
+}
+
+// ==========================================
+// Planet Grid Boons
+// ==========================================
+// Boon types: 1=Resource (Red), 2=Research (Blue), 3=Energy (Yellow)
+
+function GetBoonColour($BoonType){
+	switch((int)$BoonType){
+		case 1: return '50,255,50';    // Resource - Green
+		case 2: return '50,100,255';   // Research - Blue
+		case 3: return '255,255,50';   // Energy - Yellow
+		default: return '128,128,128';
+	}
+}
+
+function GetBoonName($BoonType){
+	switch((int)$BoonType){
+		case 1: return 'Resource';
+		case 2: return 'Research';
+		case 3: return 'Energy';
+		default: return 'Unknown';
+	}
+}
+
+function GetGridBoon($PlanetID, $Grid){
+	$pid = (int)$PlanetID;
+	$grid = (int)$Grid;
+	$sql = "SELECT BoonType FROM planet_grid_boons WHERE PlanetID='$pid' AND Grid='$grid'";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	$row = mysqli_fetch_object($res);
+	return $row ? (int)$row->BoonType : 0;
+}
+
+function GetPlanetGridBoons($PlanetID){
+	$pid = (int)$PlanetID;
+	$boons = [];
+	$sql = "SELECT Grid, BoonType FROM planet_grid_boons WHERE PlanetID='$pid'";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	if($res){
+		while($row = mysqli_fetch_object($res)){
+			$boons[(int)$row->Grid] = (int)$row->BoonType;
+		}
+	}
+	return $boons;
+}
+
+function AssignPlanetGridBoons($PlanetID){
+	$pid = (int)$PlanetID;
+	// Get grid count from planet size
+	$sql = "SELECT Size FROM planets WHERE PlanetID='$pid'";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	$row = mysqli_fetch_object($res);
+	if(!$row) return 0;
+	$grids = GetGridSquares($row->Size);
+	if($grids < 1) return 0;
+
+	// Boon Planet override: use higher ratio
+	if(HasPlanetBoon($PlanetID, 5)){
+		$bpMin = (float)GetGameSetting('pboon_boon_planet_min', 0.30);
+		$bpMax = (float)GetGameSetting('pboon_boon_planet_max', 0.40);
+		$maxRatio = $bpMin + (mt_rand() / mt_getrandmax()) * ($bpMax - $bpMin);
+	} else {
+		$maxRatio = (float)GetGameSetting('boon_max_ratio', 0.15);
+	}
+	$maxBoons = (int)floor($grids * $maxRatio);
+	if($maxBoons < 1) return 0;
+	$numBoons = rand(0, $maxBoons);
+	if($numBoons < 1) return 0;
+
+	// Pick random grid numbers (1-based)
+	$allGrids = range(1, $grids);
+	shuffle($allGrids);
+	$chosen = array_slice($allGrids, 0, $numBoons);
+
+	$inserted = 0;
+	foreach($chosen as $grid){
+		$boonType = rand(1, 3);
+		$sql = "INSERT IGNORE INTO planet_grid_boons (PlanetID, Grid, BoonType) VALUES ('$pid', '$grid', '$boonType')";
+		mysqli_query($GLOBALS["conn"], $sql);
+		$inserted++;
+	}
+	return $inserted;
+}
+
+// ==========================================
+// Planet-wide Boons
+// ==========================================
+// Types: 1=Resource Rich, 2=Geothermal Energy, 3=Gravity Well, 4=Rough Terrain, 5=Boon Planet
+
+function GetPlanetBoonName($BoonType){
+	switch((int)$BoonType){
+		case 1: return 'Resource Rich';
+		case 2: return 'Geothermal Energy';
+		case 3: return 'Gravity Well';
+		case 4: return 'Rough Terrain';
+		case 5: return 'Boon Planet';
+		default: return 'Unknown';
+	}
+}
+
+function GetPlanetBoonColour($BoonType){
+	switch((int)$BoonType){
+		case 1: return '#FF9900'; // Resource Rich - Orange
+		case 2: return '#FFFF00'; // Geothermal - Yellow
+		case 3: return '#AA44FF'; // Gravity Well - Purple
+		case 4: return '#996633'; // Rough Terrain - Brown
+		case 5: return '#00FFFF'; // Boon Planet - Cyan
+		default: return '#888888';
+	}
+}
+
+function GetPlanetBoonDesc($BoonType){
+	switch((int)$BoonType){
+		case 1: return '+' . round((float)GetGameSetting('pboon_resource_rich_bonus', 0.20) * 100) . '% base resource income';
+		case 2: return '+' . round((float)GetGameSetting('pboon_geothermal_bonus', 0.50) * 100) . '% shield/weapon HP and AP';
+		case 3: return '+' . round((float)GetGameSetting('pboon_gravity_well_bonus', 0.30) * 100) . '% orbiting ship HP and AP (future)';
+		case 4: return '+' . round((float)GetGameSetting('pboon_rough_terrain_bonus', 0.30) * 100) . '% defending army HP (future)';
+		case 5: return 'Higher grid boon placement chance';
+		default: return '';
+	}
+}
+
+function HasPlanetBoon($PlanetID, $BoonType){
+	$pid = (int)$PlanetID;
+	$bt = (int)$BoonType;
+	$sql = "SELECT 1 FROM planet_boons WHERE PlanetID='$pid' AND BoonType='$bt' LIMIT 1";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	return $res && mysqli_num_rows($res) > 0;
+}
+
+function GetPlanetBoons($PlanetID){
+	$pid = (int)$PlanetID;
+	$boons = [];
+	$sql = "SELECT BoonType FROM planet_boons WHERE PlanetID='$pid' ORDER BY BoonType";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	if($res){
+		while($row = mysqli_fetch_object($res)){
+			$boons[] = (int)$row->BoonType;
+		}
+	}
+	return $boons;
+}
+
+function AssignPlanetBoons($PlanetID){
+	$pid = (int)$PlanetID;
+	$assigned = [];
+	// Each boon type: roll independently based on rarity (1-in-N chance)
+	$boonDefs = [
+		1 => 'pboon_resource_rich_rarity',
+		2 => 'pboon_geothermal_rarity',
+		3 => 'pboon_gravity_well_rarity',
+		4 => 'pboon_rough_terrain_rarity',
+		5 => 'pboon_boon_planet_rarity',
+	];
+	foreach($boonDefs as $type => $settingKey){
+		$rarity = max(1, (int)GetGameSetting($settingKey, 10));
+		if(rand(1, $rarity) == 1){
+			mysqli_query($GLOBALS["conn"], "INSERT IGNORE INTO planet_boons (PlanetID, BoonType) VALUES ('$pid', '$type')");
+			$assigned[] = $type;
+		}
+	}
+	return $assigned;
 }
 ?>

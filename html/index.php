@@ -13,6 +13,7 @@ if(!empty($_SESSION['username'])){
 <head>
 <title>Emissary</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="style.css" rel="stylesheet" type="text/css">
 </head>
 

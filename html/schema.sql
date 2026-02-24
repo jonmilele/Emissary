@@ -247,7 +247,8 @@ CREATE TABLE `fleets` (
   `MovingFrom` VARCHAR(30) DEFAULT NULL,
   `Strategy` INT DEFAULT 0,
   `TTF` INT DEFAULT 0,
-  `Name` VARCHAR(100) DEFAULT ''
+  `Name` VARCHAR(100) DEFAULT '',
+  `HomePort` INT DEFAULT 0
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 -- ----------------------------
@@ -314,6 +315,26 @@ CREATE TABLE `auction_cooldowns` (
   `CooldownUntil` INT NOT NULL DEFAULT 0,
   PRIMARY KEY (`Code`, `Data`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
+-- ----------------------------
+-- Planet grid boons (random modifiers on grid squares)
+-- ----------------------------
+CREATE TABLE `planet_grid_boons` (
+  `PlanetID` INT NOT NULL,
+  `Grid` INT NOT NULL,
+  `BoonType` INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (`PlanetID`, `Grid`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
+-- ----------------------------
+-- Planet-wide boons (assigned per planet at creation)
+-- ----------------------------
+CREATE TABLE `planet_boons` (
+  `PlanetID` INT NOT NULL,
+  `BoonType` INT NOT NULL,
+  PRIMARY KEY (`PlanetID`, `BoonType`),
+  INDEX `idx_boontype` (`BoonType`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 -- ----------------------------
 -- Game settings (key-value store, replaces flat files)
@@ -405,4 +426,19 @@ INSERT INTO `game_settings` (`setting_key`, `setting_value`) VALUES
 ('planet_weapon_hit_chance', '3'),
 ('default_auction_turns', '5'),
 ('building_salvage_rate', '0.5'),
-('building_valuation_rate', '0.7');
+('building_valuation_rate', '0.7'),
+('boon_max_ratio', '0.15'),
+('boon_resource_bonus', '0.10'),
+('boon_energy_hp_bonus', '0.25'),
+('boon_energy_ap_bonus', '0.25'),
+('pboon_resource_rich_rarity', '10'),
+('pboon_resource_rich_bonus', '0.20'),
+('pboon_geothermal_rarity', '10'),
+('pboon_geothermal_bonus', '0.50'),
+('pboon_gravity_well_rarity', '20'),
+('pboon_gravity_well_bonus', '0.30'),
+('pboon_rough_terrain_rarity', '20'),
+('pboon_rough_terrain_bonus', '0.30'),
+('pboon_boon_planet_rarity', '30'),
+('pboon_boon_planet_min', '0.30'),
+('pboon_boon_planet_max', '0.40');

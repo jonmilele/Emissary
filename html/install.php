@@ -161,9 +161,25 @@ if($step === 'run'){
 		include_once(__DIR__ . "/turnfunctions.inc.php");
 		progress("Game functions loaded");
 
-		// --- 8. Reset names counter in DB ---
+		// --- 8. Reset names counter + galaxy settings ---
 		SetGameSetting('names_counter', '1');
+		$_boonRatio = $_POST['boon_max_ratio'] ?? '0.15';
+		SetGameSetting('boon_max_ratio', $_boonRatio);
+		// Save planet boon rarities from form
+		$_pboonInstKeys = [
+			'pboon_resource_rich_rarity' => '10',
+			'pboon_geothermal_rarity' => '10',
+			'pboon_gravity_well_rarity' => '20',
+			'pboon_rough_terrain_rarity' => '20',
+			'pboon_boon_planet_rarity' => '30',
+		];
+		foreach($_pboonInstKeys as $_pk => $_pdef){
+			$_pv = $_POST[$_pk] ?? $_pdef;
+			SetGameSetting($_pk, $_pv);
+		}
 		progress("System names counter initialized");
+		progress("Grid boon max ratio set to $_boonRatio");
+		progress("Planet boon rarities configured");
 
 		// --- 9. Populate galaxy ---
 		stepMsg("Populating galaxy (100 sectors)...");
@@ -353,6 +369,38 @@ show_form:
 	<div class="form-group">
 		<label>Admin Email:</label>
 		<input type="text" name="admin_email" value="<?php echo htmlspecialchars($_POST['admin_email'] ?? ''); ?>">
+	</div>
+
+	<h2>Galaxy Settings</h2>
+	<div class="form-group">
+		<label>Grid Boon Max Ratio:</label>
+		<input type="text" name="boon_max_ratio" value="<?php echo htmlspecialchars($_POST['boon_max_ratio'] ?? '0.15'); ?>" style="width:80px;">
+		<div class="hint">Max fraction of planet grids that receive random boons (0.15 = up to 15%). Set to 0 to disable boons.</div>
+	</div>
+	<div class="form-group">
+		<label>Resource Rich (1-in-N):</label>
+		<input type="number" name="pboon_resource_rich_rarity" value="<?php echo htmlspecialchars($_POST['pboon_resource_rich_rarity'] ?? '10'); ?>" min="1" style="width:80px;">
+		<div class="hint">Planet boon: +20% base resource income (10 = 1-in-10 chance)</div>
+	</div>
+	<div class="form-group">
+		<label>Geothermal (1-in-N):</label>
+		<input type="number" name="pboon_geothermal_rarity" value="<?php echo htmlspecialchars($_POST['pboon_geothermal_rarity'] ?? '10'); ?>" min="1" style="width:80px;">
+		<div class="hint">Planet boon: +50% shield/weapon HP and AP (10 = 1-in-10 chance)</div>
+	</div>
+	<div class="form-group">
+		<label>Gravity Well (1-in-N):</label>
+		<input type="number" name="pboon_gravity_well_rarity" value="<?php echo htmlspecialchars($_POST['pboon_gravity_well_rarity'] ?? '20'); ?>" min="1" style="width:80px;">
+		<div class="hint">Planet boon: +30% orbiting ship HP/AP (future) (20 = 1-in-20 chance)</div>
+	</div>
+	<div class="form-group">
+		<label>Rough Terrain (1-in-N):</label>
+		<input type="number" name="pboon_rough_terrain_rarity" value="<?php echo htmlspecialchars($_POST['pboon_rough_terrain_rarity'] ?? '20'); ?>" min="1" style="width:80px;">
+		<div class="hint">Planet boon: +30% defending army HP (future) (20 = 1-in-20 chance)</div>
+	</div>
+	<div class="form-group">
+		<label>Boon Planet (1-in-N):</label>
+		<input type="number" name="pboon_boon_planet_rarity" value="<?php echo htmlspecialchars($_POST['pboon_boon_planet_rarity'] ?? '30'); ?>" min="1" style="width:80px;">
+		<div class="hint">Planet boon: 30-40% grid boon placement (overrides max ratio) (30 = 1-in-30 chance)</div>
 	</div>
 
 	<h2>Turn Processing</h2>

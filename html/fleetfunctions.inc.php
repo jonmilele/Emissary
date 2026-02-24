@@ -165,22 +165,50 @@ function GetYourOrbitingFleet($PlanetID){
 	return GetFleet($row->FleetID);
 }
 
+// Check if a fleet can be disbanded: must be orbiting a planet owned by player or teammate, with a Hangar
+function CanDisbandFleet($FleetID){
+	$sql = "SELECT Location, PlayerID FROM fleets WHERE FleetID='$FleetID'";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	$row = mysqli_fetch_object($res);
+	if(!$row) return ['can' => false, 'reason' => 'Fleet not found'];
+	if($row->Location === '' || substr($row->Location, 0, 2) !== 'P:')
+		return ['can' => false, 'reason' => 'Fleet must be in orbit'];
+	$PlanetID = (int)substr($row->Location, 2);
+	$ownerPID = (int)$row->PlayerID;
+	// Check planet ownership: player or teammate
+	$pRes = mysqli_query($GLOBALS["conn"], "SELECT PlayerID FROM planets WHERE PlanetID='$PlanetID'");
+	$pRow = mysqli_fetch_object($pRes);
+	if(!$pRow || (int)$pRow->PlayerID < 1)
+		return ['can' => false, 'reason' => 'Planet is uncolonised'];
+	$planetOwner = (int)$pRow->PlayerID;
+	if($planetOwner != $ownerPID){
+		$fleetTeam = (int)PlayerTeam($ownerPID);
+		$planetTeam = (int)PlayerTeam($planetOwner);
+		if($fleetTeam < 1 || $fleetTeam != $planetTeam)
+			return ['can' => false, 'reason' => 'Planet must be owned by you or a teammate'];
+	}
+	// Check for Hangar (building type 5) on the planet
+	$hRes = mysqli_query($GLOBALS["conn"], "SELECT COUNT(*) AS cnt FROM buildings WHERE PlanetID='$PlanetID' AND Type=5");
+	$hRow = mysqli_fetch_object($hRes);
+	if(!$hRow || (int)$hRow->cnt < 1)
+		return ['can' => false, 'reason' => 'Planet needs a Hangar to receive ships'];
+	return ['can' => true, 'reason' => '', 'PlanetID' => $PlanetID];
+}
+
+function DisbandFleet($FleetID){
+	$check = CanDisbandFleet($FleetID);
+	if(!$check['can']) return false;
+	$PlanetID = $check['PlanetID'];
+	$sqlship = "UPDATE ships SET PlanetID = '$PlanetID', FleetID = '0' WHERE(FleetID = '$FleetID')";
+	mysqli_query($GLOBALS["conn"], $sqlship);
+	$sql = "DELETE FROM fleets WHERE(FleetID = '$FleetID')";
+	mysqli_query($GLOBALS["conn"], $sql);
+	return true;
+}
+
+// Legacy wrapper
 function DeleteFleet($FleetID){
-	$sql= "SELECT * FROM fleets WHERE(FleetID = '$FleetID')";
-	$rescount=mysqli_query($GLOBALS["conn"], $sql);
-	$row = mysqli_fetch_object($rescount);
-	if(!$row) return false;
-	if(substr($row->Location,0,2)=="P:"){
-		$PlanetID = substr($row->Location,2,strlen($row->Location)-2);
-		if(OwnsPlanet(GetPlayerNameFromID(GetFleetOwner($FleetID)),$PlanetID)){
-			$sqlship = "UPDATE ships SET PlanetID = '$PlanetID', FleetID = '0' WHERE(FleetID = '$FleetID')";
-			$resship = mysqli_query($GLOBALS["conn"], $sqlship);
-			$sql= "DELETE FROM fleets WHERE(FleetID = '".$FleetID."')";
-			$rescount=mysqli_query($GLOBALS["conn"], $sql);
-			return true;
-		}
-	}	
-	return false;
+	return DisbandFleet($FleetID);
 }
 
 function CanColonise($PlanetID,$FleetID = 0){
@@ -234,15 +262,13 @@ function CanInvade($PlanetID){
 }
 
 function FleetsInSystem($SystemID){
-	$total_count = 0;
-
-	//echo $filterdate." ";
-	$sql= "SELECT COUNT(*) AS count FROM fleets WHERE(Location = 'S:$SystemID')";
-	$rescount=mysqli_query($GLOBALS["conn"], $sql);
-	if ($rescount)
-		if ($rowcount = mysqli_fetch_object($rescount))
-			$total_count = $rowcount->count;
-	return $total_count;
+	$sid = (int)$SystemID;
+	$sql = "SELECT COUNT(*) AS count FROM fleets f
+		WHERE f.Location = 'S:$sid'
+		OR f.Location IN (SELECT CONCAT('P:', p.PlanetID) FROM planets p WHERE p.`System` = '$sid')";
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	$row = mysqli_fetch_object($res);
+	return $row ? (int)$row->count : 0;
 }
 
 class Fleet{
@@ -250,16 +276,19 @@ class Fleet{
 	var $PlayerID;
 	var $Location;
 	var $Destination;
+	var $MovingFrom;
 	var $Ships;
 	var $Size;
 	var $Strategy;
 	var $TTF;
 	var $Name;
+	var $HomePort;
 }
 
 class Ship{
 	var $ShipID;
 	var $FleetID;
+	var $PlanetID;
 	var $PlayerID;
 	var $Type;
 	var $Name;
@@ -276,6 +305,7 @@ function GetShip($ShipID){
 	$ship = new Ship();
 	$ship->ShipID = $row->ShipID;
 	$ship->FleetID = $row->FleetID;
+	$ship->PlanetID = $row->PlanetID ?? 0;
 	$ship->PlayerID = $row->PlayerID;
 	$ship->Type = $row->Type;
 	$ship->Name = $row->Name;
@@ -446,6 +476,7 @@ function GetFleet($FleetID){
 	$Fleet->Strategy = $row->Strategy;
 	$Fleet->TTF = $row->TTF;
 	$Fleet->Name = GetFleetName($FleetID);
+	$Fleet->HomePort = (int)($row->HomePort ?? 0);
 
 	$Fleet->Ships = GetShips($FleetID);
 	$Fleet->Size = $Fleet->Ships->Total();
@@ -471,6 +502,7 @@ function MoveFleet($FleetID,$Target,$Strategy = 0){
 	$row = mysqli_fetch_object($res);
 	if(!$row) return;
 	$TTF = 0;
+	$GalLoc = "";
 	if($row->Destination!=""){
 		$GalLoc = GetGalacticLocation($FleetID);
 		$TTF = CalcTTF($GalLoc,$Target);
@@ -635,6 +667,65 @@ function GetGalacticLocation($FleetID){
 	$new_point_y = round($Ay+$AA1_Length,0);
 
 	return "X:".$new_point_x."/".$new_point_y;
+}
+
+// Find the nearest planet owned by the player or their teammates
+// Returns PlanetID or 0 if none found
+function GetNearestFriendlyPlanet($FleetID, $PlayerID){
+	// Get fleet position
+	$fleet = GetFleet($FleetID);
+	if(!$fleet) return 0;
+	if($fleet->Location != ''){
+		// Stationary — resolve from Location
+		$loc = $fleet->Location;
+		if(substr($loc,0,2)=='P:'){
+			$pid = (int)substr($loc,2);
+			$sql = "SELECT `System` FROM planets WHERE PlanetID='$pid'";
+			$res = mysqli_query($GLOBALS["conn"], $sql);
+			$row = mysqli_fetch_object($res);
+			if(!$row) return 0;
+			$fc = GetSystemCoords($row->System);
+		}elseif(substr($loc,0,2)=='S:'){
+			$fc = GetSystemCoords((int)substr($loc,2));
+		}else{
+			return 0;
+		}
+		$fx = $fc['x']; $fy = $fc['y'];
+	}else{
+		// In transit — use galactic interpolation
+		$galLoc = GetGalacticLocation($FleetID);
+		$coords = substr($galLoc,2);
+		$carr = explode('/',$coords);
+		$fx = (float)$carr[0]; $fy = (float)$carr[1];
+	}
+
+	// Get all friendly planets (player + teammates)
+	$teamID = PlayerTeam($PlayerID);
+	if($teamID > 0){
+		$sql = "SELECT p.PlanetID, p.`System` FROM planets p JOIN players pl ON p.PlayerID = pl.PlayerID WHERE pl.TeamID = '$teamID' AND p.PlayerID > 0";
+	}else{
+		$sql = "SELECT PlanetID, `System` FROM planets WHERE PlayerID = '$PlayerID'";
+	}
+	$res = mysqli_query($GLOBALS["conn"], $sql);
+	if(!$res) return 0;
+
+	$bestPlanet = 0;
+	$bestDist = PHP_FLOAT_MAX;
+	// Cache system coords to avoid re-querying for planets in same system
+	$sysCache = [];
+	while($row = mysqli_fetch_object($res)){
+		$sysID = (int)$row->System;
+		if(!isset($sysCache[$sysID])){
+			$sysCache[$sysID] = GetSystemCoords($sysID);
+		}
+		$sc = $sysCache[$sysID];
+		$dist = pow($fx - $sc['x'], 2) + pow($fy - $sc['y'], 2);
+		if($dist < $bestDist){
+			$bestDist = $dist;
+			$bestPlanet = (int)$row->PlanetID;
+		}
+	}
+	return $bestPlanet;
 }
 
 function AddShipToFleet($ShipID,$FleetID){
@@ -1057,7 +1148,7 @@ function FleetFires($FleetID,$PlanetID){
 				$rescount=mysqli_query($GLOBALS["conn"], $sql);
 				$row = mysqli_fetch_object($rescount);
 				$typestring = GetGridContentString($row->Type);
-				$effectiveHP = GetEffectiveBuildingHP($row->HP, $PlanetID);
+				$effectiveHP = GetEffectiveBuildingHP($row->HP, $PlanetID, $row->GridSquare, $row->Type);
 				if($ship->AP>=$effectiveHP){
 					$sql= "DELETE FROM buildings WHERE(BuildingID = '$shield')";
 					$rescount=mysqli_query($GLOBALS["conn"], $sql);
@@ -1085,7 +1176,7 @@ function FleetFires($FleetID,$PlanetID){
 				$rescount=mysqli_query($GLOBALS["conn"], $sql);
 				$row = mysqli_fetch_object($rescount);
 				$typestring = GetGridContentString($row->Type);
-				$effectiveHP = GetEffectiveBuildingHP($row->HP, $PlanetID);
+				$effectiveHP = GetEffectiveBuildingHP($row->HP, $PlanetID, $row->GridSquare, $row->Type);
 				if($ship->AP>=$effectiveHP){
 					$sql= "DELETE FROM buildings WHERE(BuildingID = '$shield')";
 					$rescount=mysqli_query($GLOBALS["conn"], $sql);

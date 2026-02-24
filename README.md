@@ -19,6 +19,7 @@ A browser-based space strategy game originally developed between 2003 and 2004, 
   - [Access Points](#access-points)
   - [Clean Wipe](#clean-wipe-reset-for-fresh-install)
 - [Project Structure](#project-structure)
+- [Screenshots](#screenshots)
 - [Admin Panel](#admin-panel)
 - [License](#license)
 
@@ -202,6 +203,30 @@ All building and ship stat values are estimates — the originals were not recov
 - ~~Cron jobs have no locking mechanism — concurrent runs are possible~~ *(fixed — `flock()` guards added to both cron scripts)*
 - ~~Some game data (known systems, battle logs) stored as flat files instead of in the database~~ *(fixed — all migrated to DB: `battles.Log` TEXT column, `known_systems` table, `game_settings` key-value table)*
 - ~~Some image generators still use relative paths (`planetimage.img.php`, `shieldcount.img.php`)~~ *(fixed — all six `.img.php` generators now use `__DIR__` for includes and image file paths)*
+
+## Screenshots
+
+<p align="center">
+  <a href="screenshots/planet-page.png"><img src="screenshots/planet-page.png" alt="Planet Page" width="600" /></a>
+</p>
+<p align="center">
+  <a href="screenshots/fleet-page.png"><img src="screenshots/fleet-page.png" alt="Fleet Page" width="600" /></a>
+</p>
+<p align="center">
+  <a href="screenshots/ship-page.png"><img src="screenshots/ship-page.png" alt="Ship Page" width="600" /></a>
+</p>
+<p align="center">
+  <a href="screenshots/sector-page.png"><img src="screenshots/sector-page.png" alt="Sector Page" width="600" /></a>
+</p>
+<p align="center">
+  <a href="screenshots/galaxy-page.png"><img src="screenshots/galaxy-page.png" alt="Galaxy Page" width="600" /></a>
+</p>
+<p align="center">
+  <a href="screenshots/galaxy-zoom.png"><img src="screenshots/galaxy-zoom.png" alt="Galaxy Zoom Map" width="600" /></a>
+</p>
+<p align="center">
+  <a href="screenshots/admin-panel.png"><img src="screenshots/admin-panel.png" alt="Admin Panel" width="600" /></a>
+</p>
 
 ## Quick Start
 

@@ -75,6 +75,7 @@ if(!IsPlanet(($_GET['id'] ?? ""))){
 <head>
 <title>Planet: <?php echo h(GetPlanetNameFromID($PlanetID)); ?></title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="style.css" rel="stylesheet" type="text/css">
 <?php if(isset($_GET['dorefresh'])){
 ?>
@@ -99,6 +100,16 @@ include("header.inc.php");
  <small style="color:#00FF00;">[Allied — <?php echo h(GetPlayerNameFromID($Planet->PlayerID)); ?>]</small>
 <?php endif; ?>
 </h2>
+<?php
+$_topBoons = GetPlanetBoons($PlanetID);
+if(!empty($_topBoons)):
+  foreach($_topBoons as $_tb):
+    $_tbCol = GetPlanetBoonColour($_tb);
+?>
+<p style="color:<?php echo $_tbCol; ?>; border:2px solid <?php echo $_tbCol; ?>; padding:4px 8px; display:inline-block; margin:0 6px 6px 0;">
+  &#9733; <?php echo GetPlanetBoonName($_tb); ?> &mdash; <?php echo GetPlanetBoonDesc($_tb); ?>
+</p>
+<?php endforeach; endif; ?>
 <div class="side"> 
   <div class="panel" style="width:250px;"> 
     <h3>Basic Stats</h3>
@@ -148,24 +159,53 @@ if($edit || $teamView){?>
 	$_harvCount = $_harvRow ? (int)$_harvRow->cnt : 0;
 	$_harvBonus = (float)GetGameSetting('harvester_bonus', 0.05);
 	$_harvPct = $_harvCount * $_harvBonus;
+	// Resource grid boon harvesters
+	$_boonHarvQ = mysqli_query($GLOBALS["conn"], "SELECT COUNT(*) AS cnt FROM buildings b INNER JOIN planet_grid_boons pgb ON pgb.PlanetID = b.PlanetID AND pgb.Grid = b.GridSquare WHERE b.PlanetID='$PlanetID' AND b.Type=3 AND pgb.BoonType=1");
+	$_boonHarvRow = mysqli_fetch_object($_boonHarvQ);
+	$_boonHarvCount = $_boonHarvRow ? (int)$_boonHarvRow->cnt : 0;
+	$_boonResBonus = (float)GetGameSetting('boon_resource_bonus', 0.10);
+	$_boonPct = $_boonHarvCount * $_boonResBonus;
+	// Resource Rich planet boon
+	$_hasResourceRich = HasPlanetBoon($PlanetID, 1);
+	$_rrBonus = $_hasResourceRich ? (float)GetGameSetting('pboon_resource_rich_bonus', 0.20) : 0;
+	$_rrMult = 1 + $_rrBonus;
 	// Home world multiplier
 	$_homeMult = $_isHome ? (float)GetGameSetting('home_income_multiplier', 2) : 1;
-	// Final income
-	$_finalMetal = (int)round($_baseMetal * (1 + $_harvPct) * $_homeMult);
-	$_finalMineral = (int)round($_baseMineral * (1 + $_harvPct) * $_homeMult);
-	$_finalAstrium = (int)round($_baseAstrium * (1 + $_harvPct) * $_homeMult);
+	// Step-by-step income calculation (matches GetPlanetIncome order)
+	// Step 1: Base
+	$_s1M = $_baseMetal; $_s1N = $_baseMineral; $_s1A = $_baseAstrium;
+	// Step 2: Resource Rich planet boon
+	$_s2M = (int)round($_s1M * $_rrMult);
+	$_s2N = (int)round($_s1N * $_rrMult);
+	$_s2A = (int)round($_s1A * $_rrMult);
+	// Step 3: Harvesters + Grid Resource Boons (additive percentages)
+	$_combPct = 1 + $_harvPct + $_boonPct;
+	$_s3M = (int)round($_s2M * $_combPct);
+	$_s3N = (int)round($_s2N * $_combPct);
+	$_s3A = (int)round($_s2A * $_combPct);
+	// Step 4: Home World multiplier
+	$_finalMetal = (int)round($_s3M * $_homeMult);
+	$_finalMineral = (int)round($_s3N * $_homeMult);
+	$_finalAstrium = (int)round($_s3A * $_homeMult);
 	?>
     <strong>Income (per turn):</strong><br/>
-    <small style="color:#888;">Base (Size <?php echo $Planet->Size; ?>): <?php echo $_baseMetal; ?>m / <?php echo $_baseMineral; ?>n / <?php echo $_baseAstrium; ?>a</small><br/>
-    <?php if($_isHome): ?>
-    <small style="color:#FFFF00;">Home World: x<?php echo $_homeMult; ?> (<?php echo (int)($_baseMetal*$_homeMult); ?>m / <?php echo (int)($_baseMineral*$_homeMult); ?>n / <?php echo (int)($_baseAstrium*$_homeMult); ?>a)</small><br/>
+    <small style="color:#888;">Base (Size <?php echo $Planet->Size; ?>): <?php echo $_s1M; ?>m / <?php echo $_s1N; ?>n / <?php echo $_s1A; ?>a</small><br/>
+    <?php if($_hasResourceRich): ?>
+    <small style="color:#FF9900;">&#9733; Resource Rich: +<?php echo round($_rrBonus * 100); ?>% &rarr; <?php echo $_s2M; ?>m / <?php echo $_s2N; ?>n / <?php echo $_s2A; ?>a</small><br/>
     <?php endif; ?>
     <?php if($_harvCount > 0): ?>
-    <small style="color:#00FF00;">Harvesters (x<?php echo $_harvCount; ?>): +<?php echo round($_harvPct * 100); ?>%</small><br/>
+    <small style="color:#00FF00;">Harvesters (&times;<?php echo $_harvCount; ?>): +<?php echo round($_harvPct * 100); ?>%</small><br/>
     <?php endif; ?>
-    - <?php echo $_finalMetal; ?> Metal<br/>
-    - <?php echo $_finalMineral; ?> Mineral<br/>
-    - <?php echo $_finalAstrium; ?> Astrium<br/>
+    <?php if($_boonHarvCount > 0): ?>
+    <small style="color:#32FF32;">&#9632; Grid Resource Boons (&times;<?php echo $_boonHarvCount; ?>): +<?php echo round($_boonPct * 100); ?>%</small><br/>
+    <?php endif; ?>
+    <?php if($_harvCount > 0 || $_boonHarvCount > 0): ?>
+    <small style="color:#888;">&rarr; <?php echo $_s3M; ?>m / <?php echo $_s3N; ?>n / <?php echo $_s3A; ?>a</small><br/>
+    <?php endif; ?>
+    <?php if($_isHome): ?>
+    <small style="color:#FFFF00;">Home World: &times;<?php echo $_homeMult; ?> &rarr; <?php echo $_finalMetal; ?>m / <?php echo $_finalMineral; ?>n / <?php echo $_finalAstrium; ?>a</small><br/>
+    <?php endif; ?>
+    <strong><?php echo $_finalMetal; ?></strong> Metal / <strong><?php echo $_finalMineral; ?></strong> Mineral / <strong><?php echo $_finalAstrium; ?></strong> Astrium<br/>
     <p>Defence HP: <?php echo GetPlanetDefenceStrength($PlanetID); ?>
       <?php if(IsHomePlanet(GetPlayerIDFromName($username), $PlanetID)): ?><strong style="color:#FFFF00;">(+50% HP)</strong><?php endif; ?><br>
       Attack HP: <?php echo GetPlanetAttackStrength($PlanetID); ?></p>
@@ -209,18 +249,78 @@ if($edit || $teamView){?>
     } // $edit auction button
     ?>
   </div>
+  <?php
+  // Building counts by type for this planet
+  $_bcRes = mysqli_query($GLOBALS["conn"], "SELECT Type, COUNT(*) AS cnt FROM buildings WHERE PlanetID = '$PlanetID' GROUP BY Type");
+  $_bCounts = [];
+  while($_bcRow = mysqli_fetch_object($_bcRes)) $_bCounts[(int)$_bcRow->Type] = (int)$_bcRow->cnt;
+  ?>
   <div class="panel" style="width:250px"> 
     <h3>Key</h3>
-    <p> <font color="#FF0000">Factory</font><br>
-      <font color="#0066FF">Laboratory</font><br>
-      <font color="#00FF00">Harvester</font><br>
-      <font color="#FF9900">Shipyard</font><br>
-      Hangar<br>
-      <font color="#FFFF00">Shield</font><br>
-      <font color="#CC00FF">Pulse Cannon</font><br>
-      <font color="#FF99FF">Gigashield</font> <br>
-      <font color="#999999">Missile Silo</font></p>
+    <p style="margin:2px 0; border-left:3px solid #FF0000; padding-left:6px;"><font color="#FF0000">Factory</font><?php if(!empty($_bCounts[1])) echo ' ('.$_bCounts[1].')'; ?></p>
+    <p style="margin:2px 0; border-left:3px solid #0066FF; padding-left:6px;"><font color="#0066FF">Laboratory</font><?php if(!empty($_bCounts[2])) echo ' ('.$_bCounts[2].')'; ?></p>
+    <p style="margin:2px 0; border-left:3px solid #00FF00; padding-left:6px;"><font color="#00FF00">Harvester</font><?php if(!empty($_bCounts[3])) echo ' ('.$_bCounts[3].')'; ?></p>
+    <p style="margin:2px 0; border-left:3px solid #FF9900; padding-left:6px;"><font color="#FF9900">Shipyard</font><?php if(!empty($_bCounts[4])) echo ' ('.$_bCounts[4].')'; ?></p>
+    <p style="margin:2px 0; border-left:3px solid #FFFFFF; padding-left:6px;">Hangar<?php if(!empty($_bCounts[5])) echo ' ('.$_bCounts[5].')'; ?></p>
+    <p style="margin:2px 0; border-left:3px solid #FFFF00; padding-left:6px;"><font color="#FFFF00">Shield</font><?php if(!empty($_bCounts[6])) echo ' ('.$_bCounts[6].')'; ?></p>
+    <p style="margin:2px 0; border-left:3px solid #CC00FF; padding-left:6px;"><font color="#CC00FF">Pulse Cannon</font><?php if(!empty($_bCounts[7])) echo ' ('.$_bCounts[7].')'; ?></p>
+    <p style="margin:2px 0; border-left:3px solid #FF99FF; padding-left:6px;"><font color="#FF99FF">Gigashield</font><?php if(!empty($_bCounts[8])) echo ' ('.$_bCounts[8].')'; ?></p>
+    <p style="margin:2px 0; border-left:3px solid #999999; padding-left:6px;"><font color="#999999">Missile Silo</font><?php if(!empty($_bCounts[9])) echo ' ('.$_bCounts[9].')'; ?></p>
+    <?php
+    $_planetBoons = GetPlanetGridBoons($PlanetID);
+    if(!empty($_planetBoons)):
+      $_boonCounts = array_count_values($_planetBoons);
+    ?>
+    <h3>Grid Boons</h3>
+      <?php if(!empty($_boonCounts[1])): ?><p style="margin:2px 0; border-left:3px solid #32FF32; padding-left:6px;"><font color="#32FF32">&#9632; Resource</font> (<?php echo $_boonCounts[1]; ?>)</p><?php endif; ?>
+      <?php if(!empty($_boonCounts[2])): ?><p style="margin:2px 0; border-left:3px solid #3264FF; padding-left:6px;"><font color="#3264FF">&#9632; Research</font> (<?php echo $_boonCounts[2]; ?>)</p><?php endif; ?>
+      <?php if(!empty($_boonCounts[3])): ?><p style="margin:2px 0; border-left:3px solid #FFFF32; padding-left:6px;"><font color="#FFFF32">&#9632; Energy</font> (<?php echo $_boonCounts[3]; ?>)</p><?php endif; ?>
+      <p><small style="color:#888;">Thick coloured borders on grid</small></p>
+    <?php endif; ?>
+    <?php
+    $_pBoons = GetPlanetBoons($PlanetID);
+    if(!empty($_pBoons)):
+    ?>
+    <h3>Planet Boons</h3>
+      <?php foreach($_pBoons as $_pb): ?>
+      <p style="margin:2px 0; border-left:3px solid <?php echo GetPlanetBoonColour($_pb); ?>; padding-left:6px;">
+      <font color="<?php echo GetPlanetBoonColour($_pb); ?>">&#9733; <?php echo GetPlanetBoonName($_pb); ?></font><br>
+      <small style="color:#888;"><?php echo GetPlanetBoonDesc($_pb); ?></small>
+      </p>
+      <?php endforeach; ?>
+    <?php endif; ?>
   </div>
+  <?php } // Edit or TeamView — end left sidebar ?>
+</div>
+<?php
+// === Planet Map (center) ===
+$squares = 0; $startcorner = 0; $numberinrow = 0;
+switch($Planet->Size){
+	case "1": $squares = 100; $startcornerx = 100; $startcornery = 50; $numberinrow = 10; break;
+	case "2": $squares = 121; $startcornerx = 75; $startcornery = 75; $numberinrow = 11; break;
+	case "3": $squares = 81; $startcornerx = 130; $startcornery = 85; $numberinrow = 9; break;
+	case "4": $squares = 144; $startcornerx = 75; $startcornery = 25; $numberinrow = 12; break;
+}
+?>
+<div class="planet"><img src="<?php echo GetPlanetPictureFromID($PlanetID); ?>" name="image1" border="0" usemap="#Map" id="image1"/>
+<map name="Map">
+<?php
+if($edit || $teamView){
+	$secid = 1;
+	for($i = 0;$i<$numberinrow;$i++){
+		for($j = 0;$j<$numberinrow;$j++){
+?>
+  <area shape="rect" coords="<?php echo $startcornerx+$j*40; ?>,<?php echo $startcornery+$i*40; ?>,<?php echo $startcornerx+($j*40)+40; ?>,<?php echo $startcornery+($i*40)+40; ?>" id="s<?php echo $secid; ?>" href="building.php?id=<?php echo $secid; ?>&planet=<?php echo $PlanetID; ?>" target="_self"/>
+<?php
+			$secid++;
+		}
+	}
+}
+?>
+</map>
+</div>
+<div class="side">
+  <?php if($edit || $teamView){ ?>
   <?php
   $cres = mysqli_query($GLOBALS["conn"], "SELECT Grid, Type, TTF FROM cbuildings WHERE PlanetID = '$PlanetID' ORDER BY Grid ASC");
   if($cres && mysqli_num_rows($cres) > 0){ ?>
@@ -232,7 +332,41 @@ if($edit || $teamView){?>
     <?php } ?>
   </div>
   <?php } ?>
-  <?php } // Edit or TeamView?>
+  <?php
+  // Intelligence: fleets en route to this planet
+  $_inboundQ = mysqli_query($GLOBALS['conn'],
+    "SELECT f.FleetID, f.Name, f.PlayerID, f.Strategy, f.TTF,
+     (SELECT COUNT(*) FROM ships sh WHERE sh.FleetID = f.FleetID) AS ShipCount
+     FROM fleets f WHERE f.Destination = 'P:$PlanetID' AND f.Location = ''");
+  $_inboundFleets = [];
+  if($_inboundQ){ while($_ibf = mysqli_fetch_object($_inboundQ)) $_inboundFleets[] = $_ibf; }
+  if(!empty($_inboundFleets)):
+  ?>
+  <div class="panel" style="width:250px;">
+    <h3>&#9888; Intelligence</h3>
+    <p><small style="color:#888;"><?php echo count($_inboundFleets); ?> fleet<?php echo count($_inboundFleets) != 1 ? 's' : ''; ?> en route</small></p>
+    <?php
+    $_stratNames = ['0'=>'Orbit','1'=>'Colonise','2'=>'Attack','3'=>'Invade'];
+    $_stratColours = ['0'=>'#FFFFFF','1'=>'#00FF00','2'=>'#FF0000','3'=>'#FF0000'];
+    foreach($_inboundFleets as $_ibf):
+      $_ibPid = (int)$_ibf->PlayerID;
+      $_ibTeamID = (int)PlayerTeam($_ibPid);
+      $_ibStrat = (string)$_ibf->Strategy;
+      $_ibStratName = $_stratNames[$_ibStrat] ?? 'Unknown';
+      $_ibStratCol = $_stratColours[$_ibStrat] ?? '#FFFFFF';
+      $_ibName = $_ibf->Name ?: 'Fleet '.$_ibf->FleetID;
+    ?>
+    <p style="margin:4px 0; border-left:3px solid <?php echo $_ibStratCol; ?>; padding-left:6px;">
+      <a href="fleet.php?id=<?php echo $_ibf->FleetID; ?>"><?php echo h($_ibName); ?></a>
+      <small style="color:<?php echo $_ibStratCol; ?>;">[<?php echo $_ibStratName; ?>]</small><br/>
+      <small>Owner: <?php echo PlayerProfileLink($_ibPid); ?><?php if($_ibTeamID > 0): ?> — <a href="team.php?id=<?php echo $_ibTeamID; ?>"><?php echo h(TeamNameFromID($_ibTeamID)); ?></a><?php endif; ?></small><br/>
+      <small style="color:#888;">Ships: <?php echo (int)$_ibf->ShipCount; ?> | HP: <?php echo number_format(FleetHP($_ibf->FleetID)); ?> | AP: <?php echo number_format(FleetAP($_ibf->FleetID)); ?></small><br/>
+      <small style="color:#888;">ETA: <?php echo $_ibf->TTF; ?> min</small>
+    </p>
+    <?php endforeach; ?>
+  </div>
+  <?php endif; ?>
+  <?php } // Edit or TeamView ?>
   <div class="panel" style="width:250px;">
     <h3>System: <?php echo h(GetSystemNameFromID($Planet->System)); ?></h3>
     <?php
@@ -275,7 +409,7 @@ if(YourFleetsInOrbit($PlanetID)>0){
           <input type="hidden" name="id" value="<?php echo $PlanetID; ?>">
           <input type="hidden" name="fleet" value="<?php echo $Fleet->FleetID; ?>">
           <?php echo csrf_token(); ?>
-          <button type="submit" onclick="return confirm('Colonise this planet? This will consume a colony ship.');">Colonise</button>
+          <input type="submit" value="Colonise" onclick="return confirm('Colonise this planet? This will consume a colony ship.');">
         </form><br/>
         <?php } // Can Colonise?>
       </li>
@@ -301,10 +435,29 @@ if(YourFleetsInOrbit($PlanetID)>0){
         <?php } //fleet foreach ?>
       </select>
       <select name="strat" id="strat">
+        <?php
+        $_pOwner = (int)$Planet->PlayerID;
+        $_isEnemyPlanet = EnemyOwned($PlanetID);
+        if(!$_isEnemyPlanet): // Own, team, or uncolonised
+        ?>
         <option value="0">Orbit</option>
+        <?php endif; ?>
+        <?php
+        // Colonise: only on uncolonised planets, and only if at least one selected fleet has a colony ship
+        if($_pOwner == 0):
+          $_anyColoniser = false;
+          foreach($Fleets as $_cfk => $_cfl){
+            $csQ = mysqli_query($GLOBALS['conn'], "SELECT 1 FROM ships WHERE FleetID='".(int)$_cfl->FleetID."' AND Type=3 LIMIT 1");
+            if($csQ && mysqli_num_rows($csQ) > 0){ $_anyColoniser = true; break; }
+          }
+          if($_anyColoniser):
+        ?>
         <option value="1">Colonise</option>
+        <?php endif; endif; ?>
+        <?php if($_isEnemyPlanet): // Enemy only ?>
         <option value="2">Attack</option>
         <option value="3">Invade</option>
+        <?php endif; ?>
       </select>
       <input type="hidden" name="type" value="P">
       <input type="hidden" name="value" value="<?php echo $PlanetID; ?>">
@@ -313,56 +466,6 @@ if(YourFleetsInOrbit($PlanetID)>0){
   </div>
   <?php } //Has Fleets ?>
 </div>
-<div class="planet"><img src="<?php echo GetPlanetPictureFromID($PlanetID); ?>" name="image1" border="0" usemap="#Map" id="image1"/> 
-</div>
-<map name="Map">
-  <?php
-$squares = 0;
-$startcorner = 0;
-$numberinrow = 0;
-
-// Planet sizes: 1=Small (10x10), 2=Medium (11x11), 3=Large (9x9), 4=Huge (12x12)
-switch($Planet->Size){
-	case "1": // Small — 100 grid squares
-		$squares = 100;
-		$startcornerx = 100;
-		$startcornery = 50;
-		$numberinrow = 10;
-		break;
-	case "2": // Medium — 121 grid squares
-		$squares = 121;
-		$startcornerx = 75;
-		$startcornery = 75;
-		$numberinrow = 11;
-		break;
-	case "3": // Large — 81 grid squares
-		$squares = 81;
-		$startcornerx = 130;
-		$startcornery = 85;
-		$numberinrow = 9;
-		break;
-	case "4": // Huge — 144 grid squares
-		$squares = 144;
-		$startcornerx = 75;
-		$startcornery = 25;
-		$numberinrow = 12;
-		break;
-}
-if($edit || $teamView){
-	$secid = 1;
-	for($i = 0;$i<$numberinrow;$i++){
-		for($j = 0;$j<$numberinrow;$j++){
-			?>
-  <area shape="rect" coords="<?php echo $startcornerx+$j*40; ?>,<?php echo $startcornery+$i*40; ?>,<?php echo $startcornerx+($j*40)+40; ?>,<?php echo $startcornery+($i*40)+40; ?>" id="s<?php echo $secid; ?>" href="building.php?id=<?php echo $secid; ?>&planet=<?php echo $PlanetID; ?>" target="_self"/>
-  <?php
-			$secid++;
-		}	
-	}
-	//$grids = GetOrbitalGridCoords($Planet->Size);
-
-}
-?>
-</map>
 </body>
 </html>
 <?php

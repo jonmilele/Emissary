@@ -42,7 +42,11 @@ function AddPlanet($SystemID,$SystemName,$Orbit){
 	$name = $SystemName." ".$Orbit;
 	$query = "INSERT INTO planets(DefaultName,Orbit,`System`,Size) VALUES('$name','$Orbit','$SystemID','$size')";
 	$notresult = mysqli_query($GLOBALS["conn"], $query) or die(mysqli_error($GLOBALS["conn"]));
-	echo "Added Planet: ".$name."<br/>";
+	$newPlanetID = mysqli_insert_id($GLOBALS["conn"]);
+	$pBoons = AssignPlanetBoons($newPlanetID);
+	$gBoons = AssignPlanetGridBoons($newPlanetID);
+	$pBoonStr = !empty($pBoons) ? ' [' . implode(',', array_map('GetPlanetBoonName', $pBoons)) . ']' : '';
+	echo "Added Planet: ".$name." ($gBoons grid boons)$pBoonStr<br/>";
 }
 function CreateCoords($SectorID){
 		while(true){

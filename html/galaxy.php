@@ -8,6 +8,7 @@ include_once("userfunctions.inc.php");
 <head>
 <title>The Galaxy</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="style.css" rel="stylesheet" type="text/css">
 </head>
 
@@ -15,7 +16,28 @@ include_once("userfunctions.inc.php");
 <?php
 include("header.inc.php");
 ?>
+<h2>The Galaxy</h2>
 <p><a href="galaxyzoom.php">Zoom In — Full Size Galaxy Map</a></p>
+<?php
+// Galaxy statistics
+$_gSectors = 100;
+$_r = mysqli_query($GLOBALS["conn"], "SELECT COUNT(*) AS c FROM Systems"); $_gSystems = (int)mysqli_fetch_object($_r)->c;
+$_r = mysqli_query($GLOBALS["conn"], "SELECT COUNT(*) AS c FROM planets"); $_gPlanets = (int)mysqli_fetch_object($_r)->c;
+$_r = mysqli_query($GLOBALS["conn"], "SELECT COUNT(*) AS c FROM planets WHERE PlayerID > 0"); $_gColonised = (int)mysqli_fetch_object($_r)->c;
+$_r = mysqli_query($GLOBALS["conn"], "SELECT COUNT(*) AS c FROM players"); $_gPlayers = (int)mysqli_fetch_object($_r)->c;
+$_r = mysqli_query($GLOBALS["conn"], "SELECT COUNT(*) AS c FROM teams"); $_gTeams = (int)mysqli_fetch_object($_r)->c;
+$_r = mysqli_query($GLOBALS["conn"], "SELECT COUNT(*) AS c FROM fleets"); $_gFleets = (int)mysqli_fetch_object($_r)->c;
+$_r = mysqli_query($GLOBALS["conn"], "SELECT COUNT(*) AS c FROM ships"); $_gShips = (int)mysqli_fetch_object($_r)->c;
+?>
+<div class="panel" style="display:flex; flex-wrap:wrap; gap:4px 16px; align-items:center;">
+  <h3 style="margin-right:8px;">Galaxy Statistics</h3>
+  <span style="border-left:3px solid #FF0000; padding-left:6px;">Sectors: <strong><?php echo number_format($_gSectors); ?></strong></span>
+  <span style="border-left:3px solid #FF9900; padding-left:6px;">Systems: <strong><?php echo number_format($_gSystems); ?></strong></span>
+  <span style="border-left:3px solid #00FF00; padding-left:6px;">Planets: <strong><?php echo number_format($_gPlanets); ?></strong> <small style="color:#888;">(<?php echo number_format($_gColonised); ?> colonised)</small></span>
+  <span style="border-left:3px solid #0066FF; padding-left:6px;">Players: <strong><?php echo number_format($_gPlayers); ?></strong></span>
+  <span style="border-left:3px solid #CC00FF; padding-left:6px;">Teams: <strong><?php echo number_format($_gTeams); ?></strong></span>
+  <span style="border-left:3px solid #FFFFFF; padding-left:6px;">Fleets: <strong><?php echo number_format($_gFleets); ?></strong> <small style="color:#888;">(<?php echo number_format($_gShips); ?> ships)</small></span>
+</div>
 <div class="galaxy"><img src="galaxyimage.img.php" border="0" usemap="#Map" style="margin:15px;"/>
 <map name="Map">
 <?php

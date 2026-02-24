@@ -1,11 +1,43 @@
+/* === Base Reset & Layout === */
+*, *::before, *::after {
+	box-sizing: border-box;
+}
+
 body {
 	font-family: "Courier New", Courier, mono;
 	font-size: 14pt;
 	color: #FFFFFF;
 	background-color: #000000;
+	/* Modern flex layout */
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	max-width: 1600px;
+	margin: 0 auto;
+	padding: 0 15px;
 }
 
-input {
+/* Full-width elements at body level */
+body > p, body > h1, body > h2, body > h3, body > h4,
+body > form, body > map, body > ol, body > ul, body > table,
+body > hr, body > pre {
+	flex: 0 0 100%;
+}
+
+/* Condense header/nav/title spacing */
+body > p {
+	margin: 2px 0;
+}
+body > h2 {
+	margin: 4px 0 6px;
+}
+body > .panel {
+	flex: 0 0 100%;
+	max-width: 100%;
+}
+
+/* --- Forms & Inputs --- */
+input, select {
 	font-family: "Courier New", Courier, mono;
 	font-size: 10pt;
 	color: #FFFFFF;
@@ -13,71 +45,85 @@ input {
 	background-color: #000000;
 	border: 1px solid #FF0000;
 }
-.login {
-	font-family: "Courier New", Courier, mono;
-	font-size: 10pt;
-	color: #FFFFFF;
-	text-decoration: none;
-	width: 150px;
-	float: left;
-	margin: 10px;
-	padding: 10px;
-	border: 1px solid #FF0000;
-}
-.login input {
-		font-family: "Courier New", Courier, mono;
-	font-size: 10pt;
-	color: #000000;
-	text-decoration: none;
-	background-color: #FFFFFF;
-	border: 1px solid #FF0000;
-}
+
+/* --- Typography --- */
 small {
 	font-family: "Courier New", Courier, mono;
 	font-size: 9pt;
 	color: #FFFFFF;
 }
+
 a {
 	font-family: "Courier New", Courier, mono;
 	font-size: 12pt;
 	color: #FF0000;
 	text-decoration: none;
 }
+
+/* === Layout Containers === */
+
+/* Sidebar — holds info panels, flexible width */
+.side {
+	margin: 0;
+	flex: 0 1 320px;
+	min-width: 280px;
+	align-self: stretch;
+	display: flex;
+	flex-direction: column;
+}
+.side .panel:last-child {
+	flex: 1;
+}
+
+/* Main content — fills remaining space beside sidebar */
 .planet {
 	font-family: "Courier New", Courier, mono;
 	font-size: 12pt;
 	color: #FFFFFF;
 	border: 1px solid #FF0000;
 	margin: 10px;
-	float: left;
 	padding: 10px;
+	flex: 1 1 520px;
+	min-width: 0;
+	overflow-x: auto;
+	text-align: center;
+	align-self: stretch;
 }
+.planet h1, .planet h3, .planet p,
+.planet form, .planet ol {
+	text-align: left;
+}
+
 .system {
 	font-family: "Courier New", Courier, mono;
 	font-size: 12pt;
 	color: #FFFFFF;
-	float: left;
+	flex: 1 1 520px;
+	min-width: 0;
+	text-align: center;
 }
+
 .galaxy {
 	font-family: "Courier New", Courier, mono;
 	font-size: 12pt;
 	color: #FFFFFF;
-	float: left;
-}
-.side {
-	margin: 0px;
-	float: left;
-}
-.description {
-	float: left;
+	border: 1px solid #FF0000;
 	margin: 10px;
-
+	padding: 10px;
+	flex: 1 1 520px;
+	min-width: 0;
+	text-align: center;
+	overflow-x: auto;
 }
+
+/* === Panels === */
 .panel {
 	margin: 10px;
 	padding: 10px;
 	border: 1px solid #FF0000;
 	font-size: 11pt;
+	/* Override inline fixed widths so panels fill their container */
+	width: auto !important;
 }
 .panel h3 {
 	margin: 0px;
@@ -90,48 +136,75 @@ a {
 .panel li {
 	margin: 0px 0px 5px;
 }
+
+/* === Content & Messages === */
 .content {
 	font-family: "Courier New", Courier, mono;
 	font-size: 12pt;
 	color: #FFFFFF;
 	border: 1px solid #FF0000;
 	margin: 10px;
-	width:650px;
-	float: left;
 	padding: 10px;
+	flex: 1 1 600px;
+	min-width: 0;
 }
-.date{
-	border-bottom:1px solid #999;
+
+.message {
+	color: #FFFFFF;
+	background-color: #FF0000;
+	border-right: 2px solid #CC0033;
+	border-bottom: 2px solid #CC0033;
+	max-width: 600px;
+	width: auto;
 }
+
 .wrapper {
 	text-align: center;
 	margin: auto;
 	border: 1px solid #FFFFFF;
-	width: 900px;
+	max-width: 900px;
+	width: auto;
 }
-.title{
-	border-bottom-width: 1px;
-	border-bottom-style: solid;
-	border-bottom-color: #FFFFFF;
-	float: left;
 
-	
-
-}
-.message {
+/* === Login Page === */
+.login {
+	font-family: "Courier New", Courier, mono;
+	font-size: 10pt;
 	color: #FFFFFF;
-	background-color: #FF0000;
-	border-right-width: 2px;
-	border-bottom-width: 2px;
-	border-right-style: solid;
-	border-bottom-style: solid;
-	border-right-color: #CC0033;
-	border-bottom-color: #CC0033;
-	width: 600px;
+	text-decoration: none;
+	width: 150px;
+	margin: 10px;
+	padding: 10px;
+	border: 1px solid #FF0000;
 }
+.login input {
+	font-family: "Courier New", Courier, mono;
+	font-size: 10pt;
+	color: #000000;
+	text-decoration: none;
+	background-color: #FFFFFF;
+	border: 1px solid #FF0000;
+}
+
+/* === Misc === */
+.description {
+	margin: 10px;
+	flex: 1 1 auto;
+}
+
+.title {
+	border-bottom: 1px solid #FFFFFF;
+	flex: 0 0 100%;
+}
+
+.date {
+	border-bottom: 1px solid #999;
+}
+
 .ship {
-	width: 500px;
+	max-width: 500px;
 	margin: 5px;
 	padding: 5px;
 	font-size: 11pt;
+	border: 1px solid #FF0000;
 }

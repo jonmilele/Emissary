@@ -63,6 +63,7 @@ $currentQS = http_build_query(array_filter([
 <head>
 <title>Alerts</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="style.css" rel="stylesheet" type="text/css">
 <style>
 	.alert-tabs { margin: 10px 0; }

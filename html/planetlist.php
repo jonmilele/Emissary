@@ -8,6 +8,7 @@ include_once("userfunctions.inc.php");
 <head>
 <title><?php echo h($username);?>'s Planets</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="style.css" rel="stylesheet" type="text/css">
 </head>
 
@@ -56,6 +57,13 @@ if(count($_pids) > 0){
 	while($row = mysqli_fetch_object($res)){
 		$_busyYards[(int)$row->pid] = (int)$row->cnt;
 	}
+
+	// Planet boons
+	$_planetBoons = [];
+	$res = mysqli_query($GLOBALS["conn"], "SELECT PlanetID, BoonType FROM planet_boons WHERE PlanetID IN($_pidList) ORDER BY PlanetID, BoonType");
+	while($row = mysqli_fetch_object($res)){
+		$_planetBoons[(int)$row->PlanetID][] = (int)$row->BoonType;
+	}
 }
 foreach($Planets as $key=>$Planet){
 	$pid = $Planet->PlanetID;
@@ -69,10 +77,26 @@ foreach($Planets as $key=>$Planet){
 ?>
 <div class="ship">
 <?php $_pVal = GetPlanetValue($pid); $_pTip = PlanetValueTooltip($pid); ?>
-<p><a href="planet.php?id=<?php echo $pid; ?>"><?php echo h($Planet->Name); ?></a><?php if($_homePID == $pid): ?> <strong style="color:#FFFF00;">[Home]</strong><?php endif; ?> <small style="color:#888; cursor:help; border-bottom:1px dotted #666;" title="<?php echo htmlspecialchars($_pTip); ?>">(<?php echo number_format($_pVal); ?>C)</small><?php if($hasFleet){?>&nbsp;<img title="Has Fleets" align="absmiddle" src="images/ship.gif"><?php }?><?php if($shields > 0){?>&nbsp;<img title="Has Shields" align="absmiddle" src="images/shieldcount.img.php?id=<?php echo $pid; ?>"><?php }?><?php if($weapons > 0){?>&nbsp;<img align="absmiddle" src="images/weapon.gif"><?php } ?><br>
+<p><a href="planet.php?id=<?php echo $pid; ?>"><?php echo h($Planet->Name); ?></a><?php if($_homePID == $pid): ?> <strong style="color:#FFFF00;">[Home]</strong><?php endif; ?> <small style="color:#888; cursor:help; border-bottom:1px dotted #666;" title="<?php echo htmlspecialchars($_pTip); ?>">(<?php echo number_format($_pVal); ?>C)</small><?php if($hasFleet){?>&nbsp;<img title="Has Fleets" align="absmiddle" src="images/ship.gif"><?php }?><?php if($shields > 0){?>&nbsp;<img title="Has Shields" align="absmiddle" src="images/shieldcount.img.php?id=<?php echo $pid; ?>"><?php }?><?php if($weapons > 0){?>&nbsp;<img align="absmiddle" src="images/weapon.gif"><?php } ?><?php
+$_pbl = $_planetBoons[$pid] ?? [];
+if(!empty($_pbl)){
+	echo '&nbsp;';
+	foreach($_pbl as $_pbt){
+		echo '<span title="'.GetPlanetBoonName($_pbt).': '.GetPlanetBoonDesc($_pbt).'" style="color:'.GetPlanetBoonColour($_pbt).'; cursor:help;">&#9733;</span>';
+	}
+}
+?><br>
 <?php if($uTotal > 0){ echo $uTotal." Unassigned Ship(s)<br/>"; } ?>
 <?php if($weapons > 0){ echo $weapons; ?> weapon(s) - <?php echo $_bldCounts[$pid][7] ?? 0; ?> Pulse Cannons, <?php echo $_bldCounts[$pid][9] ?? 0; ?> Missile Silos<br/><?php }?>
 <?php if($shipyards > 0){ echo $shipyards; ?> shipyard(s) - <?php if($idleYards > 0){ echo $idleYards."/".$shipyards; ?> idle<?php }else{?><span style="color: #FF0000;">All Busy</span><?php }?><br/><?php }?>
+<?php
+	$_qUsed = Constructions($pid);
+	$_qMax = GetConstructionSlots($pid);
+	if($_qUsed >= $_qMax){ $_qStyle = 'color:#ff4444;'; }
+	elseif($_qUsed > 0){ $_qStyle = 'color:#FFFF00;'; }
+	else { $_qStyle = 'color:#888;'; }
+?>
+Build Queue: <span style="<?php echo $_qStyle; ?>"><?php echo $_qUsed . '/' . $_qMax; ?></span><br/>
 </p>
 </div><?php
 }

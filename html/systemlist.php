@@ -21,6 +21,7 @@ while($row = mysqli_fetch_object($_mySysRes)) $_mySystems[] = $row;
 <head>
 <title><?php echo h($username);?>'s Systems</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="style.css" rel="stylesheet" type="text/css">
 </head>
 
@@ -133,6 +134,22 @@ while($row = mysqli_fetch_object($_mySysRes)) $_mySystems[] = $row;
 	<strong>Fleets:</strong> <?php echo $_myFleets; ?> yours<?php if($_totalFleets > $_myFleets): ?>, <?php echo $_totalFleets - $_myFleets; ?> other<?php endif; ?>
 	<?php if($_shipCount > 0): ?> | <?php echo $_shipCount; ?> unassigned ship<?php echo $_shipCount > 1 ? 's' : ''; ?><?php endif; ?>
 	<br/>
+
+	<?php
+	$_qParts = [];
+	foreach($planets as $_qp){
+		if((int)$_qp->PlayerID == $myPID){
+			$_qUsed = Constructions($_qp->PlanetID);
+			$_qMax = GetConstructionSlots($_qp->PlanetID);
+			$_qColor = ($_qUsed >= $_qMax) ? '#ff4444' : (($_qUsed > 0) ? '#FFFF00' : '#888');
+			$_qParts[] = '<a href="planet.php?id=' . $_qp->PlanetID . '" style="color:' . $_qColor . ';">' . h($_qp->Name) . '</a> ' . $_qUsed . '/' . $_qMax;
+		}
+	}
+	if($_qParts):
+	?>
+	<strong>Build Queues:</strong><br/>
+	<?php echo implode('<br/>', $_qParts); ?><br/>
+	<?php endif; ?>
 
 	<?php if(count($alliedPlayers) > 0): ?>
 	<strong style="color:#00FF00;">Allied Holdings:</strong><br/>

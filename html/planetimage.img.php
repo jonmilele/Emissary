@@ -141,6 +141,24 @@ for($i = 0;$i<$numberinrow;$i++){
 		$gridid++;
 	}	
 }
+
+// Draw boon borders on top of grid rendering
+$_boons = GetPlanetGridBoons($PlanetID);
+if(!empty($_boons)){
+	imagesetthickness($image, 3);
+	$_bgrid = 1;
+	for($bi = 0; $bi < $numberinrow; $bi++){
+		for($bj = 0; $bj < $numberinrow; $bj++){
+			if(isset($_boons[$_bgrid])){
+				$_bc = explode(',', GetBoonColour($_boons[$_bgrid]));
+				$_boonCol = imagecolorallocate($image, (int)$_bc[0], (int)$_bc[1], (int)$_bc[2]);
+				imagerectangle($image, $startcornerx+$bj*40+1, $startcornery+$bi*40+1, $startcornerx+($bj*40)+39, $startcornery+($bi*40)+39, $_boonCol);
+			}
+			$_bgrid++;
+		}
+	}
+	imagesetthickness($image, 1);
+}
 //imagestring($image,2,5,5,"Sector: ".$SectorID,$border);
 
 header("Content-type: image/jpeg");

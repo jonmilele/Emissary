@@ -11,7 +11,7 @@ if($Ships["Total"]>0){
   <input type="hidden" name="action" value="createfleet">
   <input type="hidden" name="planet" value="<?php echo $PlanetID; ?>">
   <?php echo csrf_token(); ?>
-  <p>[<button type="submit">Create a new Fleet with all of these ships</button>]</p>
+  <p>[<input type="submit" value="Create a new Fleet with all of these ships">]</p>
 </form>
 <form action="building.php" method="post">
   <input type="hidden" name="action" value="addtofleet">

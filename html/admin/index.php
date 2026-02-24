@@ -94,6 +94,29 @@ if($action != ""){
 				echo "Invalid player ID or email";
 			}
 			break;
+		case "assign_grid_boons":
+			include_once(__DIR__ . "/../turnfunctions.inc.php");
+			$_bgRes = mysqli_query($GLOBALS["conn"], "SELECT PlanetID FROM planets WHERE PlanetID NOT IN (SELECT DISTINCT PlanetID FROM planet_grid_boons)");
+			$_bgCount = 0;
+			$_bgTotal = 0;
+			while($_bgRow = mysqli_fetch_object($_bgRes)){
+				$_bgTotal += AssignPlanetGridBoons($_bgRow->PlanetID);
+				$_bgCount++;
+			}
+			echo "Assigned grid boons to $_bgCount planets ($_bgTotal total boons).";
+			break;
+		case "assign_planet_boons":
+			include_once(__DIR__ . "/../turnfunctions.inc.php");
+			$_pbRes = mysqli_query($GLOBALS["conn"], "SELECT PlanetID FROM planets WHERE PlanetID NOT IN (SELECT DISTINCT PlanetID FROM planet_boons)");
+			$_pbCount = 0;
+			$_pbTotal = 0;
+			while($_pbRow = mysqli_fetch_object($_pbRes)){
+				$assigned = AssignPlanetBoons($_pbRow->PlanetID);
+				$_pbTotal += count($assigned);
+				$_pbCount++;
+			}
+			echo "Assigned planet boons to $_pbCount planets ($_pbTotal total boons).";
+			break;
 		case "save_settings":
 			include_once(__DIR__ . "/../turnfunctions.inc.php");
 			$setting_keys = [
@@ -103,8 +126,14 @@ if($action != ""){
 				'election_auto_interval','election_motion_threshold',
 				'starting_metal','starting_mineral','starting_astrium',
 				'planet_weapon_hit_chance',
-				'default_auction_turns','building_salvage_rate','building_valuation_rate',
-				'metal_credit_value','mineral_credit_value','astrium_credit_value'
+				'default_auction_turns','building_salvage_rate','building_valuation_rate','ship_salvage_rate',
+				'metal_credit_value','mineral_credit_value','astrium_credit_value',
+			'boon_max_ratio','boon_resource_bonus','boon_energy_hp_bonus','boon_energy_ap_bonus',
+			'pboon_resource_rich_rarity','pboon_resource_rich_bonus',
+			'pboon_geothermal_rarity','pboon_geothermal_bonus',
+			'pboon_gravity_well_rarity','pboon_gravity_well_bonus',
+			'pboon_rough_terrain_rarity','pboon_rough_terrain_bonus',
+			'pboon_boon_planet_rarity','pboon_boon_planet_min','pboon_boon_planet_max'
 			];
 			$updated = 0;
 			foreach($setting_keys as $sk){
@@ -217,7 +246,7 @@ if($action != ""){
 			include("tools.php");
 			include_once("../turnfunctions.inc.php");
 			// Wipe all game data (preserve players and reference tables)
-		$wipe_tables = ["planets","Systems","ships","fleets","buildings","cbuildings","cships","qships","battles","auctions","auction_cooldowns","gamelog","alerts"];
+		$wipe_tables = ["planets","Systems","ships","fleets","buildings","cbuildings","cships","qships","battles","auctions","auction_cooldowns","gamelog","alerts","planet_grid_boons","planet_boons"];
 			foreach($wipe_tables as $t){
 				mysqli_query($GLOBALS["conn"], "DELETE FROM `$t`");
 				echo "Cleared $t (" . mysqli_affected_rows($GLOBALS["conn"]) . " rows)\n";
@@ -232,6 +261,15 @@ if($action != ""){
 		include_once(__DIR__ . "/../turnfunctions.inc.php");
 		SetGameSetting('names_counter', '1');
 		echo "System names counter reset\n";
+			// Save boon ratio before repopulating
+			$_burnBoonRatio = $_POST['burn_boon_ratio'] ?? '0.15';
+			SetGameSetting('boon_max_ratio', $_burnBoonRatio);
+			echo "Grid boon ratio set to $_burnBoonRatio\n";
+			// Save planet boon rarities
+			$_pboonKeys = ['pboon_resource_rich_rarity','pboon_geothermal_rarity','pboon_gravity_well_rarity','pboon_rough_terrain_rarity','pboon_boon_planet_rarity'];
+			foreach($_pboonKeys as $_pk){
+				if(isset($_POST[$_pk])) SetGameSetting($_pk, $_POST[$_pk]);
+			}
 			// Repopulate all 100 sectors
 			$populated = 0;
 			for($s = 1; $s <= 100; $s++){
@@ -291,8 +329,10 @@ while($_t = mysqli_fetch_object($_teams_result)) $_teamsList[(int)$_t->TeamID] =
 <head>
 <title>Admin Panel</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="../style.css" rel="stylesheet" type="text/css">
 <style>
+	body { max-width: none; }
 	.admin-section { background: #1a1a2e; border: 1px solid #444; padding: 10px; margin: 10px 0; }
 	.admin-section h3 { margin-top: 0; color: #ff9900; }
 	.stats-grid { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -386,9 +426,25 @@ $_tabs = [
 		'default_auction_turns'    => ['label' => 'Default Auction Duration (turns)',    'default' => '5',  'hint' => 'Default number of income turns an auction lasts (each turn = 30 min)'],
 		'building_salvage_rate'    => ['label' => 'Building Salvage Rate',                'default' => '0.5','hint' => 'Fraction of building cost refunded when demolished (0.5 = 50%, scaled by HP)'],
 		'building_valuation_rate'  => ['label' => 'Building Valuation Rate',              'default' => '0.7','hint' => 'Fraction of building cost counted toward planet value (0.7 = 70%, scaled by HP)'],
+		'ship_salvage_rate'        => ['label' => 'Ship Salvage Rate',                    'default' => '0.4','hint' => 'Fraction of ship purchase cost refunded when salvaged (0.4 = 40%, scaled by HP)'],
 		'metal_credit_value'       => ['label' => 'Metal Credit Value',                    'default' => '1',  'hint' => 'Credit value of 1 Metal (used for planet valuation and leaderboard)'],
 		'mineral_credit_value'     => ['label' => 'Mineral Credit Value',                  'default' => '10', 'hint' => 'Credit value of 1 Mineral (used for planet valuation and leaderboard)'],
 		'astrium_credit_value'     => ['label' => 'Astrium Credit Value',                  'default' => '100','hint' => 'Credit value of 1 Astrium (used for planet valuation and leaderboard)'],
+		'boon_max_ratio'           => ['label' => 'Grid Boon Max Ratio',                    'default' => '0.15','hint' => 'Only applies when creating new planets (install/galaxy reset). Change here then use Assign Grid Boons to reroll.'],
+		'boon_resource_bonus'      => ['label' => 'Resource Boon Bonus',                    'default' => '0.10','hint' => 'Extra income bonus for harvesters on resource boon grids (0.10 = +10%)'],
+		'boon_energy_hp_bonus'     => ['label' => 'Energy Boon HP Bonus',                   'default' => '0.25','hint' => 'Extra HP for shields/weapons on energy boon grids (0.25 = +25%)'],
+		'boon_energy_ap_bonus'     => ['label' => 'Energy Boon AP Bonus',                   'default' => '0.25','hint' => 'Extra AP for weapons on energy boon grids (0.25 = +25%)'],
+		'pboon_resource_rich_rarity'  => ['label' => 'Resource Rich Rarity (1-in-N)',    'default' => '10',  'hint' => 'Chance each planet gets Resource Rich boon at creation (10 = 1-in-10)'],
+		'pboon_resource_rich_bonus'   => ['label' => 'Resource Rich Bonus',              'default' => '0.20','hint' => 'Base income multiplier for Resource Rich planets (0.20 = +20%)'],
+		'pboon_geothermal_rarity'     => ['label' => 'Geothermal Rarity (1-in-N)',       'default' => '10',  'hint' => 'Chance each planet gets Geothermal boon at creation (10 = 1-in-10)'],
+		'pboon_geothermal_bonus'      => ['label' => 'Geothermal Bonus',                'default' => '0.50','hint' => 'HP/AP bonus for shields and weapons (0.50 = +50%)'],
+		'pboon_gravity_well_rarity'   => ['label' => 'Gravity Well Rarity (1-in-N)',     'default' => '20',  'hint' => 'Chance each planet gets Gravity Well boon (20 = 1-in-20)'],
+		'pboon_gravity_well_bonus'    => ['label' => 'Gravity Well Bonus',               'default' => '0.30','hint' => 'HP/AP bonus for orbiting ships (future) (0.30 = +30%)'],
+		'pboon_rough_terrain_rarity'  => ['label' => 'Rough Terrain Rarity (1-in-N)',    'default' => '20',  'hint' => 'Chance each planet gets Rough Terrain boon (20 = 1-in-20)'],
+		'pboon_rough_terrain_bonus'   => ['label' => 'Rough Terrain Bonus',              'default' => '0.30','hint' => 'HP bonus for defending armies (future) (0.30 = +30%)'],
+		'pboon_boon_planet_rarity'    => ['label' => 'Boon Planet Rarity (1-in-N)',      'default' => '30',  'hint' => 'Chance each planet gets Boon Planet (higher grid boon ratio) (30 = 1-in-30)'],
+		'pboon_boon_planet_min'       => ['label' => 'Boon Planet Min Ratio',            'default' => '0.30','hint' => 'Minimum grid boon ratio on Boon Planets (0.30 = 30%)'],
+		'pboon_boon_planet_max'       => ['label' => 'Boon Planet Max Ratio',            'default' => '0.40','hint' => 'Maximum grid boon ratio on Boon Planets (0.40 = 40%)'],
 	];
 ?>
 <div class="admin-section">
@@ -621,6 +677,16 @@ $_tabs = [
 		<input type="hidden" name="action" value="populate_all">
 		<input type="submit" value="Populate All Empty Sectors">
 	</form>
+	<form method="post" style="display:inline-block; margin-left: 20px;" onsubmit="return confirm('Assign grid boons to all planets that don\'t have any?');">
+		<input type="hidden" name="_tab" value="world">
+		<input type="hidden" name="action" value="assign_grid_boons">
+		<input type="submit" value="Assign Grid Boons">
+	</form>
+	<form method="post" style="display:inline-block; margin-left: 20px;" onsubmit="return confirm('Assign planet boons to all planets that don\'t have any?');">
+		<input type="hidden" name="_tab" value="world">
+		<input type="hidden" name="action" value="assign_planet_boons">
+		<input type="submit" value="Assign Planet Boons">
+	</form>
 </div>
 </div><!-- /world -->
 
@@ -691,6 +757,15 @@ $_tabs = [
 	<form method="post" onsubmit="return confirm('INITIATE THE BURN?\n\nThis will destroy the entire galaxy and reset all player progress.\n\nType BURN to confirm.') && prompt('Type BURN to confirm:') === 'BURN';">
 		<input type="hidden" name="_tab" value="danger">
 		<input type="hidden" name="action" value="the_burn">
+		<p>Grid Boon Max Ratio: <input type="text" name="burn_boon_ratio" value="<?php echo htmlspecialchars(GetGameSetting('boon_max_ratio', '0.15')); ?>" size="6">
+		<small style="color:#aaa;">Max fraction of grids with boons (0 = none, 0.15 = up to 15%)</small></p>
+		<p style="color:#aaa;"><strong>Planet Boon Rarities (1-in-N):</strong>
+		Resource Rich: <input type="number" name="pboon_resource_rich_rarity" value="<?php echo htmlspecialchars(GetGameSetting('pboon_resource_rich_rarity', '10')); ?>" size="4" min="1" style="width:50px;">
+		Geothermal: <input type="number" name="pboon_geothermal_rarity" value="<?php echo htmlspecialchars(GetGameSetting('pboon_geothermal_rarity', '10')); ?>" size="4" min="1" style="width:50px;">
+		Gravity Well: <input type="number" name="pboon_gravity_well_rarity" value="<?php echo htmlspecialchars(GetGameSetting('pboon_gravity_well_rarity', '20')); ?>" size="4" min="1" style="width:50px;">
+		Rough Terrain: <input type="number" name="pboon_rough_terrain_rarity" value="<?php echo htmlspecialchars(GetGameSetting('pboon_rough_terrain_rarity', '20')); ?>" size="4" min="1" style="width:50px;">
+		Boon Planet: <input type="number" name="pboon_boon_planet_rarity" value="<?php echo htmlspecialchars(GetGameSetting('pboon_boon_planet_rarity', '30')); ?>" size="4" min="1" style="width:50px;">
+		</p>
 		<input type="submit" value="&#9760; INITIATE THE BURN" class="danger-btn" style="font-size: 16px; padding: 10px 30px;">
 	</form>
 </div>
