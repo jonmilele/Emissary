@@ -329,6 +329,68 @@ $_shipGroups = [
   </div>
 
 <div class="planet">
+<?php
+$_viewSector = isset($_GET['sector']) ? (int)$_GET['sector'] : 0;
+if($_viewSector > 0 && $_viewSector <= 100):
+  $_vSecName = GetSectorName($_viewSector);
+?>
+<p><a href="fleet.php?id=<?php echo $FleetID; ?>">&laquo; Galaxy Map</a> &mdash; <?php echo h($_vSecName); ?></p>
+<img src="sectorimage.img.php?id=<?php echo $_viewSector; ?>" usemap="#sectorMap" style="border:0;"/>
+<map name="sectorMap">
+<?php
+$_vSystems = GetSystemsInSector($_viewSector);
+foreach($_vSystems as $_vSys){
+  $_vc = explode("/", $_vSys->Coords);
+  $_vx = (int)($_vc[0] * 50);
+  $_vy = (int)($_vc[1] * 50);
+?>
+  <area shape="circle" coords="<?php echo $_vx; ?>,<?php echo $_vy; ?>,10" href="fleet.php?id=<?php echo $FleetID; ?>&amp;sector=<?php echo $_viewSector; ?>&amp;system=<?php echo $_vSys->SystemID; ?>" title="<?php echo h($_vSys->Name ?? $_vSys->DefaultName); ?>">
+<?php } ?>
+<?php
+// Fleet marker areas — stationary fleets in this sector
+$_fmQ2 = mysqli_query($GLOBALS['conn'],
+  "SELECT f.FleetID, s.Coords FROM fleets f
+   JOIN planets p ON f.Location = CONCAT('P:', p.PlanetID)
+   JOIN Systems s ON p.`System` = s.SystemID
+   WHERE s.SectorID = '$_viewSector' AND f.Location != ''");
+$_fmByCoord2 = [];
+while($_fm2 = mysqli_fetch_object($_fmQ2)){
+  $_ca2 = explode('/', $_fm2->Coords);
+  $_key2 = (int)($_ca2[0] * 50) . ':' . (int)($_ca2[1] * 50);
+  if(!isset($_fmByCoord2[$_key2])) $_fmByCoord2[$_key2] = [];
+  $_fmByCoord2[$_key2][] = $_fm2;
+}
+foreach($_fmByCoord2 as $_key2 => $_fleets2){
+  $_parts2 = explode(':', $_key2);
+  $_cx2 = (int)$_parts2[0]; $_cy2 = (int)$_parts2[1];
+  foreach($_fleets2 as $_i2 => $_fl2){
+    $_fx2 = $_cx2 + 18 + ($_i2 * 8);
+    $_fy2 = $_cy2 - 3;
+?>
+  <area shape="rect" coords="<?php echo $_fx2.','.$_fy2.','.($_fx2+5).','.($_fy2+5); ?>" href="fleet.php?id=<?php echo $_fl2->FleetID; ?>" title="<?php echo h(GetFleetName($_fl2->FleetID)); ?>">
+<?php
+  }
+}
+// Fleet marker areas — in-transit fleets within sector
+$_secCoords2 = GetSectorCoords($_viewSector);
+$_secOX2 = ((int)$_secCoords2[0] - 1) * 500;
+$_secOY2 = ((int)$_secCoords2[1] - 1) * 500;
+$_trFQ2 = mysqli_query($GLOBALS['conn'],
+  "SELECT f.FleetID FROM fleets f WHERE f.Location = '' AND f.Destination != ''");
+while($_tf2 = mysqli_fetch_object($_trFQ2)){
+  $_galLoc2 = GetGalacticLocation($_tf2->FleetID);
+  $_gc2 = explode('/', substr($_galLoc2, 2));
+  $_clx2 = (int)((float)$_gc2[0] - $_secOX2);
+  $_cly2 = (int)((float)$_gc2[1] - $_secOY2);
+  if($_clx2 >= 0 && $_clx2 <= 500 && $_cly2 >= 0 && $_cly2 <= 500){
+?>
+  <area shape="rect" coords="<?php echo ($_clx2-3).','.($_cly2-3).','.($_clx2+3).','.($_cly2+3); ?>" href="fleet.php?id=<?php echo $_tf2->FleetID; ?>" title="<?php echo h(GetFleetName($_tf2->FleetID)); ?> (en route)">
+<?php
+  }
+}
+?>
+</map>
+<?php else: ?>
 <img src="routeimage.img.php?id=<?php echo $FleetID; ?>" usemap="#fleetMap" style="border:0;"/>
 <map name="fleetMap">
 <?php
@@ -338,12 +400,13 @@ for($_fi = 0; $_fi < 10; $_fi++){
     $_fsname = GetSectorName($_fsid);
     $_ftip = $_fsname ? htmlspecialchars($_fsname) . " (Sector $_fsid)" : "Sector $_fsid";
 ?>
-  <area shape="rect" coords="<?php echo $_fj*50; ?>,<?php echo $_fi*50; ?>,<?php echo ($_fj*50)+50; ?>,<?php echo ($_fi*50)+50; ?>" href="sector.php?id=<?php echo $_fsid; ?>" title="<?php echo $_ftip; ?>">
+  <area shape="rect" coords="<?php echo $_fj*50; ?>,<?php echo $_fi*50; ?>,<?php echo ($_fj*50)+50; ?>,<?php echo ($_fi*50)+50; ?>" href="fleet.php?id=<?php echo $FleetID; ?>&amp;sector=<?php echo $_fsid; ?>" title="<?php echo $_ftip; ?>">
 <?php
   }
 }
 ?>
 </map>
+<?php endif; ?>
 </div>
 <div class="side">
   <div class="panel" style="width:250;">
@@ -386,11 +449,34 @@ for($_fi = 0; $_fi < 10; $_fi++){
       <?php echo csrf_token(); ?>
       <input name="fleet" type="hidden" value="<?php echo $FleetID; ?>">
       <p>Target:<br/>
+        <?php
+        $_viewSystem = isset($_GET['system']) ? (int)$_GET['system'] : 0;
+        $_sysPlanets = [];
+        if($_viewSystem > 0){
+          $_sysPlanets = ListPlanetsInSystem($_viewSystem);
+        }
+        ?>
         <select name="value" id="targetPlanet" onchange="_updateStrats()" style="width:100%;">
           <option value="" data-status="none">-- Select Planet --</option>
+          <?php if(!empty($_sysPlanets)): ?>
+          <optgroup label="<?php echo h(GetSystemNameFromID($_viewSystem)); ?>">
+          <?php $_spIdx = 0; foreach($_sysPlanets as $_sp):
+            if((int)$_sp->PlayerID === $_playerID) $_spStatus = 'own';
+            elseif((int)$_sp->PlayerID === 0) $_spStatus = 'uncolonised';
+            else $_spStatus = (PlayerTeam($_sp->PlayerID) != PlayerTeam($_playerID)) ? 'enemy' : 'own';
+          ?>
+          <option value="<?php echo $_sp->PlanetID; ?>" data-status="<?php echo $_spStatus; ?>"<?php if($_spIdx === 0) echo ' selected'; ?>><?php echo h($_sp->Name); ?> (<?php echo $_sp->PlanetID; ?>)<?php if($_spStatus === 'uncolonised') echo ' [uncolonised]'; elseif($_spStatus === 'enemy') echo ' [enemy]'; ?></option>
+          <?php $_spIdx++; ?>
+          <?php endforeach; ?>
+          </optgroup>
+          <?php endif; ?>
+          <?php if(!empty($_ownedPlanets)): ?>
+          <optgroup label="Your Planets">
           <?php foreach($_ownedPlanets as $_mp): ?>
           <option value="<?php echo $_mp->PlanetID; ?>" data-status="own"><?php echo h($_mp->Name); ?> (<?php echo $_mp->PlanetID; ?>)</option>
           <?php endforeach; ?>
+          </optgroup>
+          <?php endif; ?>
         </select>
       </p>
       <p>Strategy:<br/>
