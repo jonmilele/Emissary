@@ -207,25 +207,20 @@ All building and ship stat values are estimates — the originals were not recov
 ## Screenshots
 
 <p align="center">
-  <a href="screenshots/planet-page.png"><img src="screenshots/planet-page.png" alt="Planet Page" width="600" /></a>
+  <a href="screenshots/planet-page.png"><img src="screenshots/planet-page.png" alt="Planet" width="280" style="border:2px solid #fff; margin:4px;" /></a>
+  <a href="screenshots/fleet-page.png"><img src="screenshots/fleet-page.png" alt="Fleet" width="280" style="border:2px solid #fff; margin:4px;" /></a>
+  <a href="screenshots/ship-page.png"><img src="screenshots/ship-page.png" alt="Ship" width="280" style="border:2px solid #fff; margin:4px;" /></a>
 </p>
 <p align="center">
-  <a href="screenshots/fleet-page.png"><img src="screenshots/fleet-page.png" alt="Fleet Page" width="600" /></a>
+  <a href="screenshots/sector-page.png"><img src="screenshots/sector-page.png" alt="Sector" width="280" style="border:2px solid #fff; margin:4px;" /></a>
+  <a href="screenshots/galaxy-page.png"><img src="screenshots/galaxy-page.png" alt="Galaxy" width="280" style="border:2px solid #fff; margin:4px;" /></a>
+  <a href="screenshots/galaxy-zoom.png"><img src="screenshots/galaxy-zoom.png" alt="Galaxy Zoom" width="280" style="border:2px solid #fff; margin:4px;" /></a>
 </p>
 <p align="center">
-  <a href="screenshots/ship-page.png"><img src="screenshots/ship-page.png" alt="Ship Page" width="600" /></a>
+  <a href="screenshots/admin-panel.png"><img src="screenshots/admin-panel.png" alt="Admin Panel" width="280" style="border:2px solid #fff; margin:4px;" /></a>
 </p>
 <p align="center">
-  <a href="screenshots/sector-page.png"><img src="screenshots/sector-page.png" alt="Sector Page" width="600" /></a>
-</p>
-<p align="center">
-  <a href="screenshots/galaxy-page.png"><img src="screenshots/galaxy-page.png" alt="Galaxy Page" width="600" /></a>
-</p>
-<p align="center">
-  <a href="screenshots/galaxy-zoom.png"><img src="screenshots/galaxy-zoom.png" alt="Galaxy Zoom Map" width="600" /></a>
-</p>
-<p align="center">
-  <a href="screenshots/admin-panel.png"><img src="screenshots/admin-panel.png" alt="Admin Panel" width="600" /></a>
+  <sub>Planet · Fleet · Ship · Sector · Galaxy · Galaxy Zoom · Admin Panel</sub>
 </p>
 
 ## Quick Start
