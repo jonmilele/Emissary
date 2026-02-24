@@ -19,7 +19,7 @@ A browser-based space strategy game originally developed between 2003 and 2004, 
   - [Access Points](#access-points)
   - [Clean Wipe](#clean-wipe-reset-for-fresh-install)
 - [Project Structure](#project-structure)
-- [Screenshots](#screenshots)
+- [Screenshots](SCREENSHOTS.md)
 - [Admin Panel](#admin-panel)
 - [License](#license)
 
@@ -206,35 +206,7 @@ All building and ship stat values are estimates — the originals were not recov
 
 ## Screenshots
 
-Click to view full size.
-
-### Planet
-
-[![Planet Page](screenshots/planet-page.png)](screenshots/planet-page.png)
-
-### Fleet
-
-[![Fleet Page](screenshots/fleet-page.png)](screenshots/fleet-page.png)
-
-### Ship
-
-[![Ship Page](screenshots/ship-page.png)](screenshots/ship-page.png)
-
-### Sector
-
-[![Sector Page](screenshots/sector-page.png)](screenshots/sector-page.png)
-
-### Galaxy
-
-[![Galaxy Page](screenshots/galaxy-page.png)](screenshots/galaxy-page.png)
-
-### Galaxy Zoom
-
-[![Galaxy Zoom](screenshots/galaxy-zoom.png)](screenshots/galaxy-zoom.png)
-
-### Admin Panel
-
-[![Admin Panel](screenshots/admin-panel.png)](screenshots/admin-panel.png)
+See [Screenshots](SCREENSHOTS.md).
 
 ## Quick Start
 
